@@ -27,14 +27,15 @@ public:
 
 template< class T >
 struct FocalInfo {
+	static constexpr float NaN = -12345.;
    T strike, dip, rake, depth;
 
    //FocalInfo( T strikein = 180, T dipin = 45, T rakein = 0, T depthin = 10 )
-   FocalInfo( T strikein = -12345, T dipin = -12345, T rakein = -12345, T depthin = -12345 )
+   FocalInfo( T strikein = NaN, T dipin = NaN, T rakein = NaN, T depthin = NaN )
       : strike(strikein), dip(dipin), rake(rakein), depth(depthin) {}
 
 	/* check validation */
-	bool isValid() {
+	virtual bool isValid() const {
 		return (strike>=0.&&strike<360.) && (dip>=0.&&dip<=90.) &&
 				 (rake>=-180.&&rake<180.) && (depth>=0.) ;
 	}
@@ -42,7 +43,7 @@ struct FocalInfo {
 	/* correct into the right range */
 	inline void CorrectRange() {
 		Correct2PI();
-		if( strike==-12345. || rake==-12345. || dip==-12345. || dip>=180. || dip<=-90. )
+		if( strike==NaN || rake==NaN || dip==NaN || dip>=180. || dip<=-90. )
 			throw std::runtime_error("Error(FocalInfo::CorrectRange): Invalid finfo!");
 		if( dip >= 90. ) dip = 180. - dip;
 		if( dip < 0. ) dip = -dip;
@@ -96,7 +97,7 @@ struct FocalInfo {
 private:
 	/* shift by 2PIs into the correct range */
 	void Correct2PI() {
-		if( strike==-12345. || rake==-12345. ) return;
+		if( strike==NaN || rake==NaN ) return;
 		while( strike >= 360. ) strike -= 360.;
 		while( strike < 0. ) strike += 360.;
 		while( rake >= 180. ) rake -= 360.;
@@ -108,10 +109,15 @@ typedef float ftype;
 
 /* earthquake epicenter information */
 struct EpicInfo {
+	static constexpr float NaN = FocalInfo<ftype>::NaN;
 	float lon, lat, t0;
 
 	EpicInfo( float lonin = -12345., float latin = -12345., float t0in = -12345. )
 		: lon(lonin), lat(latin), t0(t0in) {}
+
+	virtual bool isValid() const {
+		return ( (lon<360.&&lon>=0.) && (lat>=-90.&&lat<=90.) && t0!=NaN );
+	}
 
 	friend std::ostream& operator<< ( std::ostream& o, const EpicInfo& e ) {
 		o.precision(6);
@@ -131,6 +137,8 @@ struct EpicInfo {
 /* model space */
 class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 	public:
+		using FocalInfo::NaN;
+
 		ModelInfo() {}
 
 		ModelInfo( const float lonin, const float latin, const float timin,
@@ -140,6 +148,10 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 
 		ModelInfo( const EpicInfo& einfo, const FocalInfo& finfo )
 			: EpicInfo(einfo), FocalInfo(finfo) {}
+
+		virtual bool isValid() const {
+			return ( FocalInfo<ftype>::isValid() && EpicInfo::isValid() );
+		}
 
 		friend std::ostream& operator<< ( std::ostream& o, const ModelInfo& m ) {
 			o<< static_cast< const FocalInfo<ftype>& >(m) << "   " << static_cast< const EpicInfo& >(m);
@@ -156,10 +168,10 @@ class ModelSpace : public ModelInfo {
 	public:
 		ModelSpace()
 			: validS(false), validP(false)
-			  , Rlon(-12345), Rlat(-12345), Rtim(-12345)
-			  , Plon(-12345), Plat(-12345), Ptim(-12345)
-			  , Rstk(-12345), Rdip(-12345), Rrak(-12345), Rdep(-12345)
-			  , Pstk(-12345), Pdip(-12345), Prak(-12345), Pdep(-12345) {
+			  , Rlon(NaN), Rlat(NaN), Rtim(NaN)
+			  , Plon(NaN), Plat(NaN), Ptim(NaN)
+			  , Rstk(NaN), Rdip(NaN), Rrak(NaN), Rdep(NaN)
+			  , Pstk(NaN), Pdip(NaN), Prak(NaN), Pdep(NaN) {
 				  // produce Rand object for each thread
 				  for(int i=0; i<omp_get_max_threads(); i++) {
 					  // apply separated seed by sleeping

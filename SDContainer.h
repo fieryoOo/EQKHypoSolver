@@ -43,6 +43,8 @@ namespace ErrorSC {
 
 class SDContainer {
 public:
+	const float per = NaN;
+
 	/* con/destructors */
 	SDContainer( const float perin, const std::string fmeasure, 
 					 const std::string fmapG, const std::string fmapP ) 
@@ -124,7 +126,7 @@ protected:
 	static constexpr float NaN = AziData::NaN;
 
 private:
-	const float per = NaN, oop = NaN;
+	const float oop = NaN;
 	//float srclon = NaN, srclat = NaN;
 	ModelInfo model;
 	Map mapG, mapP;

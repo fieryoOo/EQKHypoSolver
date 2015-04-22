@@ -12,7 +12,7 @@
 
 BINTEST = Test
 
-OBJS = SDContainer.o Map.o RadPattern.o
+OBJS = SDContainer.o Map.o RadPattern.o EQKAnalyzer.o
 
 VPATH_Rad = RadPattern_src
 OBJS_Rad = $(VPATH_Rad)/rad_pattern4_Rayl.o $(VPATH_Rad)/rad_pattern4_Love.o \
