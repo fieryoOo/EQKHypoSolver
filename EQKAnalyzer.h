@@ -2,10 +2,14 @@
 #define EQKANALYZER_H
 
 #include "DataTypes.h"
+#include "RadPattern.h"
 #include "SDContainer.h"
+#include "Searcher.h"
 #include "FileName.h"
 #include <vector>
 #include <map>
+
+//class ModelInfo;class SDContainer;
 
 /* -------------------- data structures -------------------- */
 enum Dtype { Undefined=0, B, R, L }; // type of data to be used
@@ -107,10 +111,10 @@ namespace ErrorEA {
 
 
 /* -------------------- the analyzer class -------------------- */
-class EQKAnalyzer {
+class EQKAnalyzer : public Searcher::IDataHandler<ModelInfo> {
 public:
 	// model parameters
-	ModelInfo _model;
+	//ModelInfo _model;
 
    /* con/destructors and operators */
    EQKAnalyzer();
@@ -135,8 +139,29 @@ public:
    //void ComputeMisfitsAll();
 
 	std::vector<float> perRlst() const, perLlst() const;
-	void InitRadPattern();
-	void chiSquare( const ModelInfo& minfo, float& chiS, float& wSum, int& N, bool isInit = false ) const;
+
+	// initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer
+	void PredictAll( const ModelInfo& mi, bool updateSource = false );
+	void PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
+						  std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL, bool updateSource = false ) const;
+
+	// use Love group data only when isInit=true
+	void SetInitSearch( bool isInit ) { _isInit = isInit; }
+
+	void chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const;
+
+	float Energy( const ModelInfo& minfo, int& Ndata ) const {
+		float chiS;
+		chiSquare( minfo, chiS, Ndata );
+		if( Ndata < NdataMin )
+			throw ErrorEA::InsufData( FuncName, std::to_string(Ndata) + " < " + std::to_string(NdataMin) );
+		return chiS; //chiS/(Ndata-8.);
+	}
+
+	void Output( const ModelInfo& minfo ) const;
+
+protected:
+	static const int NdataMin = 10;
 
 private:
 	// RadPattern objects for predicting source terms
@@ -149,12 +174,13 @@ private:
 
 	/* ---------- input parameters ---------- */
 	// search area of epicenter
-	float clon, clat, ct0 = 0.;
-	float Rs, Rlon, Rlat, Rt = 20.;	// Rlon: Rs(km) in longitude(deg)
+	//float clon, clat, ct0 = 0.;
+	//float Rs, Rlon, Rlat, Rt = 20.;	// Rlon: Rs(km) in longitude(deg)
 	// data type
 	char datatype_name;
 	Dtype datatype;
 	bool _useG = true, _useP = true, _useA = true;
+	bool _isInit = false;
 	// data weightings
    float weightR_Loc, weightL_Loc;  // weighting between Rayleigh and Love data for Location search
    float weightR_Foc, weightL_Foc;  // weighting between Rayleigh and Love data for Focal search

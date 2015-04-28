@@ -16,6 +16,7 @@ EQKAnalyzer::EQKAnalyzer( const std::string fparam, bool MoveF ) {
 
 
 /* -------------------- param/data preparations (loading) -------------------- */
+/*
 bool EQKAnalyzer::InitEpic() {
 	const float NaN = ModelInfo::NaN;
 	if( Rs>0 && clon!=NaN && clat!=NaN) {
@@ -31,9 +32,6 @@ bool EQKAnalyzer::InitEpic() {
 			std::cerr<<e.what()<<std::endl;
 			return false;
 		}
-		_model.lon = clon;
-		_model.lat = clat;
-		_model.t0 = ct0;
 		return true;
 	}
 	else {
@@ -41,6 +39,7 @@ bool EQKAnalyzer::InitEpic() {
 		return false;
 	}
 }
+*/
 
 bool EQKAnalyzer::MKDir(const char *dirname) {
 	//create dir if not exists
@@ -84,10 +83,10 @@ void EQKAnalyzer::LoadParams( const FileName& fname, const bool MoveF ) {
    }
    fin.close();
 
-   std::cout<<"### "<<nparam<<" succed loads from param file "<<fname<<". ###"<<std::endl;
+   std::cout<<"### EQKAnalyzer::LoadParams: "<<nparam<<" succed loads from param file "<<fname<<". ###"<<std::endl;
 
    // check clon/clat validation and initialize einfo
-   if( ! InitEpic() ) throw ErrorEA::BadParam(FuncName, "invalid Rs | clon | clat");
+   //if( ! InitEpic() ) throw ErrorEA::BadParam(FuncName, "invalid Rs | clon | clat");
 
    // synchronize output vectors with input-measurement vectors
    //pimplES->ArrangeOutlist( pimplES->outlist_RF, pimplES->perRtmp_fit, pimplES->perRlist );
@@ -97,8 +96,8 @@ void EQKAnalyzer::LoadParams( const FileName& fname, const bool MoveF ) {
 
    // check output paths and make directorie(s) if necessary
    std::vector<FileName> Voutf { outname_misF, outname_misL, outname_misAll, outname_pos };
-	for( auto fname : outlist_RF ) Voutf.push_back( fname.second );
-	for( auto fname : outlist_LF ) Voutf.push_back( fname.second );
+	for( auto fname : outlist_RF ) { Voutf.push_back( fname.second+"_sta" ); Voutf.push_back( fname.second+"_bin" ); }
+	for( auto fname : outlist_LF ) { Voutf.push_back( fname.second+"_sta" ); Voutf.push_back( fname.second+"_bin" ); }
 	for( auto fname : outlist_RP ) Voutf.push_back( fname.second );
 	for( auto fname : outlist_LP ) Voutf.push_back( fname.second );
    for( const auto& outfname : Voutf ) MKDirFor( outfname );
@@ -109,18 +108,7 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	std::string stmp;
 	if( ! (buff>>stmp) ) return -2;
 	bool succeed;
-	if( stmp == "clon" ) { 
-		succeed = buff >> clon; 
-		if( succeed && clon<0.) clon += 360.; 
-	}
-	else if( stmp == "clat" ) succeed = buff >> clat;
-	else if( stmp == "ct0" ) succeed = buff >> ct0;
-	else if( stmp == "Rs") succeed = buff >> Rs;
-	else if( stmp == "strike" ) succeed = buff >> _model.strike;
-	else if( stmp == "dip" ) succeed = buff >> _model.dip;
-	else if( stmp == "rake" ) succeed = buff >> _model.rake;
-	else if( stmp == "depth" ) succeed = buff >> _model.depth;
-	else if( stmp == "fRse" ) succeed = buff >> fReigname;
+	if( stmp == "fRse" ) succeed = buff >> fReigname;
 	else if( stmp == "fRsp" ) succeed = buff >> fRphvname;
 	else if( stmp == "fLse" ) succeed = buff >> fLeigname;
 	else if( stmp == "fLsp" ) succeed = buff >> fLphvname;
@@ -166,50 +154,42 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "fmisL" ) {
 		FileName& outname = outname_misL;
 		succeed = buff >> outname;
+		if( succeed && MoveF ) outname.SaveOld();
+		/*
 		if( succeed && MoveF && access(outname.c_str(), F_OK) == 0 ) {
 			FileName oldname = outname + "_old";
 			WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
 			rename(outname.c_str(), oldname.c_str());
 		}
+		*/
 	}
 	else if( stmp == "fmisF" ) {
 		FileName& outname = outname_misF;
 		succeed = buff >> outname;
-		if( succeed && MoveF && access(outname.c_str(), F_OK) == 0 ) {
-			FileName oldname = outname + "_old";
-			WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
-			rename(outname.c_str(), oldname.c_str());
-		}
+		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "fmisAll" ) {
 		FileName& outname = outname_misAll;
 		succeed = buff >> outname;
-		if( succeed && MoveF && access(outname.c_str(), F_OK) == 0 ) {
-			FileName oldname = outname + "_old";
-			WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
-			rename(outname.c_str(), oldname.c_str());
-		}
+		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "fpos" ) {
 		FileName& outname = outname_pos;
 		succeed = buff >> outname;
-		if( succeed && MoveF && access(outname.c_str(), F_OK) == 0 ) {
-			FileName oldname = outname + "_old";
-			WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
-			rename(outname.c_str(), oldname.c_str());
-		}
+		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "ffitR" ) {
 		FileName outname;
 		float per;
 		succeed = buff >> outname >> per;
 		if( succeed ) {
-			if( MoveF && access(outname.c_str(), F_OK) == 0 ) {
-				FileName oldname = outname + "_old";
-				WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
-				rename(outname.c_str(), oldname.c_str());
-			}
 			outlist_RF[per] = outname;
+			if( MoveF ) {
+				FileName outname_sta = outname + "_sta";
+				FileName outname_bin = outname + "_bin";
+				outname_sta.SaveOld();	// move _sta file
+				outname_bin.SaveOld();	// move _bin file
+			}
 		}
 	}
 	else if( stmp == "ffitL" ) {
@@ -217,12 +197,13 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 		float per;
 		succeed = buff >> outname >> per;
 		if( succeed ) {
-			if( MoveF && access(outname.c_str(), F_OK) == 0 ) {
-				FileName oldname = outname + "_old";
-				WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
-				rename(outname.c_str(), oldname.c_str());
-			}
 			outlist_LF[per] = outname;
+			if( MoveF ) {
+				FileName outname_sta = outname + "_sta";
+				FileName outname_bin = outname + "_bin";
+				outname_sta.SaveOld();	// move _sta file
+				outname_bin.SaveOld();	// move _bin file
+			}
 		}
 	}
 	else if( stmp == "fpredR" ) {
@@ -230,13 +211,8 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 		float per;
 		succeed = buff >> outname >> per;
 		if( succeed ) {
-			/*
-			if( MoveF && access(outname.c_str(), F_OK) == 0 ) {
-				FileName oldname = outname + "_old";
-				WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
-				rename(outname.c_str(), oldname.c_str());
-			} */
 			outlist_RP[per] = outname;
+			//if( MoveF ) outname.SaveOld();
 		}
 	}
 	else if( stmp == "fpredL" ) {
@@ -244,13 +220,8 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 		float per;
 		succeed = buff >> outname >> per;
 		if( succeed ) {
-			/*
-			if( MoveF && access(outname.c_str(), F_OK) == 0 ) {
-				FileName oldname = outname + "_old";
-				WarningEA::MoveExistFile(FuncName, outname+" -> "+oldname);
-				rename(outname.c_str(), oldname.c_str());
-			} */
 			outlist_LP[per] = outname;
+			//if( MoveF ) outname.SaveOld();
 		}
 	}
 	else return -1;
@@ -278,11 +249,13 @@ inline void EQKAnalyzer::NormalizeWeights( Dtype& datatype, float& wR, float& wL
 
 void EQKAnalyzer::CheckParams() {
 	// check initial focal info
+	/*
 	const float NaN = ModelInfo::NaN;
 	if( _model.strike==NaN|| _model.dip==NaN||
 		 _model.rake==NaN|| _model.depth==NaN) {
       throw ErrorEA::BadParam(FuncName, "invalid/incomplete initial focal info");
    }
+	*/
 
    // check model inputs
    if( access(fReigname.c_str(), F_OK) == -1 ) throw ErrorEA::BadFile(FuncName, fReigname);
@@ -295,7 +268,7 @@ void EQKAnalyzer::CheckParams() {
 	NormalizeWeights( datatype, weightR_Foc, weightL_Foc );
 
 	// check excluded data
-   if( !_useG && !_useP )
+   if( !_useG && !_useP && !_useA )
       throw ErrorEA::BadParam(FuncName, "All data excluded! (noG and noP)");
    if( ! _useG )
       WarningEA::Other(FuncName, "GroupT data excluded!" );
@@ -341,17 +314,61 @@ std::vector<float> EQKAnalyzer::perLlst() const {
 	return perlst;
 }
 
-void EQKAnalyzer::InitRadPattern() {
-	float stk = _model.strike, dip = _model.dip, rak = _model.rake, dep = _model.depth;
-	_rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
-	_rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
+// initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer based on the current model info
+void EQKAnalyzer::PredictAll( const ModelInfo& mi, bool updateSource ) {
+	PredictAll( mi, _rpR, _rpL, _dataR, _dataL, updateSource );
+}
+void EQKAnalyzer::PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
+										std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL, bool updateSource ) const {
+	// radpattern
+	float stk = mi.stk, dip = mi.dip, rak = mi.rak, dep = mi.dep;
+	rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
+	rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
+
+	// SDContainer Tpaths
+	for( auto& sdc : dataR )
+		sdc.UpdatePathPred( mi.lon, mi.lat, mi.t0 );
+	for( auto& sdc : dataL )
+		sdc.UpdatePathPred( mi.lon, mi.lat, mi.t0 );
+
+	if( ! updateSource ) return;
+
+	// SDContainer R: source terms
+	if( dataR.size() > 0 ) {
+		std::vector<float> ampratioV;	
+		ampratioV.reserve( dataR.size() * dataR.at(0).size() );
+		for( auto& sdc : dataR ) {
+			sdc.UpdateSourcePred( rpR );
+			sdc.ComputeAmpRatios( ampratioV );
+		}
+		float Afactor = std::accumulate(ampratioV.begin(), ampratioV.end(), 0.) / ampratioV.size();
+		//std::cerr<<"   Afactor for Rayleigh: "<<Afactor<<" (was 50000.)\n";
+		for( auto& sdc : dataR )	// scale source amplitudes to match the observations
+			sdc.AmplifySource( Afactor );
+	}
+
+	// SDContainers L: source terms
+	if( dataL.size() > 0 ) {
+		std::vector<float> ampratioV;	
+		ampratioV.reserve( dataL.size() * dataL.at(0).size() );
+		for( auto& sdc : dataL ) {
+			sdc.UpdateSourcePred( rpL );
+			sdc.ComputeAmpRatios( ampratioV );
+		}
+		float Afactor = std::accumulate(ampratioV.begin(), ampratioV.end(), 0.) / ampratioV.size();
+		//std::cerr<<"   Afactor for Love: "<<Afactor<<" (was 55000.)\n";
+		for( auto& sdc : dataL )	// scale source amplitudes to match the observations
+			sdc.AmplifySource( Afactor );
+	}
 }
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
-void EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, float& wSum, int& N, bool isInit ) const {
+void EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
 	// check input params
-	if( ! minfo.isValid() )
-		throw ErrorEA::BadParam(FuncName, "invalid model parameter(s)");
+	if( ! minfo.isValid() ) {
+		std::stringstream ss; ss<<minfo;
+		throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
+	}
 	int Rsize = _dataR.size(), Lsize = _dataL.size();
 	if( Rsize==0 && Lsize==0 )
 		throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
@@ -362,40 +379,163 @@ void EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, float& wSum, i
 	bool useG = _useG, useP = _useP, useA = _useA;
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);
-	if( isInit ) {
+	if( _isInit ) {
 		useG = LFlag = true;
-		useP = RFlag = false;
+		useA = useP = RFlag = false;
 	}
 
-	// model info
-	float stk = minfo.strike, dip = minfo.dip, rak = minfo.rake, dep = minfo.depth;
+	// initialize ADAdder
+	ADAdder adder( useG, useP, useA );
+	const int Nadd = useG + useP + useA;
+
+	// make a copy of the data and RadPattern objs (for multi-threading),
+	// update both path and source predictions for all SDcontainers
+	auto rpR = _rpR, rpL = _rpL;
+	auto dataR = _dataR, dataL = _dataL;
+	PredictAll( minfo, rpR, rpL, dataR, dataL, true );
 
 	// main loop for Rayleigh
-	chiS = 0.; wSum = 0.; N = 0;
+	chiS = 0.; N = 0; //wSum = 0.;
 	if( Rsize>0 && RFlag ) {
-		// update source term predictions
-		auto rpR = _rpR;
-		rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
-		// make a copy at each period (for multi-threading)
-		for( auto sdc : _dataR ) {
-			sdc.UpdatePathPred( minfo.lon, minfo.lat );
-			sdc.UpdateSourcePred( rpR );
-			float Afactor = 50000.;
-			// scale source amplitudes to match the observations
-			sdc.AmplifySource( Afactor );
+		for( auto& sdc : dataR ) {
 			// compute misfits on all stations,
 			// average in each (20 degree) bin,
 			// and store the results into AziData vectors
 			std::vector<AziData> adVmean, adVstd;
 			sdc.BinAverage( adVmean, adVstd );
-for( const auto& ad : adVmean )
-	std::cerr<<ad<<"\n";
-for( const auto& ad : adVstd )
-	std::cerr<<ad<<"\n";
-std::cerr<<"chiSquare: per = "<<sdc.per<<" done!\n";
-			//std::vector<StaData> sdVgood;
-			//sdc.BinAverage_ExcludeBad( sdVgood );
-			// compute misfit
+			// add to chi-square misfit
+			for( int i=0; i<adVmean.size(); i++ ) {
+				const auto& admean = adVmean[i];
+				const auto& adstd = adVstd[i];
+				//AziData adtmp = 1./(adstd*adstd);
+				//wSum += adder( adtmp ); // (adtmp.Gdata + adtmp.Pdata + adtmp.Adata);
+				//adtmp *= (admean * admean);
+				// (mis * mis / variance)
+				chiS += adder( (admean * admean)/(adstd*adstd) );
+				N += Nadd;
+			}
+			//std::cerr<<"Rayleigh at per="<<sdc.per<<": "<<chiS<<" "<<N<<" "<<chiS/(N-8.)<<"\n";
+		}
+	}
+
+	// main loop for Love
+	if( Lsize>0 && LFlag ) {
+		/*
+		// update source term predictions
+		auto rpL = _rpL;
+		rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
+		// make a copy at each period (for multi-threading)
+		// and compute amplitude ratio of Aobs/Apred
+		std::vector<float> ampratioV;
+		ampratioV.reserve( _dataL.size() * _dataL.at(0).size() );
+		for( auto sdc : _dataL ) {
+			sdc.UpdatePathPred( minfo.lon, minfo.lat, minfo.t0 );
+			sdc.UpdateSourcePred( rpL );
+			sdc.ComputeAmpRatios( ampratioV );
+		}
+		float Afactor = std::accumulate(ampratioV.begin(), ampratioV.end(), 0.) / ampratioV.size();
+		std::cerr<<"   Afactor for Love: "<<Afactor<<" (was 55000.)\n";
+		*/
+		for( auto& sdc : dataL ) {
+/*
+			// scale source amplitudes to match the observations
+			sdc.AmplifySource( Afactor );
+*/
+			// compute misfits on all stations,
+			// average in each (20 degree) bin,
+			// and store the results into AziData vectors
+			std::vector<AziData> adVmean, adVstd;
+			sdc.BinAverage( adVmean, adVstd );
+			// compute chi-square misfit
+			for( int i=0; i<adVmean.size(); i++ ) {
+				const auto& admean = adVmean[i];
+				const auto& adstd = adVstd[i];
+				// (mis * mis / variance)
+				chiS += adder( (admean * admean)/(adstd*adstd) );
+				N += Nadd;
+			}
+			//std::cerr<<"Love at per="<<sdc.per<<": "<<chiS<<" "<<N<<" "<<chiS/(N-8.)<<"\n";
+		}
+	}
+}
+
+
+/* -------------------- Output the data and predictions based on the input model info -------------------- */
+void EQKAnalyzer::Output( const ModelInfo& minfo ) const {
+	// check input params
+	if( ! minfo.isValid() ) {
+		std::stringstream ss; ss<<minfo;
+		throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
+	}
+	int Rsize = _dataR.size(), Lsize = _dataL.size();
+	if( Rsize==0 && Lsize==0 )
+		throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
+
+	// make a copy of the data and RadPattern objs (for multi-threading),
+	// update both path and source predictions for all SDcontainers
+	auto rpR = _rpR, rpL = _rpL;
+	auto dataR = _dataR, dataL = _dataL;
+	PredictAll( minfo, rpR, rpL, dataR, dataL, true );
+
+	// main loop for Rayleigh
+	if( Rsize>0 ) {
+		for( auto& sdc : dataR ) {
+			const float per = sdc.per;
+			// outname for the current period
+			if( outlist_RF.find(per) == outlist_RF.end() ) continue;
+			const std::string& outname = outlist_RF.at(per);
+			// output data and predictions at each station (append at the end)
+			std::ofstream foutsta( outname + "_sta", std::ofstream::app );
+			foutsta<<"# [ minfo = "<<minfo<<" ]\n";
+			sdc.PrintAll( foutsta );
+			foutsta << "\n\n";
+			// average in each (20 degree) bin,
+			std::vector<AziData> adVmean, adVstd;
+			sdc.BinAverage( adVmean, adVstd );
+			// output misfits and source preds at each bin azi (append at the end)
+			std::ofstream foutbin( outname + "_bin", std::ofstream::app );
+			foutbin<<"# [ minfo = "<<minfo<<" ]\n";
+			for( int i=0; i<adVmean.size(); i++ ) {
+				const auto& admean = adVmean[i];
+				const auto& adstd = adVstd[i];
+				float Gsource, Psource, Asource;
+				rpR.GetPred( per, admean.azi,	Gsource, Psource, Asource );
+				foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
+										 <<"  "<<Psource<<" "<<admean.Pdata<<" "<<adstd.Pdata
+										 <<"  "<<Asource<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
+			}
+			foutbin << "\n\n";
+		}
+	}
+
+	// main loop for Love
+	if( Lsize>0 ) {
+		for( auto& sdc : dataL ) {
+			const float per = sdc.per;
+			// outname for the current period
+			if( outlist_LF.find(per) == outlist_LF.end() ) continue;
+			const std::string& outname = outlist_LF.at(per);
+			// output data and predictions at each station (append at the end)
+			std::ofstream foutsta( outname + "_sta", std::ofstream::app );
+			foutsta<<"# [ minfo = "<<minfo<<" ]\n";
+			sdc.PrintAll( foutsta );
+			foutsta << "\n\n";
+			// average in each (20 degree) bin,
+			std::vector<AziData> adVmean, adVstd;
+			sdc.BinAverage( adVmean, adVstd );
+			// output misfits and source preds at each bin azi (append at the end)
+			std::ofstream foutbin( outname + "_bin", std::ofstream::app );
+			foutbin<<"# [ minfo = "<<minfo<<" ]\n";
+			for( int i=0; i<adVmean.size(); i++ ) {
+				const auto& admean = adVmean[i];
+				const auto& adstd = adVstd[i];
+				float Gsource, Psource, Asource;
+				rpL.GetPred( per, admean.azi,	Gsource, Psource, Asource );
+				foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
+										 <<"  "<<Psource<<" "<<admean.Pdata<<" "<<adstd.Pdata
+										 <<"  "<<Asource<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
+			}
+			foutbin << "\n\n";
 		}
 	}
 

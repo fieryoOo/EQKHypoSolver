@@ -100,6 +100,11 @@ struct AziData {
 		adres *= mul;
 		return adres;
 	}
+	friend AziData operator*( float mul, const AziData& ad1 ) {
+		AziData adres = ad1;
+		adres *= mul;
+		return adres;
+	}
 
 	// multiplication (*AziData)
 	AziData& operator*=( const AziData& ad2 ) { 
@@ -114,7 +119,7 @@ struct AziData {
 		return adres;
 	}
 
-	// division
+	// division (*float)
 	AziData& operator/=( const float den ) {
 		float mul = 1./den;
 		*this *= mul;
@@ -123,6 +128,28 @@ struct AziData {
 	friend AziData operator/( const AziData& ad1, float den ) {
 		AziData adres = ad1;
 		adres /= den;
+		return adres;
+	}
+	friend AziData operator/( float den, const AziData& ad1 ) {
+		AziData adres;
+		adres.azi = den / ad1.azi;
+		adres.Gdata = den / ad1.Gdata;
+		adres.Pdata = den / ad1.Pdata;
+		adres.Adata = den / ad1.Adata;
+		adres.user = den / ad1.user;
+		return adres;
+	}
+
+	// division (*AziData)
+	AziData& operator/=( const AziData& ad2 ) { 
+		azi /= ad2.azi; Gdata /= ad2.Gdata; 
+		Pdata /= ad2.Pdata; Adata /= ad2.Adata;
+		user /= ad2.user;
+		return *this; 
+	}
+	friend AziData operator/( const AziData& ad1, const AziData& ad2 ) {
+		AziData adres = ad1;
+		adres /= ad2;
 		return adres;
 	}
 
@@ -223,10 +250,10 @@ struct StaData : public AziData {
       return o;
    } */
    friend std::ostream& operator<< ( std::ostream& o, const StaData& sd ) {
-      o<<sd.lon<<" "<<sd.lat<<"   "<<sd.dis<<" "<<sd.azi<<"   "
-		 <<sd.Gdata<<" "<<sd.Pdata<<" "<<sd.Adata<<"   "
-		 <<sd.Gpath<<" "<<sd.Ppath<<"   "
-		 <<sd.Gsource<<" "<<sd.Psource<<" "<<sd.Asource;
+      o<<sd.lon<<" "<<sd.lat<<"  "<<sd.dis<<" "<<sd.azi<<"  "
+		 <<sd.Gdata<<" "<<sd.Gpath<<" "<<sd.Gsource<<"  "
+		 <<sd.Pdata<<" "<<sd.Ppath<<" "<<sd.Psource<<"  "
+		 <<sd.Adata<<" "<<sd.Asource;
       return o;
    }
 
@@ -235,5 +262,44 @@ protected:
 
 };
 
+
+class ADAdder {
+public:
+	ADAdder( const bool useG, const bool useP, const bool useA ) {
+		if(!useG && !useP && !useA) {
+			fptr = &N;
+		} else if( useG && !useP && !useA ) {
+			fptr = &G;
+		} else if( !useG && useP && !useA ) {
+			fptr = &P;
+		} else if( !useG && !useP && useA ) {
+			fptr = &A;
+		} else if( useG && useP && !useA ) {
+			fptr = &GP;
+		} else if( useG && !useP && useA ) {
+			fptr = &GA;
+		} else if( !useG && useP && useA ) {
+			fptr = &PA;
+		} else if( useG && useP && useA ) {
+			fptr = &GPA;
+		}
+	}
+
+	inline static float N( const AziData& ad ) { return 0; }
+	inline static float G( const AziData& ad ) { return ad.Gdata; }
+	inline static float P( const AziData& ad ) { return ad.Pdata; }
+	inline static float A( const AziData& ad ) { return ad.Adata; }
+	inline static float GP( const AziData& ad ) { return ad.Gdata+ad.Pdata; }
+	inline static float GA( const AziData& ad ) { return ad.Gdata+ad.Adata; }
+	inline static float PA( const AziData& ad ) { return ad.Pdata+ad.Adata; }
+	inline static float GPA( const AziData& ad ) { return ad.Gdata+ad.Pdata+ad.Adata; }
+
+	inline float operator()( const AziData& ad ) {
+		return fptr(ad);
+	}
+
+private:
+	float (*fptr)( const AziData& ad ) = nullptr;
+};
 
 #endif

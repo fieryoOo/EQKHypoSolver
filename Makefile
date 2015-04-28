@@ -1,4 +1,6 @@
-#BIN1 = SearchSource_SA
+BIN1 = EQKSolver
+
+BIN2 = Auxiliary
 
 #BIN2 = SearchSource_SA_MC
 
@@ -8,11 +10,9 @@
 
 #BIN5 = ComputeMisfitsAll
 
-#BIN6 = Auxiliary
+#BINTEST = Test
 
-BINTEST = Test
-
-OBJS = SDContainer.o Map.o RadPattern.o EQKAnalyzer.o
+OBJS = SDContainer.o Map.o RadPattern.o EQKAnalyzer.o 
 
 VPATH_Rad = RadPattern_src
 OBJS_Rad = $(VPATH_Rad)/rad_pattern4_Rayl.o $(VPATH_Rad)/rad_pattern4_Love.o \
@@ -21,9 +21,9 @@ OBJS_Rad = $(VPATH_Rad)/rad_pattern4_Rayl.o $(VPATH_Rad)/rad_pattern4_Love.o \
 
 OMPflag = -fopenmp
 
-LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -g
+LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -O3
 
-cflags = -g -std=c++0x $(OMPflag) #-O3
+cflags = -O3 -std=c++0x $(OMPflag) #-O3
 
 fflags = -e -O2 -ffixed-line-length-132 $(OMPflag) #-O2
 
@@ -32,7 +32,7 @@ FC = gfortran
 
 CC = g++
 
-all : $(BINTEST)
+all : $(BIN1) $(BIN2)
 
 $(BIN1) : $(OBJS) $(OBJS_Rad) $(BIN1).o
 	$(FC) $^ $(LIBS) -o $@
@@ -62,5 +62,5 @@ $(VPATH_Rad)/%.o : $(VPATH_Rad)/%.f
 	$(CC) $(cflags) -c $< -o $@
 
 clean :
-	rm -f ${BINTEST} ${BINTEST}.o $(OBJS) $(OBJS_Rad)
+	rm -f $(BIN1) $(BIN1).o $(BIN2) $(BIN2).o $(OBJS) $(OBJS_Rad)
 

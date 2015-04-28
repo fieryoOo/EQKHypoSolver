@@ -4,7 +4,7 @@
 #include "DataTypes.h"
 #include "StackTrace.h"
 #include "Map.h"
-#include "ModelSpace.h"
+#include "ModelInfo.h"
 #include "RadPattern.h"
 #include <vector>
 #include <string>
@@ -61,6 +61,8 @@ public:
 		: per(perin), dataV( std::move(datain) ) {}
 	*/
 
+	std::size_t size() const { return dataV.size(); }
+
 	/* dump into an AziData vector */
 	//void ToAziVector( std::vector<AziData>& adV );
 	void ToMisfitV( std::vector<AziData>& adV ) const;
@@ -68,10 +70,15 @@ public:
 	/* compute azimuth and distance to a given center location */
 	void UpdateAziDis( const float srclon, const float srclat );
 	// predict/store traveltimes from VelMaps into Gpath&Ppath
-	void UpdatePathPred( const float srclon, const float srclat );
+	void UpdatePathPred( const float srclon, const float srclat, const float srct0 );
 	// predict/store source terms into Gpath&Ppath
 	void UpdateSourcePred( const RadPattern& );
 	// scale source amplitudes to match the observations
+	void ComputeAmpRatios( std::vector<float>& ampratioV ) const {
+		for( const auto& sd : dataV )
+         if( sd.Adata!=NaN && sd.Asource!=NaN ) 
+				ampratioV.push_back(sd.Adata/sd.Asource);
+	}
 	void AmplifySource( const float Afactor ) {
 		for( auto& sd : dataV )
 			if( sd.Asource != NaN ) sd.Asource *= Afactor;
@@ -89,6 +96,10 @@ public:
 	/* IO */
 	void LoadMeasurements( const std::string& fmeasure );
 	void LoadMaps( const std::string& fmapG, const std::string& fmapP );
+	void PrintAll( std::ostream& sout = std::cout ) {
+		for( const auto& sd : dataV )
+			sout<<sd<<"\n";
+	}
 
 	// for debug!
 	friend int main( int argc, char* argv[] );
@@ -99,7 +110,7 @@ protected:
    static constexpr float BINSTEP = 20;         /* bin averaging step size */
    static constexpr float BINHWIDTH = 10;       /* bin averaging half width */
 
-	static constexpr float exfactor = 3.;			/* #sigma for excluding bad data */
+	static constexpr float exfactor = 2.5;			/* #sigma for excluding bad data */
 
    static constexpr float Min_Perc = 0.95;      /* allowed min fraction of path length in the vel map */
    static constexpr float Lfactor = 2.;         /* define lamda = per * Lfactor for PathAvg */

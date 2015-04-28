@@ -36,11 +36,18 @@ public:
    void CheckEmpty() const {
       if( this->empty() ) throw EmptyName(FuncName);
    }
+
    void CheckAccess() const {
       if( this->empty() ) throw EmptyName(FuncName);
       if( access(this->c_str(), R_OK) == -1 ) throw BadFile(FuncName, *this);
    }
 
+	void SaveOld() const {
+		if( access(this->c_str(), R_OK) == -1 ) return;
+		FileName oldname = *this + "_old";
+		std::cerr<<std::string("Warning(")+FuncName+"): Moving existing file ("+*this+" -> "<<oldname<<").\n";
+		rename(this->c_str(), oldname.c_str());
+	}
 };
 
 #endif

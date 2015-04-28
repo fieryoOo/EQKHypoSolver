@@ -31,7 +31,8 @@ void SDContainer::LoadMaps( const std::string& fmapG, const std::string& fmapP )
 
 // compute azimuth and distance for each station based on the input epicenter location
 void SDContainer::UpdateAziDis( const float srclon, const float srclat ) {
-	model.lon = srclon; model.lat=srclat;
+	//if( model.lon==srclon && model.lat==srclat )	return;
+	//model.lon = srclon; model.lat=srclat;	// do not save source location unless UpdatePathPred is called!
 	for( auto& sdtmp : dataV ) {
 		try {
 			Path<double> pathcur(srclon, srclat, sdtmp.lon, sdtmp.lat);
@@ -47,9 +48,11 @@ void SDContainer::UpdateAziDis( const float srclon, const float srclat ) {
 }
 
 // predict traveltimes from VelMaps and store into Gpath&Ppath
-void SDContainer::UpdatePathPred( const float srclon, const float srclat ) {
+void SDContainer::UpdatePathPred( const float srclon, const float srclat, const float srct0 ) {
+	// return if epicenter doesn't change
+	if( model.lon==srclon && model.lat==srclat && model.t0==srct0 ) return;
 	// save new source location and update azimuth/distance
-	model.lon = srclon; model.lat=srclat;
+	model.lon = srclon; model.lat = srclat; model.t0 = srct0;
 	UpdateAziDis( srclon, srclat );
 
 	// period and wavelength
@@ -60,7 +63,7 @@ void SDContainer::UpdatePathPred( const float srclon, const float srclat ) {
 	for( auto& sd : dataV ) {
 		float perc;
 		float vel = mapG.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lamda, perc ).Data();
-		if( perc > Min_Perc ) sd.Gpath = sd.dis / vel;
+		if( perc > Min_Perc ) sd.Gpath = sd.dis / vel - srct0;
 	}
 	
 	// reset Phase map and update Tpath predictions
@@ -68,15 +71,15 @@ void SDContainer::UpdatePathPred( const float srclon, const float srclat ) {
 	for( auto& sd : dataV ) {
 		float perc;
 		float vel = mapP.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lamda, perc ).Data();
-		if( perc > Min_Perc ) sd.Ppath = sd.dis / vel;
+		if( perc > Min_Perc ) sd.Ppath = sd.dis / vel - srct0;
 	}
 
 }
 
 void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 	// save new focal info
-	model.strike = rad.stk; model.dip = rad.dip;
-	model.rake = rad.rak; model.depth = rad.dep;
+	model.stk = rad.stk; model.dip = rad.dip;
+	model.rak = rad.rak; model.dep = rad.dep;
 	/*
 	// and update source terms
 	radR.Predict( 'R', "TEST/SourceModels/245.25_41.25.R", "TEST/SourceModels/245.25_41.25.R.phv", stk, dip, rak, dep, SDContainer::perlst );

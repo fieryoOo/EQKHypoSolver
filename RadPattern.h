@@ -1,6 +1,7 @@
 #ifndef RADPATTERN_H
 #define RADPATTERN_H
 
+#include "MyOMP.h"
 #include <cmath>
 #include <memory>
 #include <iostream>
@@ -93,12 +94,14 @@ public:
 					  const std::vector<float>& perlst );
 				//std::vector< std::vector<AziData> >& per_azi_pred );
 
-	/* prediction at one single azimuth */
-	void GetPred( const float per, const float azi,	float& grt, float& pht, float& amp ) const;
+	/* prediction at one single azimuth. return false if the given azimuth is invalidated due to small amplitude */
+	bool GetPred( const float per, const float azi,	float& grt, float& pht, float& amp ) const;
 
 public:
 	static constexpr int nazi = 181;
 	static constexpr int dazi = 2;
+	static constexpr int InvalidateHwidth = 3;	// half width in iazi of the focal pred invalidating window
+	static constexpr float AmpValidPerc = 0.05;  // focal predictions with A < Aaverage*AmpValidPerc are invalidated
 
 private:
    struct Rimpl;

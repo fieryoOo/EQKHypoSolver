@@ -1,5 +1,6 @@
 #include "RadPattern.h"
 #include <fstream>
+#include <cstring>
 
 /* FORTRAN entrance */
 const int nazi = RadPattern::nazi;
@@ -21,16 +22,26 @@ struct RadPattern::Rimpl {
    //std::string outname_mis;
    std::string feignmem, fphvnmem; // name of files of the currently-in-the-memory contents
 
-   int phvnper, phvdper;
-   int feig_len;
-   char *feig_buff;
+	static const int NaN = -12345;
+   int phvnper = NaN, phvdper = NaN;
+   int feig_len = NaN;
+   char *feig_buff = nullptr;
 
    /* ---------- con/destructors ---------- */
-   Rimpl() {
-      phvnper = -12345; phvdper = -12345;
-      feig_buff = nullptr; feig_len = -12345;
-   }
-   ~Rimpl() { if(feig_buff) delete [] feig_buff; }
+	Rimpl() {}
+
+	Rimpl( const Rimpl& r2 ) 
+		: phvnper(r2.phvnper), phvdper(r2.phvdper)
+		, feig_len(r2.feig_len), feig_buff(new char[feig_len]) {
+		memcpy(feig_buff, r2.feig_buff, feig_len );
+	}
+
+   ~Rimpl() {
+		if(feig_buff) {
+			delete [] feig_buff;
+			feig_buff = nullptr;
+		}
+	}
 
 };
 
@@ -40,17 +51,35 @@ RadPattern::RadPattern()
    : pimplR( new Rimpl ) {}
 
 RadPattern::RadPattern( const RadPattern& rp2 )
-   : pimplR( new Rimpl(*(rp2.pimplR)) ) {}
+   : pimplR( new Rimpl(*(rp2.pimplR)) ), type( rp2.type )
+   , stk( rp2.stk ), dip( rp2.dip )
+   , rak( rp2.rak ), dep( rp2.dep )
+   , aziV( rp2.aziV ), grtM( rp2.grtM ) 
+   , phtM( rp2.phtM ), ampM( rp2.ampM ) {}
 
 RadPattern::RadPattern( RadPattern&& rp2 )
-   : pimplR( std::move(rp2.pimplR) ) {}
+   : pimplR( std::move(rp2.pimplR) ), type( rp2.type )
+	, stk( rp2.stk ), dip( rp2.dip )
+	, rak( rp2.rak ), dep( rp2.dep )
+	, aziV( std::move(rp2.aziV) ), grtM( std::move(rp2.grtM) )
+	, phtM( std::move(rp2.phtM) ), ampM( std::move(rp2.ampM) ) {}
 
 RadPattern& RadPattern::operator= ( const RadPattern& rp2 ) {
    pimplR.reset( new Rimpl(*(rp2.pimplR)) );
+	type = rp2.type;
+	stk = rp2.stk; dip = rp2.dip;
+	rak = rp2.rak; dep = rp2.dep;
+	aziV = rp2.aziV; grtM = rp2.grtM;
+	phtM = rp2.phtM; ampM = rp2.ampM;
 }
 
 RadPattern& RadPattern::operator= ( RadPattern&& rp2 ){
    pimplR = std::move(rp2.pimplR);
+	type = rp2.type;
+	stk = rp2.stk; dip = rp2.dip;
+	rak = rp2.rak; dep = rp2.dep;
+	aziV = std::move(rp2.aziV); grtM = std::move(rp2.grtM);
+	phtM = std::move(rp2.phtM); ampM = std::move(rp2.ampM);
 }
 
 RadPattern::~RadPattern() {}
@@ -66,8 +95,13 @@ void RadPattern::Predict( char typein, const std::string& feigname, const std::s
 	// return if the requested new state is exactly the same as the one stored
 	if( type==typein && stk==stkin && dip==dipin && 
 		 rak==rakin && dep==depin && perlst.size()<=grtM.size() ) {
+		bool allfound = true;
 		for( const auto per : perlst )
-			if( grtM.find(per) == grtM.end() ) return;
+			if( grtM.find(per) == grtM.end() ) {
+				allfound = false;
+				break;
+			}
+		if( allfound ) return;
 	}
 
 	// store current state;
@@ -85,8 +119,8 @@ void RadPattern::Predict( char typein, const std::string& feigname, const std::s
       fin.seekg(0, std::ios::end);
       pimplR->feig_len = fin.tellg();
       if( pimplR->feig_buff ) {
-	 delete [] pimplR->feig_buff;
-	 pimplR->feig_buff = nullptr;
+			delete [] pimplR->feig_buff;
+			pimplR->feig_buff = nullptr;
       }
       pimplR->feig_buff = new char[pimplR->feig_len];
       fin.seekg(0,std::ios::beg);
@@ -137,40 +171,49 @@ void RadPattern::Predict( char typein, const std::string& feigname, const std::s
    if( pimplR->phvnper < 0 || fphvname != pimplR->fphvnmem ) 
       throw ErrorRP::BadBuff(FuncName, fphvname + " != " + pimplR->fphvnmem);
 
-   // copy results into prediction vectors
-/*
-   per_azi_pred.clear(); per_azi_pred.resize(nper);
-   for(int i=0; i<nper; i++) {
-      per_azi_pred.at(i).resize(nazi);
-      for(int iazi=0; iazi<nazi; iazi++) {
-         if( azi[iazi] != iazi*2 )
-	    throw ErrorRP::BadAzi(FuncName, std::to_string(azi[iazi])+" != 2*"+std::to_string(iazi));
-         per_azi_pred[i][iazi] = AziData( azi[iazi], grT[i][iazi], phT[i][iazi], amp[i][iazi] );
-      }
-   }
-*/
-   //float strike = finfo.strike, dip = finfo.dip, rake = finfo.rake, depth = finfo.depth;
-	aziV.clear(); grtM.clear(); phtM.clear(); ampM.clear();
+	// copy predictions into maps
+	grtM.clear(); phtM.clear(); ampM.clear(); //aziV.clear();
    //float azi[nazi], grT[nper][nazi], phT[nper][nazi], amp[nper][nazi];
-	aziV = std::vector<float>( azi, azi+nazi );
 	for( int iper=0; iper<perlst.size(); iper++ ) {
 		float per = perlst[iper];
       grtM[per] = std::vector<float>( grT[iper], grT[iper]+nazi );
       phtM[per] = std::vector<float>( phT[iper], phT[iper]+nazi );
       ampM[per] = std::vector<float>( amp[iper], amp[iper]+nazi );
-		
-/*
-      for(int iazi=0; iazi<nazi; iazi++) {
-         if( azi[iazi] != iazi*2 )
-	    throw ErrorRP::BadAzi(FuncName, std::to_string(azi[iazi])+" != 2*"+std::to_string(iazi));
-         per_azi_pred[i][iazi] = AziData( azi[iazi], grT[i][iazi], phT[i][iazi], amp[i][iazi] );
-      }
-*/
    }
+	//aziV = std::vector<float>( azi, azi+nazi );
+
+	// invalidate focal predictions with amplitudes < amp_avg * AmpValidPerc
+	const float NaN = Rimpl::NaN;
+	for( int iper=0; iper<perlst.size(); iper++ ) {
+		float per = perlst[iper];
+		// determine min amplitude
+		int Nvalid = 0; float Amin = 0.;
+		const auto& ampV = ampM[per];
+		for( const auto& amp : ampV ) Amin += amp;
+		Amin *= (AmpValidPerc / ampV.size());
+		// invalidate azimuths with small amplitudes
+		auto& grtV = grtM[per];
+		for(int iazi=0; iazi<nazi; iazi++)
+			if( ampV[iazi] < Amin ) {
+				int jazilow = iazi-InvalidateHwidth, jazihigh = iazi+InvalidateHwidth+1;
+				// invalidate the range (jazilow - 0)
+				int jazi = jazilow;
+				if( jazi < 0 )
+					for(; jazi<0; jazi++)
+						grtV[jazi + nazi] = NaN;
+				// invalidate the range (0 - 360)
+				for(; jazi<jazihigh&&jazi<nazi; jazi++)
+					grtV[jazi] = NaN;
+				// invalidate the range (360 - jazihigh)
+				if( jazihigh > nazi )
+					for(; jazi<jazihigh; jazi++)
+						grtV[jazi - nazi] = NaN;
+			}
+	}
 }
 
 
-void RadPattern::GetPred( const float per, const float azi,
+bool RadPattern::GetPred( const float per, const float azi,
 								  float& grt, float& pht, float& amp ) const {
 	// check validities of period and azimuth
 	auto Igrt = grtM.find(per);
@@ -182,8 +225,13 @@ void RadPattern::GetPred( const float per, const float azi,
 	// low and high azimuth
 	float azil = iazi*dazi, azih = azil+dazi;
 	float azifactor = (azi-azil) / dazi, ftmp1, ftmp2;
+	const float NaN = Rimpl::NaN;
 	// group delay
 	ftmp1 = (Igrt->second)[iazi], ftmp2 = (Igrt->second)[iazi+1];
+	if( ftmp1==NaN || ftmp2==NaN ) {
+		grt = pht = amp = NaN;
+		return false;
+	}
 	grt = ftmp1 + (ftmp2 - ftmp1) * azifactor;
 	// phase shift
 	auto Ipht = phtM.find(per);
@@ -194,4 +242,5 @@ void RadPattern::GetPred( const float per, const float azi,
 	ftmp1 = (Iamp->second)[iazi], ftmp2 = (Iamp->second)[iazi+1];
 	amp = ftmp1 + (ftmp2 - ftmp1) * azifactor;
 
+	return true;
 }

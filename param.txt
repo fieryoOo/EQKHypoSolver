@@ -1,20 +1,22 @@
 ######### location range ##########
-clon	-114.9
-clat	41.2
-#ct0 3.
-#clon	-114.75
-#clat	41.26
-Rs	30
+#SA (thread 1) search# 1 (T=98.1133, tid=1): minfo = (210.208 39.6266 -93.3945  8.04806   245.117 41.2315  2.89362) N = 0 E = -671.25 (accepted)
+lon 245.117
+lat 41.2315
+t0 2.89362
+#lon	-115.
+#lat	41.
+#t0		0.
+pertfactor 0.1
 
 ######### initial mechanism #########
-strike	210
-dip	40
-rake	-90
-depth	8
-#strike	205
+stk 210.208
+dip 39.6266
+rak -93.3945
+dep 8.04806
+#stk	110
 #dip	50
-#rake	-93
-#depth	12
+#rak	-30
+#dep	20
 
 ######### weightings #########
 weightR_Loc 0.5
