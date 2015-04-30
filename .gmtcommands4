@@ -1,0 +1,8 @@
+# GMT common arguments shelf
+-Ba0.01f0.002/a500f100:.lat:
+-JX10
+-R41.15/41.175/0/2000
+-jX10
+EOF
+
+

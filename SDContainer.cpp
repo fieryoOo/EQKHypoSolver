@@ -48,9 +48,9 @@ void SDContainer::UpdateAziDis( const float srclon, const float srclat ) {
 }
 
 // predict traveltimes from VelMaps and store into Gpath&Ppath
-void SDContainer::UpdatePathPred( const float srclon, const float srclat, const float srct0 ) {
-	// return if epicenter doesn't change
-	if( model.lon==srclon && model.lat==srclat && model.t0==srct0 ) return;
+bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const float srct0 ) {
+	// return false if epicenter doesn't change
+	if( model.lon==srclon && model.lat==srclat && model.t0==srct0 ) return false;
 	// save new source location and update azimuth/distance
 	model.lon = srclon; model.lat = srclat; model.t0 = srct0;
 	UpdateAziDis( srclon, srclat );
@@ -74,6 +74,7 @@ void SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 		if( perc > Min_Perc ) sd.Ppath = sd.dis / vel - srct0;
 	}
 
+	return true;	// updated!
 }
 
 void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
@@ -133,7 +134,7 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood ) {
 	VO::SelectData( dataV, sdVgood, adVmean, adVstd, exfactor );
 }
 
-void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVstd ) {
+void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar ) {
 	// dump into AziData vector
 	Correct2PI();
 	std::vector<AziData> adVori;
@@ -146,29 +147,36 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	adVori.clear();
 
 	// bin average (L1 norm, output with center azimuth for each bin)
-	adVmean.clear(); adVstd.clear();
-	VO::BinAvg( adVext, adVmean, adVstd, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false );
+	adVmean.clear(); adVvar.clear();	// note: std-devs are stored in adVvar
+	VO::BinAvg( adVext, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false );
 
 	// exclude empty bins and define undefined std-devs
    float finf = std::numeric_limits<float>::infinity();
 	AziData ad_stdest{ BINHWIDTH/exfactor, finf, finf, finf };
-	HandleBadBins(adVmean, adVstd, ad_stdest);
+	HandleBadBins(adVmean, adVvar, ad_stdest);
 
-	// pick out good stations that falls within the range defined by adVmean and adVstd
+	// pick out good stations that falls within the range defined by adVmean and adVvar (in which are std-devs)
 	std::vector<AziData> adVsel;
-	VO::SelectData( adVext, adVsel, adVmean, adVstd, exfactor );
+	VO::SelectData( adVext, adVsel, adVmean, adVvar, exfactor );
 
 	// bin average again (L2 norm, output with averaged azimuth for each bin)
-	VO::BinAvg( adVsel, adVmean, adVstd, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 2, true );
+	VO::BinAvg( adVsel, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 2, true );
 
 	// exclude empty bins and define undefined std-devs
 	ad_stdest = AziData{ NaN, stdGest, stdPest, stdAest };
-	// NOTE!: Adata will be set to admean.Adata * ad_stdest.Adata
-	HandleBadBins( adVmean, adVstd, ad_stdest );
+	// NOTE!: invalide adVvar[].Adata will be set to admean.user * ad_stdest.Adata
+	HandleBadBins( adVmean, adVvar, ad_stdest );
 
-	// pull up any std-devs that are smaller than defined minimum
-	AziData ad_stdmin{ NaN, stdGmin, stdPmin, stdAmin };
-	WaterLevel( adVmean, adVstd, ad_stdmin );
+	// compute variance by combining the data std-dev with the internally defined variance (for path predictions)
+	// (old: pull up any std-devs that are smaller than defined minimum)
+	AziData ad_varpath;
+	if( type == 'R' ) {
+		ad_varpath = AziData{ NaN, varRGmin, varRPmin, varRAmin };
+	} else {
+		ad_varpath = AziData{ NaN, varLGmin, varLPmin, varLAmin };
+	}
+	//WaterLevel( adVmean, adVstd, ad_stdmin );
+	ComputeVariance( adVmean, adVvar, ad_varpath );	// for adVvar: std-dev -> variance
 }
 
 // exclude empty bins and define undefined std-devs
@@ -194,17 +202,22 @@ void SDContainer::HandleBadBins( std::vector<AziData>& adVmean,
 	adVstd  = std::move( adVstd2  );
 }
 
-// pull up any std-devs that are smaller than defined minimum
-void SDContainer::WaterLevel( std::vector<AziData>& adVmean, 
-									  std::vector<AziData>& adVstd, const AziData ad_stdmin ) const {
-	float Gmin = ad_stdmin.Gdata, Pmin = ad_stdmin.Pdata, Asca = ad_stdmin.Adata;
+// compute variance by propagating the given variance into the data
+// ( old: pull up any std-devs that are smaller than defined minimum )
+void SDContainer::ComputeVariance( std::vector<AziData>& adVmean, 
+											  std::vector<AziData>& adVstd, const AziData ad_varin ) const {
+	float Gin = ad_varin.Gdata, Pin = ad_varin.Pdata, Asca = ad_varin.Adata;
    for(int i=0; i<adVmean.size(); i++) {
       auto& admean = adVmean[i];
       auto& adstd = adVstd[i];
-		if( adstd.Gdata < Gmin ) adstd.Gdata = Gmin;
-		if( adstd.Pdata < Pmin ) adstd.Pdata = Pmin;
-		float Amin = admean.user * Asca;
-		if( adstd.Adata < Amin ) adstd.Adata = Amin;
+		//if( adstd.Gdata < Gmin ) adstd.Gdata = Gmin;
+		//if( adstd.Pdata < Pmin ) adstd.Pdata = Pmin;
+		//float Amin = admean.user * Asca;
+		//if( adstd.Adata < Amin ) adstd.Adata = Amin;
+		float Ain = admean.user*admean.user * Asca;
+		adstd.Gdata = adstd.Gdata*adstd.Gdata + Gin;
+		adstd.Pdata = adstd.Pdata*adstd.Pdata + Pin;
+		adstd.Adata = adstd.Adata*adstd.Adata + Ain;
 	}
 }
 

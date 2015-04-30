@@ -89,7 +89,7 @@ public:
    ~RadPattern();
 
    /* Predict Rayleigh/Love wave radiation patterns */
-   void Predict( char type, const std::string& feigname, const std::string& fphvname,
+   bool Predict( char type, const std::string& feigname, const std::string& fphvname,
 					  const ftype strike, const ftype dip, const ftype rake, const ftype depth,
 					  const std::vector<float>& perlst );
 				//std::vector< std::vector<AziData> >& per_azi_pred );

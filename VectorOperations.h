@@ -31,6 +31,12 @@ namespace VO {
 				: Base("Error("+funcname+"): Bad data ("+info+").") {}
 	};
 
+   class BadFile : public Base {
+   public:
+      BadFile(const std::string funcname, const std::string info = "")
+         : Base("Warning("+funcname+"): Unable to access file ("+info+").") {}
+   };
+
    class BadParam : public Base {
    public:
       BadParam(const std::string funcname, const std::string info = "")
@@ -45,6 +51,19 @@ namespace VO {
 
 
 	/* operations */
+	template < class T >
+	void Output( const std::vector<T>& dataV, const std::string& fname, const bool app = false ) {
+		std::ofstream fout;
+		if( app ) fout.open( fname, std::ofstream::app );
+		else fout.open( fname );
+		if( ! fout )
+			throw BadFile(FuncName, "open "+fname);
+
+		if( app )fout<<"\n\n";
+		for( const auto& t : dataV )
+			fout << t << "\n";
+	}
+
 	template < class T >
 	bool isSorted( const std::vector<T>& dataV ) {
 		int dsize = dataV.size();

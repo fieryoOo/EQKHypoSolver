@@ -131,10 +131,10 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			}
 		}
 
-		void BoundFocal() {
+		void BoundFocal( float Rfactor = 1. ) {
 			ModelSpace ms;	// create default model space
-			Rstk = ms.Rstk; Rdip = ms.Rdip;
-			Rrak = ms.Rrak; Rdep = ms.Rdep;
+			Rstk = ms.Rstk*Rfactor; Rdip = ms.Rdip*Rfactor;
+			Rrak = ms.Rrak*Rfactor; Rdep = ms.Rdep*Rfactor;
 			// reset model center, perturbation ranges, and random number generators
 			Initialize();
 		}
@@ -144,10 +144,8 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
 		void EstimatePerturbs( const EQKAnalyzer& eka ) {
-			std::cout<<"*** Estemating perturb step sizes 0 ***\n";
 			int Ndata;
 			float Emin = eka.Energy(*this, Ndata);
-			std::cout<<"*** Estemating perturb step sizes 1 ***\n";
 			#pragma omp parallel
 			{ // parallel begins
 				#pragma omp sections
@@ -206,7 +204,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			std::cout<<"*** Model state after estemating perturb step sizes: "<<*this<<std::endl;
 		}
 
-		void Perturb( ModelInfo& minew ) {
+		void Perturb( ModelInfo& minew ) const {
 			//if( ! (validS && validP) ) throw std::runtime_error("incomplete model space");
 			if( ! isValid() ) throw std::runtime_error("incomplete model info");
 
@@ -273,7 +271,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		float Rlon{0.3}, Rlat{0.3}, Rtim{5.}, Rstk{30.}, Rdip{15.}, Rrak{30.}, Rdep{7.5}; // model param radius
 		float Plon{NaN}, Plat{NaN}, Ptim{NaN}, Pstk{NaN}, Pdip{NaN}, Prak{NaN}, Pdep{NaN}; // perturb length ( gaussian half length )
 		float pertfactor{0.1};
-		std::vector<Rand> randO;
+		mutable std::vector<Rand> randO;
 
 	private:	// methods
 		// initialize perturbation length and random number generators
@@ -300,14 +298,14 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		}
 
 		// perturbing values
-		inline float Neighbour_Cycle( float valold, float hlen, float lb, float ub ) {
+		inline float Neighbour_Cycle( float valold, float hlen, float lb, float ub ) const {
 			float valnew = valold + randO[omp_get_thread_num()].Normal()*hlen;
 			float range = ub - lb;
 			while( valnew >= ub ) { valnew -= range; }
 			while( valnew < lb ) { valnew += range; }
 			return valnew;
 		}
-		inline float Neighbour_Reflect( float valold, float hlen, float lb, float ub ) {
+		inline float Neighbour_Reflect( float valold, float hlen, float lb, float ub ) const {
 			if( hlen == 0. ) return valold;
 			if( valold<lb || valold>ub ) throw std::runtime_error("old val out of boundary");
 			float range = ub - lb;

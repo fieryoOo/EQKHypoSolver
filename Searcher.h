@@ -12,7 +12,7 @@ namespace Searcher {
 	// Interfaces. Required by the searcher!!
 	template < class MI >
 	class IModelSpace {	
-		virtual void Perturb( MI& ) = 0;
+		virtual void Perturb( MI& ) const = 0;
 		virtual void SetMState( const MI& ) = 0;
 		// also: ModelSpace has to be assignable to MI
 	};
@@ -68,16 +68,17 @@ namespace Searcher {
 	// Tinit: initial temperature ( controls initial temperature. called when Tinit is real )
 	// Tfactor: T_initial = E_initial * Tfactor ( controls initial temperature. called when Tfactor is int )
 	// alpha: T_current = T_last * alpha ( controls rate of temperature decay )
+	// saveSI: -1=no, 0=all, 1=accepted
 	template < class MI, class MS, class DH >
 	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch,
 																	  const float alpha, const int Tfactor,
-																	  std::ostream& sout = std::cout, bool saveSI = false ) {
+																	  std::ostream& sout = std::cout, short saveSI = -1 ) {
 		return SimulatedAnnealing<MI>( ms, dh, nsearch, alpha, -(float)Tfactor, sout, saveSI );
 	}
 	template < class MI, class MS, class DH >
 	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch,
 																	  const float alpha, const float Tinit,
-																	  std::ostream& sout = std::cout, bool saveSI = false ) {
+																	  std::ostream& sout = std::cout, short saveSI = -1 ) {
 		// initialize random number generator
 		std::default_random_engine generator1( std::chrono::system_clock::now().time_since_epoch().count() + std::random_device{}() );
 		std::uniform_real_distribution<float> d_uniform(0., 1.);
@@ -88,6 +89,8 @@ namespace Searcher {
 		const IModelSpace<MI>& ims = ms;
 		const IDataHandler<MI>& idh = dh;
 
+		bool saveacc = saveSI>=0;
+		bool saverej = saveSI==0;
 		// initial energy (force MS to be assignable to MI at compile time)
 		int Ndata;
 		float E = dh.Energy( ms, Ndata ), Ebest = E;
@@ -95,10 +98,10 @@ namespace Searcher {
 		float T = Tinit>0. ? Tinit : std::fabs(E*Tinit);
 		// SearchInfo vector
 		std::vector< SearchInfo<MI> > VSinfo; 
-		if( saveSI ) VSinfo.reserve(nsearch);
+		VSinfo.reserve( nsearch/2*(saveacc+saverej) );
 		// save initial
 		SearchInfo<MI> sibest( 0, T, ms, Ndata, E, true );
-		if( saveSI ) VSinfo.push_back( sibest );
+		if( saveacc ) VSinfo.push_back( sibest );
 		sout<<sibest<<"\n";
 		// main loop
 		#pragma omp parallel for schedule(dynamic, 1) private(Ndata)
@@ -120,12 +123,12 @@ namespace Searcher {
 					Ebest = Enew;
 					sibest = si;
 				}
-			}
+				if( saveacc ) VSinfo.push_back( si );
+			} else if( saverej ) VSinfo.push_back( si );
 			// temperature decrease
 			T *= alpha;
 			// output search info
 			sout<<si<<"\n";
-			if( saveSI ) VSinfo.push_back( si );
 			} // critical ends
 		}
 		// output final result
@@ -141,9 +144,17 @@ namespace Searcher {
 	// Monte Carlo search: simulated annealing with 1) temperature fixed at 2 and 2) all search info returned
 	template < class MI, class MS, class DH >
 	std::vector< SearchInfo<MI> > MonteCarlo( MS& ms, DH& dh, const int nsearch, std::ostream& sout = std::cout ) {
-		return SimulatedAnnealing<MI>( ms, dh, nsearch, 1., 2.0f, sout, true );
+		std::cout<<"### Monte Carlo search started. (#search = "<<nsearch<<") ###"<<std::endl;
+		return SimulatedAnnealing<MI>( ms, dh, nsearch, 1., 2.0f, sout, 0 );		// save all search info
 	}
 
+	template < class MI, class MS, class DH >
+	std::vector< SearchInfo<MI> > MonteCarlo( MS& ms, DH& dh, const int nsearch, const std::string& outname ) {
+		std::cout<<"### Monte Carlo search in process... (#search="<<nsearch<<") ###\n"
+					<<"### results being streamed into file "<<outname<<" ###"<<std::endl;
+		std::ofstream fout( outname, std::ofstream::app );
+		return SimulatedAnnealing<MI>( ms, dh, nsearch, 1., 2.0f, fout, -1 );	// do not save search info
+	}
 }
 
 #endif

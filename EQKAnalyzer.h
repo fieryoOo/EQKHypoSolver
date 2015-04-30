@@ -131,19 +131,18 @@ public:
    void CheckParams();
    void LoadData();
 
-   /* output misfit-v.s.-focal_corrections
-    * should always be called after UpdateAziDis() and UpdateFocalCorr() */
-   enum OutType { FIT, MAP };
-   //void Output( bool excludeBad = false, const OutType otype = FIT );
-   /* compute and output misfits, separately, for group, phase, and amplitudes */
-   //void ComputeMisfitsAll();
-
 	std::vector<float> perRlst() const, perLlst() const;
 
 	// initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer
+	// version (1): non-const, modifies internal states
 	void PredictAll( const ModelInfo& mi, bool updateSource = false );
+	// version (2): const, modify external data based on internal states
+	void PredictAll( const ModelInfo& mi,	std::vector<SDContainer>& dataR, 
+						  std::vector<SDContainer>& dataL, bool updateSource ) const;
+	// version (3): const, modify external data based on external states
 	void PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
-						  std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL, bool updateSource = false ) const;
+						  std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
+						  float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const;
 
 	// use Love group data only when isInit=true
 	void SetInitSearch( bool isInit ) { _isInit = isInit; }
@@ -158,10 +157,25 @@ public:
 		return chiS; //chiS/(Ndata-8.);
 	}
 
-	void Output( const ModelInfo& minfo ) const;
+   /* output misfit-v.s.-focal_corrections
+    * should always be called after UpdateAziDis() and UpdateFocalCorr() */
+   //enum OutType { FIT, MAP };
+   //void Output( bool excludeBad = false, const OutType otype = FIT );
+   //void ComputeMisfitsAll();
+
+   // output G,P,A data and predictions to separated files for each period
+	void Output( const ModelInfo& minfo );
+   // compute and output misfits, separately, for group, phase, and amplitudes
+	void OutputMisfits( const ModelInfo& minfo );
 
 protected:
 	static const int NdataMin = 10;
+
+public:
+	/* ---------- input parameters that needs to be externally accessible ---------- */
+	FileName outname_misF;           // filename for output focal misfit
+   FileName outname_misL;           // filename for output location misfit
+   FileName outname_pos;            // filename for output posterior distribution
 
 private:
 	// RadPattern objects for predicting source terms
@@ -190,12 +204,12 @@ private:
 	FileName fReigname, fRphvname;
    FileName fLeigname, fLphvname;
 	// output files
-	FileName outname_misF;           // filename for output focal misfit
-   FileName outname_misL;           // filename for output location misfit
    FileName outname_misAll;         // filename for output all separated misfits (group, phase, amplitude)
-   FileName outname_pos;            // filename for output posterior distribution
 	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit
    std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions
+	/* ---------- internal variables ---------- */
+	bool _source_updated = false;
+	float _AfactorR = 1, _AfactorL = 1;
 
 private:
 	// private functions

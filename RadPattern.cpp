@@ -32,8 +32,11 @@ struct RadPattern::Rimpl {
 
 	Rimpl( const Rimpl& r2 ) 
 		: phvnper(r2.phvnper), phvdper(r2.phvdper)
-		, feig_len(r2.feig_len), feig_buff(new char[feig_len]) {
-		memcpy(feig_buff, r2.feig_buff, feig_len );
+		, feig_len(r2.feig_len) {
+		if( feig_len > 0) {
+			feig_buff = new char[feig_len];
+			memcpy(feig_buff, r2.feig_buff, feig_len );
+		}
 	}
 
    ~Rimpl() {
@@ -85,7 +88,7 @@ RadPattern& RadPattern::operator= ( RadPattern&& rp2 ){
 RadPattern::~RadPattern() {}
 
 /* predict radpattern for rayleigh and love waves */
-void RadPattern::Predict( char typein, const std::string& feigname, const std::string& fphvname,
+bool RadPattern::Predict( char typein, const std::string& feigname, const std::string& fphvname,
 			  const ftype stkin, const ftype dipin, const ftype rakin, const ftype depin,
 			  const std::vector<float>& perlst ) {
 			  //std::vector< std::vector<AziData> >& per_azi_pred ) {
@@ -101,7 +104,7 @@ void RadPattern::Predict( char typein, const std::string& feigname, const std::s
 				allfound = false;
 				break;
 			}
-		if( allfound ) return;
+		if( allfound ) return false;	// not updated
 	}
 
 	// store current state;
@@ -210,6 +213,8 @@ void RadPattern::Predict( char typein, const std::string& feigname, const std::s
 						grtV[jazi - nazi] = NaN;
 			}
 	}
+
+	return true;	// updated!
 }
 
 
