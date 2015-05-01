@@ -35,6 +35,7 @@ fLsp TEST/SourceModels/245.25_41.25.L.phv
 
 ########## data to be used ###########
 dflag B		# datatype(s) to search with
+indep 0.1	# factor describing data independence
 #noG
 #noP
 #noA

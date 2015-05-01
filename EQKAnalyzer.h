@@ -170,7 +170,6 @@ public:
 
 protected:
 	static const int NdataMin = 10;
-	static constexpr float _indep_factor = 0.1;		// describes the correlations among data (0: 100% correlated, 1: 100% independent)
 
 public:
 	/* ---------- input parameters that needs to be externally accessible ---------- */
@@ -195,6 +194,7 @@ private:
 	// data type
 	char datatype_name;
 	Dtype datatype;
+	float _indep_factor = 1.;		// describes the correlations among data (0: 100% correlated, 1: 100% independent)
 	bool _useG = true, _useP = true, _useA = true;
 	bool _isInit = false;
 	// data weightings

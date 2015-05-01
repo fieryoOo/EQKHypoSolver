@@ -172,7 +172,7 @@ namespace Searcher {
 				std::cout<<"*** In process... "<<std::setprecision(1)<<std::setw(4)<<_poc*100<<"\% completed... ***\n\x1b[A";
 				std::this_thread::sleep_for( std::chrono::seconds(5) );
 			}
-			std::cout<<"*** In process... "<<std::setprecision(1)<<std::setw(4)<<100.<<"\% completed... ***\n";
+			std::cout<<"### 100.0\% completed ###\t\t\t\n";
 			}	// section E
 		}	// parallel E
 	}

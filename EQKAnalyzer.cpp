@@ -119,6 +119,11 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "noG" ) { succeed = true; _useG = false; }
 	else if( stmp == "noP" ) { succeed = true; _useP = false; }
 	else if( stmp == "noA" ) { succeed = true; _useA = false; }
+	else if( stmp == "indep" ) { 
+		succeed = buff >> _indep_factor;
+		if( _indep_factor<=0. || _indep_factor>1. )
+			throw ErrorEA::BadParam( FuncName, "indep factor out of range: "+std::to_string(_indep_factor) );
+	}
 	else if( stmp == "dflag" ) {
 		succeed = buff >> datatype_name;
 		if( succeed ) {
