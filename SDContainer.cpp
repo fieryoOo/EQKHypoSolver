@@ -98,14 +98,13 @@ void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 //void SDContainer::ToAziVector( std::vector<AziData>& adV ) {
 void SDContainer::ToMisfitV( std::vector<AziData>& adV ) const {
 	adV.clear();
+	const float Tmin = 3. * per;	// three wavelength criterion
 	for( const auto& sdcur : dataV )
 		if( sdcur.azi!=NaN ) {
-			//&&	sdcur.Gdata!=NaN && sdcur.Pdata!=NaN && sdcur.Adata!=NaN ) {
+			if( sdcur.Pdata < Tmin ) continue;
 			AziData ad;
-			if( sdcur.ToMisfit( ad ) ) {
-				adV.push_back(ad);
+			if( sdcur.ToMisfit( ad ) ) adV.push_back(ad);
 				//std::cerr<<"ToMisfitV:   "<<sdcur<<"   "<<ad<<std::endl;
-			}
 		}
 }
 

@@ -1,16 +1,15 @@
 ######### location range ##########
 #SA (thread 1) search# 1 (T=98.1133, tid=1): minfo = (210.208 39.6266 -93.3945  8.04806   245.117 41.2315  2.89362) N = 0 E = -671.25 (accepted)
-lon 245.1643
-lat 41.1552
-t0 -2.6927
+lon 245.156
+lat 41.1596
+t0 -2.7925
 pertfactor 0.1
 
 ######### initial mechanism #########
-stk 33.02
-dip 51.82
-rak -86.57
-dep 7.89
-
+stk 205.73
+dip 39.01
+rak -95.09
+dep 8.29
 ######### weightings #########
 weightR_Loc 0.5
 weightL_Loc 0.5

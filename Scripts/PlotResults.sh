@@ -21,23 +21,24 @@ gmtset ANNOT_FONT_SIZE 10
 
 fMisL='Misfit2_L.out'
 ### plot Location Misfits ###
-REG=-R0/1500/0.3/10
-SCA=-JX10/4l
-psbasemap -Ba500f100/a2f3:."Misfit**2 Location":WeSn $REG $SCA -X4 -Y15.5 -K > $psout
+REG=-R1/500/0.5/5
+SCA=-JX10l/4
+psbasemap -Ba100f20/a1f0.2:."Misfit**2 Location":WeSn $REG $SCA -X4 -Y15.5 -K > $psout
 if [ -e $fMisL ]; then
 	for iter in 1 2 3; do
-		awk -v iter=$iter 'BEGIN{i=0}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$2}}' $fMisL | psxy -R -J -A -W3,${color[$iter]} -O -K >> $psout
+		awk 'NF>0' $fMisL | awk -v iter=$iter 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==iter)print; Nold=$2}' | grep 'accepted' | awk -F"N = " '{print $2,$1}' | awk 'BEGIN{rcbest=99999}{is=$7;if(is<1){is=1} rc=$4/$1;print is,rc;if(rcbest>rc){rcbest=rc}}END{print 99999,rcbest}' | sort -g | psxy -R -J -A -W3,${color[$iter]} -O -K >> $psout
 	done
 fi
 
 fMisF='Misfit2_F.out'
 ### plot Focal Misfits ###
-REG=-R0/5000/0.3/300
-SCA=-JX10/4l
-psbasemap -Ba2000f500/a2f3:."Misfit**2 Focal":WeSn $REG $SCA -Y-5 -O -K >> $psout
+REG=-R1/10000/0.5/20
+SCA=-JX10/4
+psbasemap -Ba2000f500/a5f1:."Misfit**2 Focal":WeSn $REG $SCA -Y-5 -O -K >> $psout
 if [ -e $fMisF ]; then
 	for iter in 1 2 3; do
-		awk -v iter=$iter 'BEGIN{i=0}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$2}}' $fMisF | psxy -R -J -A -W1,${color[$iter]} -O -K >> $psout
+		#awk -v iter=$iter 'BEGIN{i=0}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$2}}' $fMisF | psxy -R -J -A -W1,${color[$iter]} -O -K >> $psout
+		awk 'NF>0' $fMisF | awk -v iter=$iter 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==iter)print; Nold=$2}' | grep 'accepted' | awk -F"N = " '{print $2,$1}' | awk 'BEGIN{rcbest=99999}{is=$7;if(is<1){is=1} rc=$4/$1;print is,rc;if(rcbest>rc){rcbest=rc}}END{print 99999,rcbest}' | sort -g | psxy -R -J -A -W3,${color[$iter]} -O -K >> $psout
 	done
 fi
 

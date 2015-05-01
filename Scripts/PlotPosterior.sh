@@ -21,7 +21,7 @@ PlotHisto() {
    u_2sig=`echo $mean $std2 | awk '{print $1+$2}'`
    echo -e $l_2sig 0"\n"$l_2sig 100 | psxy -J -R -A -W8/100/100/100 -O -K >>${fps}
    echo -e $u_2sig 0"\n"$u_2sig 100 | psxy -J -R -A -W8/100/100/100 -O -K >>${fps}
-	echo $mean $std | awk '{printf "1. 9.5 10 0.0 4 LT %.7g +/- 2*%.2g",$1,$2}' | pstext -R0/10/0/10 -J -V -O -K -N >> ${fps}
+	echo $mean $std | awk '{printf "0.1 9.9 10 0.0 4 LT %.7g +/- 2*%.2g",$1,$2}' | pstext -R0/10/0/10 -Wwhite,o2 -J -V -O -K -N >> ${fps}
 	echo -n $mean" +/- "$std"  "
 }
 
@@ -46,6 +46,7 @@ fi
 Nsearch=`tail -n1 .PlotPosterior_tmp | awk '{if(NF>0){print $1}else{print 0}}'`
 
 gmtset HEADER_OFFSET -0.6
+gmtset HEADER_FONT_SIZE 18
 gmtset ANNOT_FONT_SIZE 6
 pwd | psxy -R0/1/0/1 -JX1 -K -P > ${fps}
 pstext -R0/10/0/10 -JX15/25.5 -V -O -K -N << EOF >>  ${fps}

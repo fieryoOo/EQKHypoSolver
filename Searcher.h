@@ -4,11 +4,14 @@
 #include "MyOMP.h"
 #include <iostream>
 #include <chrono>
+#include <thread>
 #include <random>
 #include <algorithm>
 #include <functional>
 
 namespace Searcher {
+	static float _poc = -1.;	// percentage-of-completion of the current search
+
 	// Interfaces. Required by the searcher!!
 	template < class MI >
 	class IModelSpace {	
@@ -80,6 +83,7 @@ namespace Searcher {
 																	  const float alpha, const float Tinit,
 																	  std::ostream& sout = std::cout, short saveSI = -1 ) {
 		// initialize random number generator
+		_poc = 0.; float pocinc = 1./(nsearch+2);
 		std::default_random_engine generator1( std::chrono::system_clock::now().time_since_epoch().count() + std::random_device{}() );
 		std::uniform_real_distribution<float> d_uniform(0., 1.);
 		//std::normal_distribution<float> d_normal(0., 1.);
@@ -103,6 +107,7 @@ namespace Searcher {
 		SearchInfo<MI> sibest( 0, T, ms, Ndata, E, true );
 		if( saveacc ) VSinfo.push_back( sibest );
 		sout<<sibest<<"\n";
+		_poc += pocinc;
 		// main loop
 		#pragma omp parallel for schedule(dynamic, 1) private(Ndata)
 		for( int i=0; i<nsearch; i++ ) {
@@ -127,6 +132,7 @@ namespace Searcher {
 			} else if( saverej ) VSinfo.push_back( si );
 			// temperature decrease
 			T *= alpha;
+			_poc += pocinc;	// update perc-of-completion
 			// output search info
 			sout<<si<<"\n";
 			} // critical ends
@@ -137,6 +143,7 @@ namespace Searcher {
 		std::sort( VSinfo.begin(), VSinfo.end() );
 		// set model state to the best fitting model
 		ms.SetMState( sibest.info );
+		_poc = -1.;
 		return VSinfo;
 	}
 
@@ -149,11 +156,25 @@ namespace Searcher {
 	}
 
 	template < class MI, class MS, class DH >
-	std::vector< SearchInfo<MI> > MonteCarlo( MS& ms, DH& dh, const int nsearch, const std::string& outname ) {
+	void MonteCarlo( MS& ms, DH& dh, const int nsearch, const std::string& outname ) {
 		std::cout<<"### Monte Carlo search in process... (#search="<<nsearch<<") ###\n"
 					<<"### results being streamed into file "<<outname<<" ###"<<std::endl;
 		std::ofstream fout( outname, std::ofstream::app );
-		return SimulatedAnnealing<MI>( ms, dh, nsearch, 1., 2.0f, fout, -1 );	// do not save search info
+		omp_set_nested(true);
+		#pragma omp parallel sections
+		{	// parallel S
+			#pragma omp section
+			SimulatedAnnealing<MI>( ms, dh, nsearch, 1., 2.0f, fout, -1 );	// do not save search info
+			#pragma omp section
+			{	// section S
+			std::this_thread::sleep_for( std::chrono::seconds(1) );
+			while( _poc >= 0. ) {
+				std::cout<<"*** In process... "<<std::setprecision(1)<<std::setw(4)<<_poc*100<<"\% completed... ***\n\x1b[A";
+				std::this_thread::sleep_for( std::chrono::seconds(5) );
+			}
+			std::cout<<"*** In process... "<<std::setprecision(1)<<std::setw(4)<<100.<<"\% completed... ***\n";
+			}	// section E
+		}	// parallel E
 	}
 }
 

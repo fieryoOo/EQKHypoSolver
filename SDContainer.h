@@ -140,11 +140,6 @@ protected:
    //static constexpr float varRPmin = 10., varLPmin = 14.;		/* PhaseT, was 0.3 */
    //static constexpr float varRAmin = 1., varLAmin = 1.;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
 
-   static constexpr float Pthreshold = 0.005;					/* the threshold for probability in searching for parameter
-																					sensitivity prior to the Monte Carlo search, */
-   static constexpr float Sfactor = 0.1;							/* and the step half-length for the search as a fraction
-																					of (ub-lb) decided by Pthreshold */
-
    static constexpr int pio4_R = 0;									/* for initial phase test. normaly be 0. */
    static constexpr int pio4_L = 0;									/* is added to the FTAN coefficient piover4 */
 

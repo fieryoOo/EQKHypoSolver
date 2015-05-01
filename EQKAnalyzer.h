@@ -154,7 +154,7 @@ public:
 		chiSquare( minfo, chiS, Ndata );
 		if( Ndata < NdataMin )
 			throw ErrorEA::InsufData( FuncName, std::to_string(Ndata) + " < " + std::to_string(NdataMin) );
-		return chiS; //chiS/(Ndata-8.);
+		return chiS * _indep_factor; //chiS/(Ndata-8.);
 	}
 
    /* output misfit-v.s.-focal_corrections
@@ -170,11 +170,13 @@ public:
 
 protected:
 	static const int NdataMin = 10;
+	static constexpr float _indep_factor = 0.1;		// describes the correlations among data (0: 100% correlated, 1: 100% independent)
 
 public:
 	/* ---------- input parameters that needs to be externally accessible ---------- */
 	FileName outname_misF;           // filename for output focal misfit
    FileName outname_misL;           // filename for output location misfit
+   FileName outname_misAll;         // filename for output all separated misfits (group, phase, amplitude)
    FileName outname_pos;            // filename for output posterior distribution
 
 private:
@@ -196,15 +198,14 @@ private:
 	bool _useG = true, _useP = true, _useA = true;
 	bool _isInit = false;
 	// data weightings
-   float weightR_Loc, weightL_Loc;  // weighting between Rayleigh and Love data for Location search
-   float weightR_Foc, weightL_Foc;  // weighting between Rayleigh and Love data for Focal search
+   float weightR_Loc = 1., weightL_Loc = 1.;  // weighting between Rayleigh and Love data for Location search
+   float weightR_Foc = 1., weightL_Foc = 1.;  // weighting between Rayleigh and Love data for Focal search
 	// Input files. Three files at each period for 1) measurements, 2) group vel map, and 3) phase vel map
 	std::map<float, std::array<FileName, 3> > fRlist, fLlist;
 	// Input eigen-function and phase-velocity files
 	FileName fReigname, fRphvname;
    FileName fLeigname, fLphvname;
 	// output files
-   FileName outname_misAll;         // filename for output all separated misfits (group, phase, amplitude)
 	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit
    std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions
 	/* ---------- internal variables ---------- */

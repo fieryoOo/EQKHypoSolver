@@ -140,10 +140,11 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		}
 
 		// decide perturb step length for each parameter based on the model sensitivity to them
-		// perturb steps are defined to be (ub-lb) * Sfactor, where ub and lb are the boundaries decided by:
+		// perturb steps are defined to be (ub-lb) * pertfactor, where ub and lb are the boundaries decided by:
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
 		void EstimatePerturbs( const EQKAnalyzer& eka ) {
+			std::cout<<"### Estimating for resonable perturb step sizes:"<<std::endl;
 			int Ndata;
 			float Emin = eka.Energy(*this, Ndata);
 			#pragma omp parallel
@@ -155,53 +156,53 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 					float lb_old = stk - Rstk, ub_old = stk + Rstk;
 					float lb_stk = SearchBound( eka, stk, lb_old, Pthreshold, Emin, 10 );
 					float ub_stk = SearchBound( eka, stk, ub_old, Pthreshold, Emin, 10 );
-					Pstk = (ub_stk-lb_stk) * Sfactor;
+					Pstk = (ub_stk-lb_stk) * pertfactor;
 					} // section 1
 					#pragma omp section
 					{
 					float lb_old = dip - Rdip, ub_old = dip + Rdip;
 					float lb_dip = SearchBound( eka, dip, lb_old, Pthreshold, Emin, 10 );
 					float ub_dip = SearchBound( eka, dip, ub_old, Pthreshold, Emin, 10 );
-					Pdip = (ub_dip-lb_dip) * Sfactor;
+					Pdip = (ub_dip-lb_dip) * pertfactor;
 					} // section 2
 					#pragma omp section
 					{
 					float lb_old = rak - Rrak, ub_old = rak + Rrak;
 					float lb_rak = SearchBound( eka, rak, lb_old, Pthreshold, Emin, 10 );
 					float ub_rak = SearchBound( eka, rak, ub_old, Pthreshold, Emin, 10 );
-					Prak = (ub_rak-lb_rak) * Sfactor;
+					Prak = (ub_rak-lb_rak) * pertfactor;
 					} // section 3
 					#pragma omp section
 					{
 					float lb_old = dep - Rdep, ub_old = dep + Rdep;
 					float lb_dep = SearchBound( eka, dep, lb_old, Pthreshold, Emin, 10 );
 					float ub_dep = SearchBound( eka, dep, ub_old, Pthreshold, Emin, 10 );
-					Pdep = (ub_dep-lb_dep) * Sfactor;
+					Pdep = (ub_dep-lb_dep) * pertfactor;
 					} // section 4
 					#pragma omp section
 					{
 					float lb_old = lon - Rlon, ub_old = lon + Rlon;
 					float lb_lon = SearchBound( eka, lon, lb_old, Pthreshold, Emin, 10 );
 					float ub_lon = SearchBound( eka, lon, ub_old, Pthreshold, Emin, 10 );
-					Plon = (ub_lon-lb_lon) * Sfactor;
+					Plon = (ub_lon-lb_lon) * pertfactor;
 					} // section 5
 					#pragma omp section
 					{
 					float lb_old = lat - Rlat, ub_old = lat + Rlat;
 					float lb_lat = SearchBound( eka, lat, lb_old, Pthreshold, Emin, 10 );
 					float ub_lat = SearchBound( eka, lat, ub_old, Pthreshold, Emin, 10 );
-					Plat = (ub_lat-lb_lat) * Sfactor;
+					Plat = (ub_lat-lb_lat) * pertfactor;
 					} // section 6
 					#pragma omp section
 					{
 					float lb_old = t0 - Rtim, ub_old = t0 + Rtim;
 					float lb_tim = SearchBound( eka, t0, lb_old, Pthreshold, Emin, 10 );
 					float ub_tim = SearchBound( eka, t0, ub_old, Pthreshold, Emin, 10 );
-					Ptim = (ub_tim-lb_tim) * Sfactor;
+					Ptim = (ub_tim-lb_tim) * pertfactor;
 					} // section 7
 				} // omp sections ends
 			} // parallel ends
-			std::cout<<"*** Model state after estemating perturb step sizes: "<<*this<<std::endl;
+			std::cout<<"### Model state after estimating perturb step sizes:\n"<<*this<<std::endl;
 		}
 
 		void Perturb( ModelInfo& minew ) const {
@@ -262,8 +263,8 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 	protected:
 		static constexpr float Pthreshold = 0.005;   /* the threshold for probability in searching for parameter
 																		sensitivity prior to the Monte Carlo search, */
-	   static constexpr float Sfactor = 0.1;        /* and the step half-length for the search as a fraction
-																		of (ub-lb) decided by Pthreshold */
+	   //static constexpr float Sfactor = 0.1;      // (use pertfactor for Sfactor) and the step half-length for the search as a fraction
+																	//	of (ub-lb) decided by Pthreshold
 
 	private: // variables
 		//bool validS{false}, validP{false};
