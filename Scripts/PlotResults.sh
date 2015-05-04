@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ### main ###
-if [ $# != 4 ] && [ $# != 5 ]; then
-   echo "Usage: "$0" [type(R/L)] [iter#] [minamp] [maxamp] [amp factor (optional)]"
+if [ $# != 4 ] && [ $# != 5 ] && [ $# != 6 ]; then
+   echo "Usage: "$0" [type(R/L)] [iter#] [minamp] [maxamp] [E_multiplier (optional)] [amp factor (optional)]"
    exit
 fi
 
@@ -20,13 +20,15 @@ gmtset HEADER_OFFSET -1.5
 gmtset ANNOT_FONT_SIZE 10
 
 fMisL='Misfit2_L.out'
+Emul=1
+if [ $# -ge 5 ]; then Emul=$5; fi
 ### plot Location Misfits ###
 REG=-R1/500/0.5/5
 SCA=-JX10l/4
 psbasemap -Ba100f20/a1f0.2:."Misfit**2 Location":WeSn $REG $SCA -X4 -Y15.5 -K > $psout
 if [ -e $fMisL ]; then
 	for iter in 1 2 3; do
-		awk 'NF>0' $fMisL | awk -v iter=$iter 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==iter)print; Nold=$2}' | grep 'accepted' | awk -F"N = " '{print $2,$1}' | awk 'BEGIN{rcbest=99999}{is=$7;if(is<1){is=1} rc=$4/$1;print is,rc;if(rcbest>rc){rcbest=rc}}END{print 99999,rcbest}' | sort -g | psxy -R -J -A -W3,${color[$iter]} -O -K >> $psout
+		awk 'NF>0' $fMisL | awk -v iter=$iter 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==iter)print; Nold=$2}' | grep 'accepted' | awk -F"N = " '{print $2,$1}' | awk -v Emul=$Emul 'BEGIN{rcbest=99999}{is=$7;if(is<1){is=1} rc=$4*Emul/$1;print is,rc;if(rcbest>rc){rcbest=rc}}END{print 99999,rcbest}' | sort -g | psxy -R -J -A -W3,${color[$iter]} -O -K >> $psout
 	done
 fi
 
@@ -38,7 +40,7 @@ psbasemap -Ba2000f500/a5f1:."Misfit**2 Focal":WeSn $REG $SCA -Y-5 -O -K >> $psou
 if [ -e $fMisF ]; then
 	for iter in 1 2 3; do
 		#awk -v iter=$iter 'BEGIN{i=0}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$2}}' $fMisF | psxy -R -J -A -W1,${color[$iter]} -O -K >> $psout
-		awk 'NF>0' $fMisF | awk -v iter=$iter 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==iter)print; Nold=$2}' | grep 'accepted' | awk -F"N = " '{print $2,$1}' | awk 'BEGIN{rcbest=99999}{is=$7;if(is<1){is=1} rc=$4/$1;print is,rc;if(rcbest>rc){rcbest=rc}}END{print 99999,rcbest}' | sort -g | psxy -R -J -A -W3,${color[$iter]} -O -K >> $psout
+		awk 'NF>0' $fMisF | awk -v iter=$iter 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==iter)print; Nold=$2}' | grep 'accepted' | awk -F"N = " '{print $2,$1}' | awk -v Emul=$Emul 'BEGIN{rcbest=99999}{is=$7;if(is<1){is=1} rc=$4*Emul/$1;print is,rc;if(rcbest>rc){rcbest=rc}}END{print 99999,rcbest}' | sort -g | psxy -R -J -A -W3,${color[$iter]} -O -K >> $psout
 	done
 fi
 
@@ -81,8 +83,8 @@ REG=-R0/360/${ampmin}/${ampmax}
 SCA=-JX10/8l
 psbasemap -Ba60f20/a20f5:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
 iper=$iperbeg
-if [ $# == 5 ]; then
-	ampfactor=$5
+if [ $# -ge 6 ]; then
+	ampfactor=$6
 else
 	ampfactor=1
 fi
