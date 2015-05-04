@@ -197,7 +197,7 @@ private:
 	float _indep_factor = 1.;		// describes the correlations among data (0: 100% correlated, 1: 100% independent)
 	bool _useG = true, _useP = true, _useA = true;
 	bool _isInit = false;
-	// data weightings
+	// data weightings (!!!not implemented, adjust varmins in SDContainer instead!!!)
    float weightR_Loc = 1., weightL_Loc = 1.;  // weighting between Rayleigh and Love data for Location search
    float weightR_Foc = 1., weightL_Foc = 1.;  // weighting between Rayleigh and Love data for Focal search
 	// Input files. Three files at each period for 1) measurements, 2) group vel map, and 3) phase vel map
@@ -215,7 +215,7 @@ private:
 private:
 	// private functions
 	inline void NormalizeWeights( Dtype& datatype, float& wR, float& wL);
-	bool InitEpic();
+	//bool InitEpic();
 	bool MKDir(const char *dirname);
 	void MKDirFor( const std::string& path );
 
