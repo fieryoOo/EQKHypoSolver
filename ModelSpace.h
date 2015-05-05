@@ -143,7 +143,8 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		// perturb steps are defined to be (ub-lb) * pertfactor, where ub and lb are the boundaries decided by:
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
-		void EstimatePerturbs( const EQKAnalyzer& eka ) {
+		void EstimatePerturbs( const EQKAnalyzer& eka, float sfactor = 0.3 ) {
+			//if( sfactor == NaN ) sfactor = pertfactor;
 			std::cout<<"### Estimating for resonable perturb step sizes:"<<std::endl;
 			int Ndata;
 			float Emin = eka.Energy(*this, Ndata);
@@ -156,49 +157,49 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 					float lb_old = stk - Rstk, ub_old = stk + Rstk;
 					float lb_stk = SearchBound( eka, stk, lb_old, Pthreshold, Emin, 10 );
 					float ub_stk = SearchBound( eka, stk, ub_old, Pthreshold, Emin, 10 );
-					Pstk = (ub_stk-lb_stk) * pertfactor;
+					Pstk = (ub_stk-lb_stk) * sfactor;
 					} // section 1
 					#pragma omp section
 					{
 					float lb_old = dip - Rdip, ub_old = dip + Rdip;
 					float lb_dip = SearchBound( eka, dip, lb_old, Pthreshold, Emin, 10 );
 					float ub_dip = SearchBound( eka, dip, ub_old, Pthreshold, Emin, 10 );
-					Pdip = (ub_dip-lb_dip) * pertfactor;
+					Pdip = (ub_dip-lb_dip) * sfactor;
 					} // section 2
 					#pragma omp section
 					{
 					float lb_old = rak - Rrak, ub_old = rak + Rrak;
 					float lb_rak = SearchBound( eka, rak, lb_old, Pthreshold, Emin, 10 );
 					float ub_rak = SearchBound( eka, rak, ub_old, Pthreshold, Emin, 10 );
-					Prak = (ub_rak-lb_rak) * pertfactor;
+					Prak = (ub_rak-lb_rak) * sfactor;
 					} // section 3
 					#pragma omp section
 					{
 					float lb_old = dep - Rdep, ub_old = dep + Rdep;
 					float lb_dep = SearchBound( eka, dep, lb_old, Pthreshold, Emin, 10 );
 					float ub_dep = SearchBound( eka, dep, ub_old, Pthreshold, Emin, 10 );
-					Pdep = (ub_dep-lb_dep) * pertfactor;
+					Pdep = (ub_dep-lb_dep) * sfactor;
 					} // section 4
 					#pragma omp section
 					{
 					float lb_old = lon - Rlon, ub_old = lon + Rlon;
 					float lb_lon = SearchBound( eka, lon, lb_old, Pthreshold, Emin, 10 );
 					float ub_lon = SearchBound( eka, lon, ub_old, Pthreshold, Emin, 10 );
-					Plon = (ub_lon-lb_lon) * pertfactor;
+					Plon = (ub_lon-lb_lon) * sfactor;
 					} // section 5
 					#pragma omp section
 					{
 					float lb_old = lat - Rlat, ub_old = lat + Rlat;
 					float lb_lat = SearchBound( eka, lat, lb_old, Pthreshold, Emin, 10 );
 					float ub_lat = SearchBound( eka, lat, ub_old, Pthreshold, Emin, 10 );
-					Plat = (ub_lat-lb_lat) * pertfactor;
+					Plat = (ub_lat-lb_lat) * sfactor;
 					} // section 6
 					#pragma omp section
 					{
 					float lb_old = t0 - Rtim, ub_old = t0 + Rtim;
 					float lb_tim = SearchBound( eka, t0, lb_old, Pthreshold, Emin, 10 );
 					float ub_tim = SearchBound( eka, t0, ub_old, Pthreshold, Emin, 10 );
-					Ptim = (ub_tim-lb_tim) * pertfactor;
+					Ptim = (ub_tim-lb_tim) * sfactor;
 					} // section 7
 				} // omp sections ends
 			} // parallel ends
@@ -250,11 +251,14 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 
 		/* streaming perturbation ranges */
 		friend std::ostream& operator<< ( std::ostream& o, ModelSpace& ms ) {
-			o<<"  lon ("<<ms.Clon-ms.Rlon<<"~"<<ms.Clon+ms.Rlon<<", "<<ms.Plon<<")"
+      //o<<std::fixed<<std::setprecision(2) <<std::setw(6)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(7)<<f.rak<<" "<<std::setprecision(3)<<std::setw(7)<<f.dep; 
+			o<<std::setprecision(4)
+			<<"  lon ("<<ms.Clon-ms.Rlon<<"~"<<ms.Clon+ms.Rlon<<", "<<ms.Plon<<")"
 			<<"  lat ("<<ms.Clat-ms.Rlat<<"~"<<ms.Clat+ms.Rlat<<", "<<ms.Plat<<")"
 			<<"  tim ("<<ms.Ctim-ms.Rtim<<"~"<<ms.Ctim+ms.Rtim<<", "<<ms.Ptim<<")\n"
+			<<std::setprecision(3)
 			<<"  stk ("<<ms.Cstk-ms.Rstk<<"~"<<ms.Cstk+ms.Rstk<<", "<<ms.Pstk<<")"
-			<<"  dip ("<<ms.Cdip-ms.Rdip<<"~"<<ms.Cdip+ms.Rdip<<", "<<ms.Pdip<<")"
+			<<"  dip ("<<ms.Cdip-ms.Rdip<<"~"<<ms.Cdip+ms.Rdip<<", "<<ms.Pdip<<")\n"
 			<<"  rak ("<<ms.Crak-ms.Rrak<<"~"<<ms.Crak+ms.Rrak<<", "<<ms.Prak<<")"
 			<<"  dep ("<<ms.Cdep-ms.Rdep<<"~"<<ms.Cdep+ms.Rdep<<", "<<ms.Pdep<<")";
 			return o;

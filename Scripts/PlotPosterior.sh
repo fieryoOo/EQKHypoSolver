@@ -18,7 +18,7 @@ PlotHisto() {
    local REG=-R${lb}/${ub}/0/40
    awk -v cN=$columnN '{print $cN}' $h_infile | pshistogram -JX5/5 $REG -Ba${b_a}f${b_f}-0./a10f5:."$_title":WSn -W${wd} -Gsteelblue -L5,steelblue3 -Z1 -X${Xoffset} -Y${Yoffset} -O -K >> ${fps}
 	# reduced chi-square
-	local REG=-R${lb}/${ub}/0.8/1.0
+	local REG=-R${lb}/${ub}/${rCl}/${rCu}
 	awk -v cN=$columnN '{print $cN, $2/$3}' $h_infile | sort -g | psxy -J $REG -B/a0.1f0.02E -A -Sc0.01 -Gred -O -K >> ${fps}
 	# mean and std
    echo -e $mean 0"\n"$mean 100 | psxy -J -R -A -W8/255/100/100 -O -K >>${fps}
@@ -35,6 +35,8 @@ if [ $# != 2 ] && [ $# != 3 ] && [ $# != 4 ]; then
    echo "Usage: "$0" [input_file] [starting_isearch] [ending_isearch (optional)] [chiS_max (optional)]"
    exit
 fi
+
+### params
 fin=$1
 fps=${fin}.ps
 is=$2
@@ -42,11 +44,14 @@ ie=1e10
 if [ $# -ge 3 ]; then ie=$3; fi
 chiS_max=999999
 if [ $# -ge 4 ]; then chiS_max=$4; fi
+
 ### discard results from the first search and grab qualified data from the second
 Emul=10
 awk 'NF>0' $fin | awk 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==2)print; Nold=$2}' | grep 'accepted' $fin | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1}' | sed s/')'/''/ | awk -v Emul=$Emul '{print $15,$13*Emul,$10,$1,$2,$3,$4,$5,$6,$7}' | awk -v cm=$chiS_max '$2/$3<cm' > .PlotPosterior_tmp
 awk 'NF>0' $fin | awk 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==2)print; Nold=$2}' | grep 'rejected' $fin | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1}' | sed s/')'/''/ | awk -v Emul=$Emul '{print $15,$13*Emul,$10,$1,$2,$3,$4,$5,$6,$7}' > .PlotPosterior_tmp_rej
 #awk 'NF!=0' $fin | awk 'begin{flag=0;Nold=0}{if($1<Nold){flag=1} Nold=$1; if(flag==1)print}' | awk -v is=$is -v ie=$ie '$1>is&&$1<ie' > .PlotPosterior_tmp
+
+### check posterior file
 Naccept=`more .PlotPosterior_tmp | wc -l`
 if [ $Naccept -le 0 ]; then
 	echo "Problematic PosteriorD.txt"
@@ -54,6 +59,13 @@ if [ $Naccept -le 0 ]; then
 fi
 Nsearch=`tail -n1 .PlotPosterior_tmp | awk '{if(NF>0){print $1}else{print 0}}'`
 
+### range for reduced chi-square
+rCrange=`awk '{print $2/$3}' .PlotPosterior_tmp | minmax -C`
+rCl=`echo $rCrange | awk '{printf "%.2f", $1*0.99-0.01}'`
+rCu=`echo $rCrange $rCl | awk '{a=$3*1.3; if($2>$3){a=$2} printf "%.2f", a}'`
+#rCu=`awk '{print $2/$3}' .PlotPosterior_tmp_rej | minmax -C | awk '{printf "%.2f", $2}'`
+
+### plot histograms
 gmtset HEADER_OFFSET -0.7
 gmtset HEADER_FONT_SIZE 15
 gmtset ANNOT_FONT_SIZE 6
@@ -81,7 +93,7 @@ echo -e "\nFocal: ("$finfo1") - ("$finfo2")" >> results
 # plot misfits
 # rejected
 ie=`awk 'BEGIN{imax=0}{if(imax<$1){imax=$1}}END{print imax}' .PlotPosterior_tmp`
-awk '{print $1,$2/$3}' .PlotPosterior_tmp_rej | psxy -R${is}/${ie}/0.8/1. -JX18/5 -Ba20000f5000/a0.1f0.02:."reduced chi-square":WeSn -A -Sc0.03 -G100/100/100 -X-13.7 -Y-6.5 -O -K >> ${fps}
+awk '{print $1,$2/$3}' .PlotPosterior_tmp_rej | psxy -R${is}/${ie}/${rCl}/${rCu} -JX18/5 -Ba10000f2000/a0.1f0.02:."reduced chi-square":WeSn -A -Sc0.03 -G100/100/100 -X-13.7 -Y-6.5 -O -K >> ${fps}
 # accepted
 awk '{print $1,$2/$3}' .PlotPosterior_tmp | psxy -R -J -A -Sc0.03 -Gred -O -K >> ${fps}
 

@@ -31,7 +31,7 @@ export OMP_NUM_THREADS=${_nthreads}; time ${_run_exe} ${_fparam} ${_addoption} 1
 
 
 ### main ###
-for type in R L B; do # R L B C
+for type in B R L; do # R L B C
    for dis in 1000; do # 1000 500 1000_sparse 1000_PIazi 1000_freeF
       for mtype in 3d avg; do #3d avg
 			### label

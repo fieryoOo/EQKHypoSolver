@@ -90,12 +90,12 @@ int main( int argc, char* argv[] ) {
 		//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 		// decide perturb step length for each parameter based on the model sensitivity to them
-		// perturb steps are defined to be (ub-lb) * Sfactor, where ub and lb are the boundaries decided by:
+		// perturb steps are defined to be (ub-lb) * sfactor, where ub and lb are the boundaries decided by:
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
-		ms.EstimatePerturbs( eka );
+		ms.EstimatePerturbs( eka, 0.5 );	// sfactor = 0.5
 		// second (final) Monte Carlo Search with desired perturb sizes
-		nsearch = 100000; 
+		nsearch = 50000; 
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 
 		// final output
