@@ -83,8 +83,8 @@ int main( int argc, char* argv[] ) {
 		ms.unFix();			// free both to perturb
 
 		// ********** monte carlo for posterior distributions ********** //
-		// constrain focal mechanism to perturb near the current Mstate ( Rfocal = 0.5 * (30, 15, 30, 7.5) )
-		ms.BoundFocal( 0.5 );
+		// constrain focal mechanism to perturb near the current Mstate ( Rfocal = ? * (30, 15, 30, 7.5) )
+		ms.BoundFocal( 1. );
 		// initial MC search around the SA result to stablize
 		nsearch = 3000;
 		//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );

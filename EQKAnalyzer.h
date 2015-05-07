@@ -215,9 +215,11 @@ private:
 private:
 	// private functions
 	inline void NormalizeWeights( Dtype& datatype, float& wR, float& wL);
+	inline float ShiftInto( float val, float lb, float ub, float T) const;
+	inline float BoundInto( float val, float lb, float ub ) const;
 	//bool InitEpic();
-	bool MKDir(const char *dirname);
-	void MKDirFor( const std::string& path );
+	bool MKDir(const char *dirname) const;
+	void MKDirFor( const std::string& path ) const;
 
 };
 

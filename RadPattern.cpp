@@ -1,6 +1,7 @@
 #include "RadPattern.h"
 #include <fstream>
 #include <cstring>
+#include <algorithm>
 
 /* FORTRAN entrance */
 const int nazi = RadPattern::nazi;
@@ -86,6 +87,18 @@ RadPattern& RadPattern::operator= ( RadPattern&& rp2 ){
 }
 
 RadPattern::~RadPattern() {}
+
+/* copy arrayin[nazi] into Vout with positions shifted by int(nazi/2) */
+void RadPattern::ShiftCopy( std::vector<float>& Vout, const float* arrayin, const int nazi ) const {
+   // check nazi
+   if( nazi % 2 == 0 )
+      throw ErrorRP::BadParam( FuncName, "unexpected nazi = " + std::to_string(nazi) );
+   int nazio2 = nazi / 2;
+   Vout.clear(); Vout.reserve(nazi);
+   // shift by 180 degree
+   Vout = std::vector<float>( arrayin+nazio2, arrayin+nazi-1 );
+   Vout.insert( Vout.end(), arrayin, arrayin+nazio2+1 );
+}
 
 /* predict radpattern for rayleigh and love waves */
 bool RadPattern::Predict( char typein, const std::string& feigname, const std::string& fphvname,
@@ -179,9 +192,19 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
    //float azi[nazi], grT[nper][nazi], phT[nper][nazi], amp[nper][nazi];
 	for( int iper=0; iper<perlst.size(); iper++ ) {
 		float per = perlst[iper];
-      grtM[per] = std::vector<float>( grT[iper], grT[iper]+nazi );
-      phtM[per] = std::vector<float>( phT[iper], phT[iper]+nazi );
-      ampM[per] = std::vector<float>( amp[iper], amp[iper]+nazi );
+/*
+		auto &grV = grtM[per], &phV = phtM[per], &amV = ampM[per];
+      grV = std::vector<float>( grT[iper], grT[iper]+nazi );
+      phV = std::vector<float>( phT[iper], phT[iper]+nazi );
+      amV = std::vector<float>( amp[iper], amp[iper]+nazi );
+		// flip
+		std::transform( grV.begin(), grV.end(), grV.begin(), std::negate<float>() );
+		std::transform( phV.begin(), phV.end(), phV.begin(), std::negate<float>() );
+*/
+		// shift by 180 degree
+		ShiftCopy( grtM[per], grT[iper], nazi );
+		ShiftCopy( phtM[per], phT[iper], nazi );
+		ShiftCopy( ampM[per], amp[iper], nazi );
    }
 	//aziV = std::vector<float>( azi, azi+nazi );
 

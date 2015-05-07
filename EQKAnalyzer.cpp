@@ -41,7 +41,7 @@ bool EQKAnalyzer::InitEpic() {
 }
 */
 
-bool EQKAnalyzer::MKDir(const char *dirname) {
+bool EQKAnalyzer::MKDir(const char *dirname) const {
 	//create dir if not exists
 	//with read/write/search permissions for owner and group, and with read/search permissions for others if not already exists
 	if( mkdir(dirname, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0 ) return true;
@@ -54,7 +54,7 @@ bool EQKAnalyzer::MKDir(const char *dirname) {
 	}
 }
 
-void EQKAnalyzer::MKDirFor( const std::string& path ) {
+void EQKAnalyzer::MKDirFor( const std::string& path ) const {
 	if( path.empty() ) return;
 	std::stringstream spath(path);
 	std::vector<std::string> dirs;
@@ -330,12 +330,25 @@ void EQKAnalyzer::PredictAll( const ModelInfo& mi,	std::vector<SDContainer>& dat
 	bool source_updated = _source_updated;
 	PredictAll( mi, rpR, rpL, dataR, dataL, AfactorR, AfactorL, source_updated, updateSource );
 }
+// shift by T multiples according to lower and upper bound. Results not guranteed to be in the range
+inline float EQKAnalyzer::ShiftInto( float val, float lb, float ub, float T) const {
+	while(val >= ub) val -= T;
+	while(val < lb) val += T;
+	return val;
+}
+inline float EQKAnalyzer::BoundInto( float val, float lb, float ub ) const {
+	if( val < lb ) val = lb;
+	else if( val > ub ) val = ub;
+	return val;
+}
 void EQKAnalyzer::PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
 										std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
 										float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const {
 	// radpattern
 	bool model_updated = false;
 	float stk = mi.stk, dip = mi.dip, rak = mi.rak, dep = mi.dep;
+	stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
+	rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
 	model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
 	model_updated |= rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
 

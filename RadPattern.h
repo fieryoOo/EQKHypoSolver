@@ -110,6 +110,7 @@ private:
 	std::vector<float> aziV;
 	std::map< float, std::vector<float> > grtM, phtM, ampM;
 
+	void ShiftCopy( std::vector<float>& Vout, const float* arrayin, const int nazi ) const;
 };
 
 #endif
