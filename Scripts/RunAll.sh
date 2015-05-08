@@ -31,9 +31,9 @@ export OMP_NUM_THREADS=${_nthreads}; time ${_run_exe} ${_fparam} ${_addoption} 1
 
 
 ### main 
-for wtype in R; do # wave type ( B R L )
+for wtype in R B; do # wave type ( B R L )
 	for dtype in 1000; do # data type ( 500 1000 1000sparse 1000PIazi )
-		for mtype in Ei 3D 1D; do # model type ( Ei 3D 1D )
+		for mtype in 1D Ei 3D; do # model type ( Ei 3D 1D )
 			### label
 			_label=${wtype}_${dtype}_${mtype}
 			### path to the vel maps

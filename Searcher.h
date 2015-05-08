@@ -74,8 +74,10 @@ namespace Searcher {
 	// saveSI: -1=no, 0=all, 1=accepted
 	template < class MI, class MS, class DH >
 	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch,
-																	  const float alpha, const int Tfactor,
+																	  float alpha, const int Tfactor,
 																	  std::ostream& sout = std::cout, short saveSI = -1 ) {
+		if( alpha < 0. )
+			alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// emperically decided
 		return SimulatedAnnealing<MI>( ms, dh, nsearch, alpha, -(float)Tfactor, sout, saveSI );
 	}
 	template < class MI, class MS, class DH >

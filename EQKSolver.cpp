@@ -47,7 +47,7 @@ int main( int argc, char* argv[] ) {
 			eka.chiSquare( ms, chiS, Ndata );
 			std::ofstream fout( eka.outname_misAll, std::ofstream::app );
 			if(fout) fout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
-			std::cout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
+			std::cout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<"   E="<<eka.Energy(ms, Ndata)<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
 		}
 
 		// option -i: stop after output initial fit and misfits
@@ -84,16 +84,21 @@ int main( int argc, char* argv[] ) {
 
 		// ********** monte carlo for posterior distributions ********** //
 		// constrain focal mechanism to perturb near the current Mstate ( Rfocal = ? * (30, 15, 30, 7.5) )
-		ms.BoundFocal( 1. );
+		ms.BoundFocal( 2. );
 		// initial MC search around the SA result to stablize
 		nsearch = 3000;
 		//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
-		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
+		//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
+		Tfactor = 1; float alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// alpha is emperically decided
+		Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
+		eka.Output( ms );
+		eka.OutputMisfits( ms );
 		// decide perturb step length for each parameter based on the model sensitivity to them
 		// perturb steps are defined to be (ub-lb) * sfactor, where ub and lb are the boundaries decided by:
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
-		ms.EstimatePerturbs( eka, 0.5 );	// sfactor = 0.5
+		ms.BoundFocal( 1. );
+		ms.EstimatePerturbs( eka, 0.3 );	// sfactor = 0.5
 		// second (final) Monte Carlo Search with desired perturb sizes
 		nsearch = 50000; 
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );

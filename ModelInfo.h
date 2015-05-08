@@ -85,8 +85,8 @@ struct FocalInfo {
 
    friend std::ostream& operator<< ( std::ostream& o, const FocalInfo& f ) {
       //o<<std::fixed<<std::setprecision(2)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(6)<<f.rak<<"  "<<std::setw(6)<<f.dep;
-      o<<std::fixed<<std::setprecision(2)
-		 <<std::setw(6)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(7)<<f.rak<<" "<<std::setprecision(3)<<std::setw(7)<<f.dep; 
+      o<<std::fixed<<std::setprecision(3)
+		 <<std::setw(7)<<f.stk<<" "<<std::setw(7)<<f.dip<<" "<<std::setw(8)<<f.rak<<" "<<std::setw(7)<<f.dep; 
       return o; 
    }
 

@@ -33,22 +33,22 @@ PlotHisto() {
 }
 
 ### main ###
-if [ $# != 2 ] && [ $# != 3 ] && [ $# != 4 ]; then
-   echo "Usage: "$0" [input_file] [starting_isearch] [ending_isearch (optional)] [chiS_max (optional)]"
+if [ $# != 3 ] && [ $# != 4 ] && [ $# != 5 ]; then
+   echo "Usage: "$0" [input_file] [Emul] [starting_isearch] [ending_isearch (optional)] [chiS_max (optional)]"
    exit
 fi
 
 ### params
 fin=$1
 fps=${fin}.ps
-is=$2
+Emul=$2
+is=$3
 ie=1e10
-if [ $# -ge 3 ]; then ie=$3; fi
+if [ $# -ge 4 ]; then ie=$4; fi
 chiS_max=999999
-if [ $# -ge 4 ]; then chiS_max=$4; fi
+if [ $# -ge 5 ]; then chiS_max=$5; fi
 
 ### discard results from the first search and grab qualified data from the second
-Emul=10
 awk 'NF>0' $fin | awk 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==2)print; Nold=$2}' | grep 'accepted' $fin | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1}' | sed s/')'/''/ | awk -v Emul=$Emul '{print $15,$13*Emul,$10,$1,$2,$3,$4,$5,$6,$7}' | awk -v cm=$chiS_max '$2/$3<cm' > .PlotPosterior_tmp
 awk 'NF>0' $fin | awk 'BEGIN{flag=1;Nold=0}{if($2<Nold){flag++} if(flag==2)print; Nold=$2}' | grep 'rejected' $fin | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1}' | sed s/')'/''/ | awk -v Emul=$Emul '{print $15,$13*Emul,$10,$1,$2,$3,$4,$5,$6,$7}' > .PlotPosterior_tmp_rej
 #awk 'NF!=0' $fin | awk 'begin{flag=0;Nold=0}{if($1<Nold){flag=1} Nold=$1; if(flag==1)print}' | awk -v is=$is -v ie=$ie '$1>is&&$1<ie' > .PlotPosterior_tmp
