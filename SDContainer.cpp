@@ -56,22 +56,39 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 	UpdateAziDis( srclon, srclat );
 
 	// period and wavelength
-	float pero2 = per*0.5, lamda = per * Lfactor;
+	float pero2 = per*0.5, lambda = per * Lfactor;
 
-	// reset Group map and update Tpath predictions
-	mapG.SetSource( srclon, srclat );
-	for( auto& sd : dataV ) {
-		float perc;
-		float vel = mapG.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lamda, perc ).Data();
-		if( perc > Min_Perc ) sd.Gpath = sd.dis / vel - srct0;
+	if( _velG == NaN ) {
+		// reset Group map and update Tpath predictions
+		mapG.SetSource( srclon, srclat );
+		for( auto& sd : dataV ) {
+			float perc, dis = sd.dis;
+			// loosen the acceptance criterion at small distances
+			float lam = dis<300. ? (lambda * (2.5-dis*0.005)) : lambda;
+			float minP = dis>15. ? (Min_Perc - 9./dis) : (Min_Perc - 0.6);
+			//float minP = Min_Perc;
+			float vel = mapG.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lam, perc ).Data();
+			if( perc > minP ) sd.Gpath = dis / vel - srct0;
+		}
+	} else {
+		// update Tpaths from the fixed velocity
+		for( auto& sd : dataV )	sd.Gpath = sd.dis / _velG - srct0;
 	}
-	
-	// reset Phase map and update Tpath predictions
-	mapP.SetSource( srclon, srclat );
-	for( auto& sd : dataV ) {
-		float perc;
-		float vel = mapP.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lamda, perc ).Data();
-		if( perc > Min_Perc ) sd.Ppath = sd.dis / vel - srct0;
+
+	if( _velP == NaN ) {
+		// reset Phase map and update Tpath predictions
+		mapP.SetSource( srclon, srclat );
+		for( auto& sd : dataV ) {
+			float perc, dis = sd.dis;
+			// loosen the acceptance criterion at small distances
+			float lam = dis<300. ? (lambda * (2.5-dis*0.005)) : lambda;
+			float minP = dis>15. ? (Min_Perc - 9./dis) : (Min_Perc - 0.6);
+			//float minP = Min_Perc;
+			float vel = mapP.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lam, perc ).Data();
+			if( perc > minP ) sd.Ppath = dis / vel - srct0;
+		}
+	} else {
+		for( auto& sd : dataV ) sd.Ppath = sd.dis / _velP - srct0;
 	}
 
 	return true;	// updated!

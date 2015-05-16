@@ -26,6 +26,8 @@ int main( int argc, char* argv[] ) {
 				for(int istr=1; istr<str.size(); istr++)
 					options.push_back( str[istr] );
 			} else {
+				if( ! fparam.empty() )
+					throw std::runtime_error(" ill-formed input! ");
 				fparam = str;
 			}
 		}
@@ -98,7 +100,7 @@ int main( int argc, char* argv[] ) {
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
 		ms.BoundFocal( 1. );
-		ms.EstimatePerturbs( eka, 0.3 );	// sfactor = 0.5
+		ms.EstimatePerturbs( eka, 0.5 );	// sfactor = 0.5
 		// second (final) Monte Carlo Search with desired perturb sizes
 		nsearch = 50000; 
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );

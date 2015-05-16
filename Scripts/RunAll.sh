@@ -31,21 +31,24 @@ export OMP_NUM_THREADS=${_nthreads}; time ${_run_exe} ${_fparam} ${_addoption} 1
 
 
 ### main 
-for wtype in R B; do # wave type ( B R L )
-	for dtype in 1000; do # data type ( 500 1000 1000sparse 1000PIazi )
-		for mtype in 1D Ei 3D; do # model type ( Ei 3D 1D )
+for wtype in B R; do # wave type ( B R L )
+	for dtype in 1000 500; do # data type ( 500 1000 1000sparse 1000PIazi )
+		for mtype in Ei 1D; do # model type ( Ei 3D 1D )
 			### label
 			_label=${wtype}_${dtype}_${mtype}
 			### path to the vel maps
 			if [ $mtype == "Ei" ]; then
 				_mdir=VelMaps_Eikonal
 				_msuf=txt
+				fparam=param_base.txt
 			elif [ $mtype == "3D" ]; then
 				_mdir=VelMaps_Model
 				_msuf=txt
+				fparam=param_base.txt
 			elif [ $mtype == "1D" ]; then
 				_mdir=VelMaps_Eikonal
 				_msuf=txt_avg
+				fparam=param_base_1D.txt
 			else
 				echo "Unknown model type: "$mtype; exit
 			fi
@@ -55,8 +58,7 @@ for wtype in R B; do # wave type ( B R L )
 			else
 				Rtime=15
 			fi
-			### param file
-			fparam=param_base.txt
+			### check param file
 			if [ ! -e $fparam ]; then
 				echo "no param_base.txt found!"
 				exit

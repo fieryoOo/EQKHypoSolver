@@ -53,6 +53,8 @@ public:
 	const char type = 'N';
 
 	/* con/destructors */
+
+	// 3D model: Path velocities (and thus Tpaths) are predicted on the fly from vel maps
 	SDContainer( const float perin, const char typein, const std::string fmeasure, 
 					 const std::string fmapG, const std::string fmapP ) 
 		: per(perin), oop(1./perin), type(typein) {
@@ -64,6 +66,17 @@ public:
 		LoadMaps( fmapG, fmapP );
 	}
 
+	// 1D model: Path velocities are fixed at the input velocities
+	SDContainer( const float perin, const char typein, const std::string fmeasure, 
+					 const float velG, const float velP ) 
+		: per(perin), oop(1./perin), type(typein), 
+		  _velG(velG), _velP(velP) {
+		if( type!='R' && type!='L' ) {
+			std::string str("unknown data type: "); str.push_back(type);
+			throw ErrorSC::BadParam( FuncName, str );
+		}
+		LoadMeasurements( fmeasure );
+	}
 	/*
 	SDContainer( float perin, const std::vector<StaData>& datain )
 		: per(perin), dataV(datain) {}
@@ -123,8 +136,8 @@ protected:
 
 	static constexpr float exfactor = 2.5;							/* #sigma for excluding bad data */
 
-   static constexpr float Min_Perc = 0.95;						/* allowed min fraction of path length in the vel map */
-   static constexpr float Lfactor = 2.;							/* define lamda = per * Lfactor for PathAvg */
+   static constexpr float Min_Perc = 0.8;							/* allowed min fraction of path length in the vel map */
+   static constexpr float Lfactor = 2.5;							/* define lamda = per * Lfactor for PathAvg */
 
    static constexpr float DISMIN = 0.;								/* allowed min */
    static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */
@@ -133,7 +146,7 @@ protected:
    static constexpr float stdPest = 1.3;							/* PhaseT, */
    static constexpr float stdAest = 0.3;							/* and Amplitude (as fraction of the amplitude!) std-dev */
 
-   static constexpr float varRGmin = 9.0, varLGmin = 25.0;		/* the lowerbound of GroupT, was 0.8 */
+   static constexpr float varRGmin = 9.0, varLGmin = 9.0;		/* the lowerbound of GroupT, was 0.8 */
    static constexpr float varRPmin = 1.0, varLPmin = 1.0;		/* PhaseT, was 0.3 */
    static constexpr float varRAmin = 0.09, varLAmin = 0.04;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
    //static constexpr float varRGmin = 90., varLGmin = 250.;		/* the lowerbound of GroupT, was 0.8 */
@@ -150,6 +163,7 @@ private:
 	//float srclon = NaN, srclat = NaN;
 	ModelInfo model;
 	Map mapG, mapP;
+	const float _velG = NaN, _velP = NaN;
 	std::vector<StaData> dataV;
 
 	void HandleBadBins(std::vector<AziData>& adVmean, std::vector<AziData>& adVstd, const AziData adest ) const;

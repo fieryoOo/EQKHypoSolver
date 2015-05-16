@@ -2,6 +2,7 @@
 #include "DisAzi.h"
 #include <sstream>
 #include <sys/stat.h>
+#include <cstdlib>
 
 int WarningEA::Base::nWarnOther = 0;
 
@@ -286,13 +287,32 @@ void EQKAnalyzer::CheckParams() {
 
 
 /* -------------------- Check/Load all data file requested by fparam -------------------- */
+bool EQKAnalyzer::FilenameToVel( const FileName& fname, float& vel ) const {
+	try {
+		fname.CheckAccess();
+		// succeed, is a file
+		return false;
+	} catch(...) {
+		vel = strtof( fname.c_str(), NULL );
+		if( vel<0.2 || vel>10. )
+			throw ErrorEA::BadParam(FuncName, "input "+fname+" is neither a valid file nor a valid velocity");
+		return true;
+	}
+}
 void EQKAnalyzer::LoadData() {
 	// Rayleigh
 	_dataR.clear();
 	for( const auto& fR : fRlist ) {
 		const float per = fR.first;
 		const auto& farray = fR.second;
-		_dataR.push_back( SDContainer(per, 'R', farray[0], farray[1], farray[2]) );
+		// farray[0]: measurement file
+		// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
+		float velG, velP;
+		if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
+			_dataR.push_back( SDContainer(per, 'R', farray[0], velG, velP) );
+		} else {
+			_dataR.push_back( SDContainer(per, 'R', farray[0], farray[1], farray[2]) );
+		}
 	}
 
 	// Love
@@ -300,7 +320,12 @@ void EQKAnalyzer::LoadData() {
 	for( const auto& fL : fLlist ) {
 		const float per = fL.first;
 		const auto& farray = fL.second;
-		_dataL.push_back( SDContainer(per, 'L', farray[0], farray[1], farray[2]) );
+		float velG, velP;
+		if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
+			_dataL.push_back( SDContainer(per, 'L', farray[0], velG, velP) );
+		} else {
+			_dataL.push_back( SDContainer(per, 'L', farray[0], farray[1], farray[2]) );
+		}
 	}
 
    std::cout<<"### "<<_dataR.size() + _dataL.size()<<" data file(s) loaded. ###"<<std::endl;

@@ -214,6 +214,7 @@ private:
 
 private:
 	// private functions
+	bool FilenameToVel( const FileName& fname, float& vel ) const;
 	inline void NormalizeWeights( Dtype& datatype, float& wR, float& wL);
 	inline float ShiftInto( float val, float lb, float ub, float T) const;
 	inline float BoundInto( float val, float lb, float ub ) const;

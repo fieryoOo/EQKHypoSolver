@@ -33,6 +33,7 @@ struct Map::Mimpl {
 				std::cerr<<"Warning(Map::Load): wrong format detected in file "<<fname<<std::endl;
 				continue;
 			}
+			if( data != data ) continue;
 			if( lon < 0. ) lon += 360.;
 			//float dis = Path<float>(srcin, Point<float>(lon,lat)).Dist();
 			dataV.push_back( DataPoint<float>(lon, lat, data) );
@@ -78,11 +79,12 @@ struct Map::Mimpl {
 		dataV.clear();
 		/* compute distance of 1 degree in lon/lat */
 		dis_lat1D = 111.;
-		dis_lon1D.resize( dataM.NumCols() );
-		for(int ilat=0; ilat<dataM.NumCols(); ilat++) {
-			float latcur = latmin + ilat*grd_lat;
-			dis_lon1D[ilat] = Path<float>(0., latcur, 1., latcur).Dist();
-			//calc_dist( latcur, 0., latcur, 1., &(dis_lon1D[ilat]) );
+		//dis_lon1D.resize( dataM.NumCols() );
+		dis_lon1D.clear();
+		float latcur = latmin;
+		while( latcur<=90. ) {
+			dis_lon1D.push_back( Path<float>(0., latcur, 1., latcur).Dist() );
+			latcur += grd_lat;
 		}
 	}
 
@@ -92,14 +94,20 @@ struct Map::Mimpl {
 		float lon2 = p2.Lon(), lat2 = p2.Lat();
 		if( lon2 < 0. ) lon2 += 360.;
 
+		size_t idlmax = dis_lon1D.size() - 1;
 		int ilatmid = (int)floor( ( (lat1+lat2) * 0.5 - latmin ) / grd_lat + 0.5 );
-		if( ilatmid > dataM.NumCols() ) ilatmid = dataM.NumCols();
+		if( ilatmid > idlmax ) ilatmid = idlmax;
 		else if( ilatmid < 0 ) ilatmid = 0;
 
 		float dis_lon = fabs(lon1-lon2);
 		if( dis_lon > 180. ) dis_lon = 360. - dis_lon;
 		dis_lon *= dis_lon1D[ilatmid];
 		float dis_lat = (lat1-lat2) * dis_lat1D;
+/*
+std::cerr<<fabs(lon1-lon2)<<" "<<(lat1-lat2)<<"\n";
+std::cerr<<dis_lon1D[ilatmid]<<" "<<dis_lat1D<<"\n";
+std::cerr<<p1<<" "<<p2<<"   "<<dis_lon<<" "<<dis_lat<<"\n";
+*/
 		return sqrt(dis_lon*dis_lon + dis_lat*dis_lat);
 	}
 };
@@ -113,7 +121,12 @@ Map::Map( const float grdlon, const float grdlat )
 }
 
 Map::Map( const char *inname, const float grdlon, const float grdlat )
-	: Map( inname, Point<float>(), grdlon, grdlat) {}
+	: pimplM( new Mimpl() ), fname(inname) {
+   pimplM->grd_lon = grdlon;
+   pimplM->grd_lat = grdlat;
+	Load( fname );
+}
+//	: Map( inname, Point<float>(), grdlon, grdlat) {}
 
 Map::Map( const char *inname, const Point<float>& srcin, const float grdlon, const float grdlat ) 
 	: pimplM( new Mimpl() ), fname(inname), src(srcin) {
@@ -183,6 +196,11 @@ void Map::SetSource( const Point<float>& srcin ) {
 				dp.dis = Path<float>( src, Point<float>(dp.lon, dp.lat) ).Dist();
 }
 
+/* --- clip the map around the source location (to speed up the average methods) --- */
+void Clip( const float dist ) {
+}
+
+
 /* ------------ compute number of points near the given location ------------ */
 float Map::NumberOfPoints(Point<float> rec, const float xhdis, const float yhdis, float& loneff, float& lateff) const {
 	/* references */
@@ -231,8 +249,9 @@ float Map::PointAverage(Point<float> rec, float hdis, float& weit) {
 
 	// define computation area
 	float dismax = hdis * 2.5, dismax_s = dismax*dismax;
+	size_t idlmax = pimplM->dis_lon1D.size() - 1;
 	int ilatrec = (int)floor((rec.Lat()-latmin) / grdlat + 0.5);
-	if( ilatrec > dataM.NumCols() ) ilatrec = dataM.NumCols();
+	if( ilatrec > idlmax ) ilatrec = idlmax;
 	else if( ilatrec < 0 ) ilatrec = 0;
 	float dis_lon1D = pimplM->dis_lon1D[ilatrec], dis_lat1D = pimplM->dis_lat1D;
 	//calc_dist( rec.Lat(), rec.Lon(), rec.Lat(), rec.Lon()+1., &dis_lon1D );
@@ -291,8 +310,9 @@ DataPoint<float> Map::PathAverage(Point<float> rec, float lamda, float& perc) {
 	//calc_dist( src.Lat(), src.Lon(), rec.Lat(), rec.Lon(), &dis );
 	//calc_azimuth( src.Lat(), src.Lon(), rec.Lat(), rec.Lon(), &azi );
 
+	size_t idlmax = pimplM->dis_lon1D.size() - 1;
 	int ilatmid = (int)floor( ( (rec.Lat()+src.Lat()) * 0.5 - latmin ) / grd_lat + 0.5 );
-	if( ilatmid > dataM.NumCols() ) ilatmid = dataM.NumCols();
+	if( ilatmid > idlmax ) ilatmid = idlmax;
 	else if( ilatmid < 0 ) ilatmid = 0;
 	float dis_lon1D = pimplM->dis_lon1D[ilatmid], dis_lat1D = pimplM->dis_lat1D;
 	float grd_dis_lon = grd_lon * dis_lon1D,  grd_dis_lat = grd_lat * dis_lat1D;
@@ -306,8 +326,8 @@ DataPoint<float> Map::PathAverage(Point<float> rec, float lamda, float& perc) {
 	//float bsqrmax = amax*amax - f*f; //maximum affective bsquare from Nmin
 	//float bmax = sqrt(bsqrmax); // maximum affective width in the perpendicular direction
 	float dab = amax - f, dab2 = dab*2.;
-	float max_2a = 2. * (amax + grd_semidiag);
-	float max_esti = 2.*amax+20.;
+	float max_2a = 2. * (amax + grd_semidiag) + 10.;
+	float max_esti = 2. * amax + 40.;
 
 
 	float weit = 0., datasum = 0.;
@@ -320,7 +340,7 @@ DataPoint<float> Map::PathAverage(Point<float> rec, float lamda, float& perc) {
 			float loncur = lonmin+irow*grd_lon, latcur = latmin+icol*grd_lat;
 			float disEsrc = pimplM->estimate_dist( src, Point<float>(loncur,latcur) );
 			float disErec = pimplM->estimate_dist( rec, Point<float>(loncur,latcur) );
-			if( disEsrc + disErec > max_2a+20. ) continue; // 20. for estimating error
+			if( disEsrc + disErec > max_2a ) continue; // 20. for estimating error
 			for(size_t idata=0; idata<dataM(irow, icol).size(); idata++) {
 				DataPoint<float> dpcur = dataM(irow, icol)[idata];
 				if( dpcur.Data() == NaN ) continue;
@@ -341,8 +361,9 @@ DataPoint<float> Map::PathAverage(Point<float> rec, float lamda, float& perc) {
 			}
 		}
 	}
-	if(weit==0.) datasum = NaN;
-	else {
+	if(weit==0.) {
+		datasum = NaN; perc = 0.;
+	} else {
 		datasum /= weit;
 		perc = dismax>dis ? 1 : dismax/dis;
 	}
@@ -368,29 +389,31 @@ DataPoint<float> Map::PathAverage_Reci(Point<float> rec, float lamda, float& per
 	//calc_dist( src.Lat(), src.Lon(), rec.Lat(), rec.Lon(), &dis );
 	//calc_azimuth( src.Lat(), src.Lon(), rec.Lat(), rec.Lon(), &azi );
 
+	size_t idlmax = pimplM->dis_lon1D.size() - 1;
 	int ilatmid = (int)floor( ( (rec.Lat()+src.Lat()) * 0.5 - latmin ) / grd_lat + 0.5 );
-	if( ilatmid > dataM.NumCols() ) ilatmid = dataM.NumCols();
+	if( ilatmid > idlmax ) ilatmid = idlmax;
 	else if( ilatmid < 0 ) ilatmid = 0;
 	float dis_lon1D = pimplM->dis_lon1D[ilatmid], dis_lat1D = pimplM->dis_lat1D;
 	float grd_dis_lon = grd_lon * dis_lon1D,  grd_dis_lat = grd_lat * dis_lat1D;
 	float grd_semidiag = sqrt( (grd_dis_lon * grd_dis_lon) + (grd_dis_lat * grd_dis_lat) );
+	//std::cerr<<grd_dis_lon<<" "<<grd_dis_lat<<" "<<grd_semidiag<<"\n";
 
 	/* ellipse parameters */
 	float Nmin = 3.; //(2 ~ 20?) Don't know much about sw kernel; note that the data in the zone are weighted with a smaller hlaf length, so the effective N is larger!!!
 	// define ellipse
 	float f = dis*0.5; // known values
-	float amax = f+lamda/(2.*Nmin);// asqrmax = amax*amax;
+	float dab = lamda/(2.*Nmin), dab2 = dab*2.;
+	float amax = f+dab;// asqrmax = amax*amax;
 	//float bsqrmax = amax*amax - f*f; //maximum affective bsquare from Nmin
 	//float bmax = sqrt(bsqrmax); // maximum affective width in the perpendicular direction
-	float dab = amax - f, dab2 = dab*2.;
-	float max_2a = 2. * (amax + grd_semidiag);
-	float max_esti = 2.*amax+20.;
+	float max_2a = 2. * (amax + grd_semidiag) + 10.;
+	float max_esti = 2. * amax + 40.;
 
 
 	float weit = 0., datasum = 0.;
 	//float Nhaf = 12.;
 	float alpha = -1.125 / (dab*dab); //- 0.5 / (dab*2.*0.33 * dab*2.*0.33);
-	float dismax = 0.;
+	float dismax = 0., dismin = 99999.;
 	std::ofstream fout;
 	if( !outname.empty() ) fout.open(outname);
 	for(int irow=0; irow<dataM.NumRows(); irow++) {
@@ -399,14 +422,18 @@ DataPoint<float> Map::PathAverage_Reci(Point<float> rec, float lamda, float& per
 			float loncur = lonmin+irow*grd_lon, latcur = latmin+icol*grd_lat;
 			float disEsrc = pimplM->estimate_dist( src, Point<float>(loncur,latcur) );
 			float disErec = pimplM->estimate_dist( rec, Point<float>(loncur,latcur) );
-//std::cerr<<" "<<disEsrc<<" "<<disErec<<" "<<max_2a<<std::endl;
-//std::cerr<<" "<<Path<float>(src, Point<float>(loncur,latcur)).Dist()<<" "<<Path<float>(rec, Point<float>(loncur,latcur)).Dist()<<std::endl;
-			if( disEsrc + disErec > max_2a+20. ) continue; // 20. for estimating error
+			//float disEsrc1 = Path<float>( src, Point<float>(loncur,latcur) ).Dist();
+			//float disErec1 = Path<float>( rec, Point<float>(loncur,latcur) ).Dist();
+			//std::cerr<<Point<float>(loncur,latcur)<<" "<<rec<<"   "<<disEsrc<<" "<<disEsrc1<<"   "<<disErec<<" "<<disErec1<<"   "<<max_2a<<"   "<<grd_lon<<"\n";
+//exit(0);
+			if( disEsrc + disErec > max_2a ) continue; // 20. for estimating error
 			for(size_t idata=0; idata<dataM(irow, icol).size(); idata++) {
 				DataPoint<float> dpcur = dataM(irow, icol)[idata];
 				if( dpcur.Data() == NaN ) continue;
 				//distance from dataM(irow, icol).at(idata) to src/rec;
 				float dis_src = dpcur.Dis(); //pimplM->estimate_dist(src, dpcur);
+				//float dis_rec1 = Path<float>(rec, dpcur).Dist();
+				//std::cerr<<(Point<float>)src<<" "<<(Point<float>)dpcur<<"   "<<dis_src<<" "<<dis_rec<<" "<<dis_rec1<<"   "<<max_esti<<"   "<<grd_lon<<"\n";
 				float dis_rec = pimplM->estimate_dist(rec, dpcur);
 				if( dis_src+dis_rec > max_esti ) continue; // 2.*dab == hdis * 3.
 				dis_rec = Path<float>(rec, dpcur).Dist();
@@ -415,19 +442,22 @@ DataPoint<float> Map::PathAverage_Reci(Point<float> rec, float lamda, float& per
 				float dis_ellip = dis_src + dis_rec - dis; // dis == 2.*f
 				if( dis_ellip > dab2 ) continue; // 2.*dab == hdis * 3.
 				if( dismax < dpcur.Dis() ) dismax = dpcur.Dis();
+				if( dismin > dpcur.Dis() ) dismin = dpcur.Dis();
 				float weight = exp( alpha * dis_ellip * dis_ellip );
 				if( weight < 0.01 ) continue;
 				//std::cerr<<(Point<float>)dpcur<<" "<<weight<<"   "<<src<<"  "<<rec<<std::endl;
 				weit += weight;
-				fout<<static_cast< Point<float> >(dpcur)<<" "<<dpcur.Data()<<" "<<weight<<std::endl;
+				//fout<<static_cast< Point<float> >(dpcur)<<" "<<dpcur.Data()<<" "<<weight<<std::endl;
 				datasum += ( weight / dpcur.Data() );
+				//if( dpcur.Data() != dpcur.Data() ) std::cerr<<"nan!!! "<<dpcur<<"\n";
 			}
 		}
 	}
 	//std::cerr<<"datasum = "<<datasum<<"   weit = "<<weit<<"   dismax = "<<dismax<<std::endl;
 	if(weit==0.) datasum = NaN;
 	else datasum = weit/datasum;
-	perc = dismax>dis ? 1 : dismax/dis;
+	perc = dismax - dismin;
+	perc = perc>=dis ? 1 : perc/dis;
 	//return datasum;
 	return DataPoint<float>(rec, datasum, dis);
 
