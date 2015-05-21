@@ -143,62 +143,63 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		// perturb steps are defined to be (ub-lb) * pertfactor, where ub and lb are the boundaries decided by:
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
-		void EstimatePerturbs( const EQKAnalyzer& eka, float sfactor = 0.3 ) {
+		void EstimatePerturbs( const EQKAnalyzer& eka, float sfactor = 0.1 ) {
 			//if( sfactor == NaN ) sfactor = pertfactor;
 			std::cout<<"### Estimating for resonable perturb step sizes:"<<std::endl;
 			int Ndata;
 			float Emin = eka.Energy(*this, Ndata);
-			#pragma omp parallel
+			ModelInfo minfo = *this;
+			#pragma omp parallel firstprivate(minfo)
 			{ // parallel begins
 				#pragma omp sections
 				{ // omp sections begins
 					#pragma omp section
 					{
 					float lb_old = stk - Rstk, ub_old = stk + Rstk;
-					float lb_stk = SearchBound( eka, stk, lb_old, Pthreshold, Emin, 10 );
-					float ub_stk = SearchBound( eka, stk, ub_old, Pthreshold, Emin, 10 );
+					float lb_stk = SearchBound( eka, minfo, minfo.stk, lb_old, Pthreshold, Emin, 10 );
+					float ub_stk = SearchBound( eka, minfo, minfo.stk, ub_old, Pthreshold, Emin, 10 );
 					Pstk = (ub_stk-lb_stk) * sfactor;
 					} // section 1
 					#pragma omp section
 					{
 					float lb_old = dip - Rdip, ub_old = dip + Rdip;
-					float lb_dip = SearchBound( eka, dip, lb_old, Pthreshold, Emin, 10 );
-					float ub_dip = SearchBound( eka, dip, ub_old, Pthreshold, Emin, 10 );
+					float lb_dip = SearchBound( eka, minfo, minfo.dip, lb_old, Pthreshold, Emin, 10 );
+					float ub_dip = SearchBound( eka, minfo, minfo.dip, ub_old, Pthreshold, Emin, 10 );
 					Pdip = (ub_dip-lb_dip) * sfactor;
 					} // section 2
 					#pragma omp section
 					{
 					float lb_old = rak - Rrak, ub_old = rak + Rrak;
-					float lb_rak = SearchBound( eka, rak, lb_old, Pthreshold, Emin, 10 );
-					float ub_rak = SearchBound( eka, rak, ub_old, Pthreshold, Emin, 10 );
+					float lb_rak = SearchBound( eka, minfo, minfo.rak, lb_old, Pthreshold, Emin, 10 );
+					float ub_rak = SearchBound( eka, minfo, minfo.rak, ub_old, Pthreshold, Emin, 10 );
 					Prak = (ub_rak-lb_rak) * sfactor;
 					} // section 3
 					#pragma omp section
 					{
 					float lb_old = dep - Rdep, ub_old = dep + Rdep;
-					float lb_dep = SearchBound( eka, dep, lb_old, Pthreshold, Emin, 10 );
-					float ub_dep = SearchBound( eka, dep, ub_old, Pthreshold, Emin, 10 );
+					float lb_dep = SearchBound( eka, minfo, minfo.dep, lb_old, Pthreshold, Emin, 10 );
+					float ub_dep = SearchBound( eka, minfo, minfo.dep, ub_old, Pthreshold, Emin, 10 );
 					Pdep = (ub_dep-lb_dep) * sfactor;
 					} // section 4
 					#pragma omp section
 					{
 					float lb_old = lon - Rlon, ub_old = lon + Rlon;
-					float lb_lon = SearchBound( eka, lon, lb_old, Pthreshold, Emin, 10 );
-					float ub_lon = SearchBound( eka, lon, ub_old, Pthreshold, Emin, 10 );
+					float lb_lon = SearchBound( eka, minfo, minfo.lon, lb_old, Pthreshold, Emin, 10 );
+					float ub_lon = SearchBound( eka, minfo, minfo.lon, ub_old, Pthreshold, Emin, 10 );
 					Plon = (ub_lon-lb_lon) * sfactor;
 					} // section 5
 					#pragma omp section
 					{
 					float lb_old = lat - Rlat, ub_old = lat + Rlat;
-					float lb_lat = SearchBound( eka, lat, lb_old, Pthreshold, Emin, 10 );
-					float ub_lat = SearchBound( eka, lat, ub_old, Pthreshold, Emin, 10 );
+					float lb_lat = SearchBound( eka, minfo, minfo.lat, lb_old, Pthreshold, Emin, 10 );
+					float ub_lat = SearchBound( eka, minfo, minfo.lat, ub_old, Pthreshold, Emin, 10 );
 					Plat = (ub_lat-lb_lat) * sfactor;
 					} // section 6
 					#pragma omp section
 					{
 					float lb_old = t0 - Rtim, ub_old = t0 + Rtim;
-					float lb_tim = SearchBound( eka, t0, lb_old, Pthreshold, Emin, 10 );
-					float ub_tim = SearchBound( eka, t0, ub_old, Pthreshold, Emin, 10 );
+					float lb_tim = SearchBound( eka, minfo, minfo.t0, lb_old, Pthreshold, Emin, 10 );
+					float ub_tim = SearchBound( eka, minfo, minfo.t0, ub_old, Pthreshold, Emin, 10 );
 					Ptim = (ub_tim-lb_tim) * sfactor;
 					} // section 7
 				} // omp sections ends
@@ -330,14 +331,15 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			return val;
 		}
 
-		float SearchBound( const EQKAnalyzer& eka, float& key, float bound, float Pthsd, float Emin, int nsearch ) {
+		float SearchBound( const EQKAnalyzer& eka, ModelInfo& minfo, float& key, float bound, float Pthsd, float Emin, int nsearch ) const {
 			const float key_orig = key; // save the original key
 			float direct = 1, steplen = (bound-key) * 0.5;
 			for(int isearch=0; isearch<nsearch; isearch++) {
 				key += steplen * direct;
 				int Ndata;
-				float E = eka.Energy(*this, Ndata);
+				float E = eka.Energy(minfo, Ndata);
 				float P = exp(0.5*(Emin-E));
+				//std::cerr<<"m_direction="<<direct<<"; after_move: key="<<key<<" E="<<E<<" P="<<P<<"   Pthred="<<Pthsd<<"   bound="<<key_orig<<"->"<<bound<<"\n";
 				if( P < Pthsd ) direct = -1;    // moving backward
 				else direct = 1;
 				steplen *= 0.5;

@@ -146,12 +146,9 @@ protected:
    static constexpr float stdPest = 1.3;							/* PhaseT, */
    static constexpr float stdAest = 0.3;							/* and Amplitude (as fraction of the amplitude!) std-dev */
 
-   static constexpr float varRGmin = 9.0, varLGmin = 9.0;		/* the lowerbound of GroupT, was 0.8 */
-   static constexpr float varRPmin = 1.0, varLPmin = 1.0;		/* PhaseT, was 0.3 */
-   static constexpr float varRAmin = 0.09, varLAmin = 0.04;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
-   //static constexpr float varRGmin = 90., varLGmin = 250.;		/* the lowerbound of GroupT, was 0.8 */
-   //static constexpr float varRPmin = 10., varLPmin = 14.;		/* PhaseT, was 0.3 */
-   //static constexpr float varRAmin = 1., varLAmin = 1.;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
+   static constexpr float varRGmin = 4.0, varLGmin = 4.0;		/* the lowerbound of GroupT, was 0.8 */
+   static constexpr float varRPmin = 0.5, varLPmin = 0.5;		/* PhaseT, was 0.3 */
+   static constexpr float varRAmin = 0.04, varLAmin = 0.04;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
 
    static constexpr int pio4_R = 0;									/* for initial phase test. normaly be 0. */
    static constexpr int pio4_L = 0;									/* is added to the FTAN coefficient piover4 */

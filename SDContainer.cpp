@@ -26,6 +26,21 @@ void SDContainer::LoadMaps( const std::string& fmapG, const std::string& fmapP )
    // read in vel maps
 	mapG.Load( fmapG );
 	mapP.Load( fmapP );
+	if( dataV.empty() ) return;
+	// get data region
+	float lonmin, lonmax, latmin, latmax;
+	lonmin = lonmax = dataV.at(0).lon;
+	latmin = latmax = dataV.at(0).lat;
+	for( const auto& sd : dataV ) {
+		if( sd.lon < lonmin ) lonmin = sd.lon;
+		else if( sd.lon > lonmax ) lonmax = sd.lon;
+		if( sd.lat < latmin ) latmin = sd.lat;
+		else if( sd.lat > latmax ) latmax = sd.lat;
+	}
+	std::cout<<"### Data Region: "<<lonmin<<" - "<<lonmax<<"   "<<latmin<<" - "<<latmax<<" ###\n";
+	// clip maps ( for faster predictions )
+	mapG.Clip( lonmin, lonmax, latmin, latmax );
+	mapP.Clip( lonmin, lonmax, latmin, latmax );
 }
 
 
@@ -137,9 +152,9 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood ) {
 	VO::PeriodicExtension( adVori, BINHWIDTH*2., adVext );
 	adVori.clear();
 
-	// bin average (L1 norm, output with center azimuth for each bin)
+	// bin average (L1 norm, [1] output with center azimuths and [2] store std-devs)
 	std::vector<AziData> adVmean, adVstd;
-	VO::BinAvg( adVext, adVmean, adVstd, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false );
+	VO::BinAvg( adVext, adVmean, adVstd, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false, false );
 
 	// exclude empty bins and define undefined std-devs
    float finf = std::numeric_limits<float>::infinity();
@@ -164,7 +179,7 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 
 	// bin average (L1 norm, output with center azimuth for each bin)
 	adVmean.clear(); adVvar.clear();	// note: std-devs are stored in adVvar
-	VO::BinAvg( adVext, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false );
+	VO::BinAvg( adVext, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false, false );
 
 	// exclude empty bins and define undefined std-devs
    float finf = std::numeric_limits<float>::infinity();
@@ -175,8 +190,8 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	std::vector<AziData> adVsel;
 	VO::SelectData( adVext, adVsel, adVmean, adVvar, exfactor );
 
-	// bin average again (L2 norm, output with averaged azimuth for each bin)
-	VO::BinAvg( adVsel, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 2, true );
+	// bin average again (L2 norm, [1] output with center azimuths and [2] store std-dev. XX not of the means)
+	VO::BinAvg( adVsel, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 2, true, false );
 
 	// exclude empty bins and define undefined std-devs
 	ad_stdest = AziData{ NaN, stdGest, stdPest, stdAest };

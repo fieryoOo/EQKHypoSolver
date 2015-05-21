@@ -109,7 +109,7 @@ namespace VO {
 	template < class T >
    bool MeanL1( const typename std::vector<T>::iterator id_lbound, 
 					 const typename std::vector<T>::iterator id_ubound,	// data range
-					  T& mean, T& L1 ) {
+					  T& mean, T& L1, const bool stdofmean ) {
 		//size_t dsize = data.size();
 		size_t dsize = id_ubound - id_lbound;
       if( dsize == 0 ) return false;
@@ -128,7 +128,9 @@ namespace VO {
       L1 = T{0.};
       for(auto iter=id_lbound; iter<id_ubound; iter++)
          L1 += fabs( *iter - mean );
-      L1 /= (dsize-1);
+		float denom = dsize-1;
+		if( stdofmean ) denom *= sqrt((double)dsize);
+      L1 /= denom;
       return true;
 	}
 
@@ -139,7 +141,7 @@ namespace VO {
 					  const typename std::vector<T>::iterator id_ubound,	// data range
 					  const std::vector<float>::iterator iw_lbound, 
 					  const std::vector<float>::iterator iw_ubound,			// weight range
-					  T& mean, T& std ) {
+					  T& mean, T& std, const bool stdofmean ) {
 		//size_t dsize = data.size();
 		size_t dsize = id_ubound - id_lbound;
       if( dsize == 0 ) return false;
@@ -168,27 +170,30 @@ namespace VO {
          std += Ttmp * Ttmp * weight;
          V2 += weight * weight;
       }
-      float frdm = V1*V1-V2;
+      float denom = V1*V1-V2;
       //if( frdm <= 0. ) {
       // mean = NaN;
       // return false;
       //}
-      std = sqrt( std * V1 / frdm );
+		if( stdofmean ) denom *= dsize;
+      std = sqrt( std * V1 / denom );
       return true;
    }
 	template < class T >
    bool MeanSTD( const typename std::vector<T>::iterator id_lbound, 
 					  const typename std::vector<T>::iterator id_ubound,		// data range
-					  T& mean, T& std ) {
+					  T& mean, T& std, const bool stdofmean ) {
       std::vector<float> weit( id_ubound-id_lbound, 1. );
-      return MeanSTD( id_lbound, id_ubound, weit.begin(), weit.end(), mean, std );
+      return MeanSTD( id_lbound, id_ubound, weit.begin(), weit.end(), mean, std, stdofmean );
    }
 
    // sub-BinAverage: takes the extended data vector and computes the mean and std in each bin
+	// aziavg: output mid (false) or mean (true) azimuth
+	// stdofmean: output std-dev (false) or std-dev of the mean (true)
 	template < class T >
    void BinAvg( std::vector<T>& datain, std::vector<T>& meanoutV, std::vector<T>& stdoutV,
 					 const float binstep, const float binhwidth, const float MIN_BIN_SIZE = 1,
-					 const size_t norm_order = 2, const bool aziavg = false ) {
+					 const size_t norm_order = 2, const bool aziavg = false, const bool stdofmean = false ) {
       // check if datain is sorted 
 		if( ! isSorted(datain) )
 			throw BadData(FuncName, "not sorted");
@@ -198,7 +203,7 @@ namespace VO {
       meanoutV.clear(); meanoutV.resize(nbin);
       stdoutV.clear(); stdoutV.resize(nbin);
       auto IT_lbound = datain.begin(), IT_ubound = datain.begin();
-		bool (*MeanFunc)(const typename std::vector<T>::iterator, const typename std::vector<T>::iterator, T&, T&);
+		bool (*MeanFunc)(const typename std::vector<T>::iterator, const typename std::vector<T>::iterator, T&, T&, const bool);
 		//MeanFunc = norm_order==1 ? &MeanL1 : &MeanSTD;
 		if( norm_order == 1 ) {
 			MeanFunc = &MeanL1;
@@ -217,7 +222,7 @@ namespace VO {
          // compute mean&variance using operator+&* of class T
          // bins with insufficient data are invalidated
          if( IT_ubound - IT_lbound < MIN_BIN_SIZE ) continue;
-         MeanFunc( IT_lbound, IT_ubound, meanoutV[iazi], stdoutV[iazi] );
+         MeanFunc( IT_lbound, IT_ubound, meanoutV[iazi], stdoutV[iazi], stdofmean );
 			auto& outazi = meanoutV[iazi].azi;
          if( aziavg ) {
             if( outazi >= 360. ) {

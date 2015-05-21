@@ -14,7 +14,7 @@ if [ `echo $ampmin $ampmax | awk '{if($1<0||$1>=$2){print 0}else{print 1}}'` == 
 	exit
 fi
 psout=results_${type}.ps 
-color=(orange lightred forestgreen steelblue midnightblue)
+color=(orange lightred forestgreen steelblue midnightblue darkgray)
 gmtset HEADER_FONT_SIZE 15
 gmtset HEADER_OFFSET -1.5
 gmtset ANNOT_FONT_SIZE 10
@@ -23,7 +23,7 @@ fMisL='Misfit2_L.out'
 Emul=1
 if [ $# -ge 5 ]; then Emul=$5; fi
 ### plot Location Misfits ###
-REG=-R1/500/0.5/5
+REG=-R1/500/0.1/5
 SCA=-JX10l/4
 psbasemap -Ba100f20/a1f0.2:."Misfit**2 Location":WeSn $REG $SCA -X4 -Y15.5 -K > $psout
 if [ -e $fMisL ]; then
@@ -34,7 +34,7 @@ fi
 
 fMisF='Misfit2_F.out'
 ### plot Focal Misfits ###
-REG=-R1/10000/0.5/20
+REG=-R1/10000/0.1/20
 SCA=-JX10/4
 psbasemap -Ba2000f500/a5f1:."Misfit**2 Focal":WeSn $REG $SCA -Y-5 -O -K >> $psout
 if [ -e $fMisF ]; then
@@ -44,7 +44,7 @@ if [ -e $fMisF ]; then
 	done
 fi
 
-perlst=( 10 16 22 30 40 )
+perlst=( 8 10 16 22 30 40 )
 iperbeg=0
 ps=0.03
 lw=2

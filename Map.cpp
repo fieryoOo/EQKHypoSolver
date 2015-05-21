@@ -6,7 +6,7 @@
 #include <fstream>
 
 struct Map::Mimpl {
-	int nlon = NaN, nlat = NaN;
+	//int nlon = NaN, nlat = NaN;
 	float grd_lon = 1., grd_lat = 1.;
 	float lonmin = NaN, lonmax = NaN;
 	float latmin = NaN, latmax = NaN;
@@ -66,9 +66,9 @@ struct Map::Mimpl {
 		/* grid/hash size */
 		//grd_lon = grd_lat = sqrt( (lonmax-lonmin) * (latmax-latmin) / sqrt((float)dataV.size()) );
 		//grd_lon = grdlon; grd_lat = grdlat;
-		nlon = (int)ceil( (lonmax-lonmin) / grd_lon ) + 1;
-		nlat = (int)ceil( (latmax-latmin) / grd_lat ) + 1;
-		dataM.Resize(nlon, nlat);
+		int nlon = (int)ceil( (lonmax-lonmin) / grd_lon ) + 1;
+		int nlat = (int)ceil( (latmax-latmin) / grd_lat ) + 1;
+		dataM.clear(); dataM.resize(nlon, nlat);
 		/* hash */
 		for(size_t i=0; i<dataV.size(); i++) {
 			DataPoint<float>& dpcur = dataV[i];
@@ -197,7 +197,37 @@ void Map::SetSource( const Point<float>& srcin ) {
 }
 
 /* --- clip the map around the source location (to speed up the average methods) --- */
-void Clip( const float dist ) {
+void Map::Clip( const float lonmin, const float lonmax, const float latmin, const float latmax ) {
+	// store new bounds
+	pimplM->lonmin = lonmin; pimplM->lonmax = lonmax;
+	pimplM->latmin = latmin; pimplM->latmax = latmax;
+	// move data matrix
+	auto& dataM = pimplM->dataM;
+	auto dataMold = std::move(dataM);
+	// resize data matrix
+	float grd_lon = pimplM->grd_lon, grd_lat = pimplM->grd_lat;
+	int nlon = (int)ceil( (lonmax-lonmin) / grd_lon ) + 1;
+	int nlat = (int)ceil( (latmax-latmin) / grd_lat ) + 1;
+	dataM.clear(); dataM.resize(nlon, nlat);
+	/* re-hash */
+	for( size_t i=0; i<dataMold.NumRows(); i++ ) {
+		for( size_t j=0; j<dataMold.NumCols(); j++ ) {
+			for( auto& dp : dataMold(i, j) ) {
+				int ilon = (int)floor((dp.Lon()-lonmin) / grd_lon + 0.5);
+				int ilat = (int)floor((dp.Lat()-latmin) / grd_lat + 0.5);
+				try {
+					dataM.at(ilon, ilat).push_back( std::move(dp) );
+				} catch(...) {}
+			}
+		}
+	}
+	//dis_lon1D.resize( dataM.NumCols() );
+	pimplM->dis_lon1D.clear();
+	float latcur = latmin;
+	while( latcur<=90. ) {
+		pimplM->dis_lon1D.push_back( Path<float>(0., latcur, 1., latcur).Dist() );
+		latcur += grd_lat;
+	}
 }
 
 

@@ -44,6 +44,12 @@ namespace WarningEA {
          : Base("Warning("+funcname+"): Unable to access file ("+info+").") {}
    };
 
+   class BadParam : public Base {
+   public:
+      BadParam(const std::string funcname, const std::string info = "")
+         : Base("Warning("+funcname+"): Bad parameters ("+info+").") {}
+   };
+
    class Other : public Base {
    public:
       Other(const std::string funcname, const std::string info = "")

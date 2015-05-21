@@ -100,7 +100,7 @@ int main( int argc, char* argv[] ) {
 		// assuming current model state to be the best fitting model, move away
 		// from this state until the probability of acceptance <= Pthreshold
 		ms.BoundFocal( 1. );
-		ms.EstimatePerturbs( eka, 0.5 );	// sfactor = 0.5
+		ms.EstimatePerturbs( eka, 0.15 );	// sfactor default= 0.1
 		// second (final) Monte Carlo Search with desired perturb sizes
 		nsearch = 50000; 
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );

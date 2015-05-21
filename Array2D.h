@@ -21,7 +21,8 @@ public:
     //Array2D( const Array2D<T>& );
 
     // Size and structure
-    void Resize( int rows, int cols );
+    void clear();
+    void resize( int rows, int cols );
     int NumRows() const                       { return m_rows; }
     int NumCols() const                    { return m_cols; }
     int Size() const                   { return m_data.size(); }
@@ -36,8 +37,11 @@ public:
     //const T & Value( int row, int col ) const { return m_data[Index(row,col)]; }
           T & operator[]( size_t idx )        { return m_data[idx]; }
     const T & operator[]( size_t idx ) const  { return m_data[idx]; }
-	  T& operator() (const int row, const int col)		{ return m_data[Index(row,col)]; }
+			 T& operator() (const int row, const int col)			{ return m_data[Index(row,col)]; }
     const T& operator() (const int row, const int col) const	{ return m_data[Index(row,col)]; }
+			 T& at(const int row, const int col)			{ return m_data.at(Index(row,col)); }
+    const T& at(const int row, const int col) const	{ return m_data.at(Index(row,col)); }
+	 
 
     /* copy the contents of another Array2D into this one as a sub matrix */
     bool CopySub(const Array2D&, int rowbeg, int colbeg ); 
@@ -82,7 +86,10 @@ Array2D<T>::Array2D( const Array2D<T>& Ain )
 
 
 template <class T>
-void Array2D<T>::Resize(int rows, int cols ) {
+void Array2D<T>::clear() {	m_data.clear(); }
+
+template <class T>
+void Array2D<T>::resize( int rows, int cols ) {
    m_rows = rows;
    m_cols = cols;
    m_data.resize( rows * cols );
