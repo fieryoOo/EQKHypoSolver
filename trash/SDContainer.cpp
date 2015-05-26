@@ -1,12 +1,11 @@
 #include "SDContainer.h"
 #include "DisAzi.h"
-#include "StaList.h"
 #include "VectorOperations.h"
 #include <algorithm>
 #include <limits>
 
 /* IO */
-void SDContainer::LoadMeasurements( const std::string& fname, const std::string fsta ) {
+void SDContainer::LoadMeasurements( const std::string& fname ) {
 	// check input file
 	std::ifstream fin( fname );
 	if( ! fin ) 
@@ -16,21 +15,10 @@ void SDContainer::LoadMeasurements( const std::string& fname, const std::string 
 	// correct the input phase traveltime measurements for phase shift!
 	float ph_shift = pio4_R==0 ? 0 : (-pio4_R*0.125*per);
 	// read from file
-	if( fsta.empty() ) {
-		for(std::string line; std::getline(fin, line); ) {
-			StaData sdcur(line.c_str(), ph_shift);
-			if( ! sdcur.isComplete() ) continue;
-			dataV.push_back( sdcur );
-		}
-	} else {
-		StaList stalst( fsta );
-		for(std::string line; std::getline(fin, line); ) {
-			StaData sdcur(line.c_str(), ph_shift);
-			if( ! sdcur.isComplete() ) continue;
-			StaInfo data_find;
-			if( stalst.SearchLoc( sdcur.lon, sdcur.lat, data_find ) )
-				dataV.push_back( sdcur );
-		}
+	for(std::string line; std::getline(fin, line); ) {
+		StaData sdcur(line.c_str(), ph_shift);
+		if( ! sdcur.isComplete() ) continue;
+		dataV.push_back( sdcur );
 	}
 }
 

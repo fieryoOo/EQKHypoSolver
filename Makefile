@@ -2,15 +2,8 @@ BIN1 = EQKSolver
 
 BIN2 = Auxiliary
 
-#BIN2 = SearchSource_SA_MC
+BIN3 = PredSrcPatterns
 
-#BIN3 = CheckFit
-
-#BIN4 = PredictTraveltimes
-
-#BIN5 = ComputeMisfitsAll
-
-#BINTEST = Test
 
 OBJS = SDContainer.o Map.o RadPattern.o EQKAnalyzer.o 
 
@@ -32,7 +25,7 @@ FC = gfortran
 
 CC = g++
 
-all : $(BIN1) $(BIN2)
+all : $(BIN1) $(BIN2) $(BIN3)
 
 $(BIN1) : $(OBJS) $(OBJS_Rad) $(BIN1).o
 	$(FC) $^ $(LIBS) -o $@
@@ -62,5 +55,5 @@ $(VPATH_Rad)/%.o : $(VPATH_Rad)/%.f
 	$(CC) $(cflags) -c $< -o $@
 
 clean :
-	rm -f $(BIN1) $(BIN1).o $(BIN2) $(BIN2).o $(OBJS) $(OBJS_Rad)
+	rm -f $(BIN1) $(BIN1).o $(BIN2) $(BIN2).o $(BIN3) $(BIN3).o $(OBJS) $(OBJS_Rad)
 

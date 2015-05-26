@@ -137,11 +137,12 @@ namespace Searcher {
 			_poc += pocinc;	// update perc-of-completion
 			// output search info
 			sout<<si<<"\n";
+			if( i % 100 == 0 ) sout.flush();
 			} // critical ends
 		}
 		// output final result
 		sibest.accepted = -1;	// -1 for best fitting model
-		sout<<sibest<<"\n";
+		sout<<sibest<<std::endl;
 		std::sort( VSinfo.begin(), VSinfo.end() );
 		// set model state to the best fitting model
 		ms.SetMState( sibest.info );
@@ -171,8 +172,8 @@ namespace Searcher {
 			{	// section S
 			std::this_thread::sleep_for( std::chrono::seconds(1) );
 			while( _poc >= 0. ) {
-				std::cout<<"*** In process... "<<std::setprecision(1)<<std::setw(4)<<_poc*100<<"\% completed... ***\n\x1b[A";
-				std::this_thread::sleep_for( std::chrono::seconds(10) );
+				std::cout<<"*** In process... "<<std::setprecision(1)<<std::setw(4)<<_poc*100<<"\% completed... ***"<<std::endl<<"\x1b[A";
+				std::this_thread::sleep_for( std::chrono::seconds(20) );
 			}
 			std::cout<<"### 100.0\% completed ###\t\t\t\n";
 			}	// section E

@@ -88,8 +88,8 @@ PlotHisto .PlotPosterior_tmp 9 7 0 "latitude" >> results
 PlotHisto .PlotPosterior_tmp 10 7 0 "origin time" >> results
 
 finfo1=`more results | awk '{print $1,$4,$7,$10}'`
-#finfo2=`/projects/yeti4009/code/Programs/ExploitEvent/SearchLocation/Auxiliary $finfo1`
-finfo2=`/home/tianye/EQKHypoSolver/Auxiliary $finfo1`
+finfo2=`/projects/yeti4009/eqkhyposolver/Auxiliary $finfo1`
+#finfo2=`/home/tianye/EQKHypoSolver/Auxiliary $finfo1`
 echo -e "\nFocal: ("$finfo1") - ("$finfo2")" >> results
 
 # plot misfits

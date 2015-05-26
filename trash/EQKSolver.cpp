@@ -12,7 +12,7 @@
 int main( int argc, char* argv[] ) {
 	if( argc < 2 ) {
 		std::cerr<<"Usage: "<<argv[0]<<" [param file] "
-					<<"[options (-i=initial_only  -c=chiSquare_init -s=skip_SA -r=rad_patterns)]"<<std::endl;
+					<<"[options (-i=initial_only  -c=chiSquare_init -s=skip_SA)]"<<std::endl;
 		return -1;
 	}
 
@@ -51,10 +51,6 @@ int main( int argc, char* argv[] ) {
 			if(fout) fout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
 			std::cout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<"   E="<<eka.Energy(ms, Ndata)<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
 		}
-
-		// option -r: output initial source patterns
-		if( std::find(options.begin(), options.end(), 'r') != options.end() )
-			eka.OutputSourcePatterns(ms);
 
 		// option -i: stop after output initial fit and misfits
 		if( std::find(options.begin(), options.end(), 'i') != options.end() )
@@ -112,7 +108,6 @@ int main( int argc, char* argv[] ) {
 		// final output
 		eka.Output( ms );
 		eka.OutputMisfits( ms );
-		eka.OutputSourcePatterns( ms );
 
 	} catch(std::exception& e) {
       std::cerr<<e.what()<<std::endl;

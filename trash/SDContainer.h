@@ -56,26 +56,26 @@ public:
 
 	// 3D model: Path velocities (and thus Tpaths) are predicted on the fly from vel maps
 	SDContainer( const float perin, const char typein, const std::string fmeasure, 
-					 const std::string fmapG, const std::string fmapP, const std::string fsta="" ) 
+					 const std::string fmapG, const std::string fmapP ) 
 		: per(perin), oop(1./perin), type(typein) {
 		if( type!='R' && type!='L' ) {
 			std::string str("unknown data type: "); str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
 		}
-		LoadMeasurements( fmeasure, fsta );
+		LoadMeasurements( fmeasure );
 		LoadMaps( fmapG, fmapP );
 	}
 
 	// 1D model: Path velocities are fixed at the input velocities
 	SDContainer( const float perin, const char typein, const std::string fmeasure, 
-					 const float velG, const float velP, const std::string fsta="" ) 
+					 const float velG, const float velP ) 
 		: per(perin), oop(1./perin), type(typein), 
 		  _velG(velG), _velP(velP) {
 		if( type!='R' && type!='L' ) {
 			std::string str("unknown data type: "); str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
 		}
-		LoadMeasurements( fmeasure, fsta );
+		LoadMeasurements( fmeasure );
 	}
 	/*
 	SDContainer( float perin, const std::vector<StaData>& datain )
@@ -118,7 +118,7 @@ public:
 	void BinAverage_ExcludeBad( std::vector<StaData>& sdVgood );
 
 	/* IO */
-	void LoadMeasurements( const std::string& fmeasure, const std::string fsta="" );
+	void LoadMeasurements( const std::string& fmeasure );
 	void LoadMaps( const std::string& fmapG, const std::string& fmapP );
 	void PrintAll( std::ostream& sout = std::cout ) {
 		for( const auto& sd : dataV )
@@ -142,9 +142,9 @@ protected:
    static constexpr float DISMIN = 0.;								/* allowed min */
    static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */
 
-   static constexpr float stdGest = 4.5;							/* an estimation of GroupT, */
-   static constexpr float stdPest = 1.5;							/* PhaseT, */
-   static constexpr float stdAest = 0.35;							/* and Amplitude (as fraction of the amplitude!) std-dev */
+   static constexpr float stdGest = 4.0;							/* an estimation of GroupT, */
+   static constexpr float stdPest = 1.3;							/* PhaseT, */
+   static constexpr float stdAest = 0.3;							/* and Amplitude (as fraction of the amplitude!) std-dev */
 
    static constexpr float varRGmin = 4.0, varLGmin = 4.0;		/* the lowerbound of GroupT, was 0.8 */
    static constexpr float varRPmin = 0.5, varLPmin = 0.5;		/* PhaseT, was 0.3 */

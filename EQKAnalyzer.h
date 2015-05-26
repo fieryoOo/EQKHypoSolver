@@ -173,6 +173,8 @@ public:
 	void Output( const ModelInfo& minfo );
    // compute and output misfits, separately, for group, phase, and amplitudes
 	void OutputMisfits( const ModelInfo& minfo );
+	// output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves
+	void OutputSourcePatterns( const ModelInfo& mi );
 
 protected:
 	static const int NdataMin = 10;
@@ -183,6 +185,8 @@ public:
    FileName outname_misL;           // filename for output location misfit
    FileName outname_misAll;         // filename for output all separated misfits (group, phase, amplitude)
    FileName outname_pos;            // filename for output posterior distribution
+	FileName outname_srcR;				// filename for output Rayl source patterns
+	FileName outname_srcL;				// filename for output Love source patterns
 
 private:
 	// RadPattern objects for predicting source terms
@@ -207,7 +211,7 @@ private:
    float weightR_Loc = 1., weightL_Loc = 1.;  // weighting between Rayleigh and Love data for Location search
    float weightR_Foc = 1., weightL_Foc = 1.;  // weighting between Rayleigh and Love data for Focal search
 	// Input files. Three files at each period for 1) measurements, 2) group vel map, and 3) phase vel map
-	std::map<float, std::array<FileName, 3> > fRlist, fLlist;
+	std::map<float, std::array<FileName, 4> > fRlist, fLlist;
 	// Input eigen-function and phase-velocity files
 	FileName fReigname, fRphvname;
    FileName fLeigname, fLphvname;

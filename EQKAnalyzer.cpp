@@ -140,21 +140,23 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 		}
 	}
 	else if( stmp == "fRm" ) {
-		FileName stmp1, stmp2, stmp3;
+		FileName stmp1, stmp2, stmp3, stmp4;
 		float per;
-		succeed = buff >> stmp1 >> stmp2 >> stmp3 >> per;
+		succeed = buff >> stmp1 >> stmp2 >> stmp3 >> per;	// fmeasure, fmapG, fmapP, per
+		buff >> stmp4;													// station list (optional)
 		if( succeed ) {
 			if( fRlist.find(per) != fRlist.end() ) return -3;	// period already exists
-			fRlist[per] = std::array<FileName, 3>{stmp1, stmp2, stmp3};
+			fRlist[per] = std::array<FileName, 4>{stmp1, stmp2, stmp3, stmp4};
 		}
 	}
 	else if( stmp == "fLm" ) {
-		FileName stmp1, stmp2, stmp3;
+		FileName stmp1, stmp2, stmp3, stmp4;
 		float per;
-		succeed = buff >> stmp1 >> stmp2 >> stmp3 >> per;
+		succeed = buff >> stmp1 >> stmp2 >> stmp3 >> per;	// fmeasure, fmapG, fmapP, per
+		buff >> stmp4;													// station list (optional)
 		if( succeed ) {
 			if( fLlist.find(per) != fLlist.end() ) return -3;	// period already exists
-			fLlist[per] = std::array<FileName, 3>{stmp1, stmp2, stmp3};
+			fLlist[per] = std::array<FileName, 4>{stmp1, stmp2, stmp3, stmp4};
 		}
 	}
 	else if( stmp == "fmisL" ) {
@@ -181,6 +183,16 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	}
 	else if( stmp == "fpos" ) {
 		FileName& outname = outname_pos;
+		succeed = buff >> outname;
+		if( succeed && MoveF ) outname.SaveOld();
+	}
+	else if( stmp == "fsrcR" ) {
+		FileName& outname = outname_srcR;
+		succeed = buff >> outname;
+		if( succeed && MoveF ) outname.SaveOld();
+	}
+	else if( stmp == "fsrcL" ) {
+		FileName& outname = outname_srcL;
 		succeed = buff >> outname;
 		if( succeed && MoveF ) outname.SaveOld();
 	}
@@ -309,9 +321,9 @@ void EQKAnalyzer::LoadData() {
 		// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
 		float velG, velP;
 		if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-			_dataR.push_back( SDContainer(per, 'R', farray[0], velG, velP) );
+			_dataR.push_back( SDContainer(per, 'R', farray[0], velG, velP, farray[3]) );
 		} else {
-			_dataR.push_back( SDContainer(per, 'R', farray[0], farray[1], farray[2]) );
+			_dataR.push_back( SDContainer(per, 'R', farray[0], farray[1], farray[2], farray[3]) );
 		}
 	}
 
@@ -322,9 +334,9 @@ void EQKAnalyzer::LoadData() {
 		const auto& farray = fL.second;
 		float velG, velP;
 		if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-			_dataL.push_back( SDContainer(per, 'L', farray[0], velG, velP) );
+			_dataL.push_back( SDContainer(per, 'L', farray[0], velG, velP, farray[3]) );
 		} else {
-			_dataL.push_back( SDContainer(per, 'L', farray[0], farray[1], farray[2]) );
+			_dataL.push_back( SDContainer(per, 'L', farray[0], farray[1], farray[2], farray[3]) );
 		}
 	}
 
@@ -655,3 +667,19 @@ if( per == 22. ) {
 	}
 
 }
+
+
+/* -------------------- output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves -------------------- */
+void EQKAnalyzer::OutputSourcePatterns( const ModelInfo& mi ) {
+	float stk = mi.stk, dip = mi.dip, rak = mi.rak, dep = mi.dep;
+	//stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
+	//rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
+	_rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
+	_rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
+
+	// output source predictions (R)
+	_rpR.OutputPreds(outname_srcR);
+	_rpL.OutputPreds(outname_srcL);
+}
+
+
