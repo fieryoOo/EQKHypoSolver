@@ -1,5 +1,5 @@
 #include "EQKAnalyzer.h"
-#include "DisAzi.h"
+//#include "DataTypes.h"
 #include <sstream>
 #include <sys/stat.h>
 #include <cstdlib>
@@ -16,32 +16,8 @@ EQKAnalyzer::EQKAnalyzer( const std::string fparam, bool MoveF ) {
 //EQKAnalyzer::~EQKAnalyzer() {}
 
 
-/* -------------------- param/data preparations (loading) -------------------- */
-/*
-bool EQKAnalyzer::InitEpic() {
-	const float NaN = ModelInfo::NaN;
-	if( Rs>0 && clon!=NaN && clat!=NaN) {
-		double dist;
-		try {
-			//calc_dist(clat, clon, clat, clon+1, &dist);
-			dist = Path<double>(clon, clat, clon+1., clat).Dist();
-			Rlon = Rs / dist;
-			//calc_dist(clat, clon, clat+1, clon, &dist);
-			dist = Path<double>(clon, clat, clon, clat+1.).Dist();
-			Rlat = Rs / dist;
-		} catch ( std::exception& e ) {
-			std::cerr<<e.what()<<std::endl;
-			return false;
-		}
-		return true;
-	}
-	else {
-		Rlon = Rlat = NaN;
-		return false;
-	}
-}
-*/
 
+/* -------------------- param/data preparations (loading) -------------------- */
 bool EQKAnalyzer::MKDir(const char *dirname) const {
 	//create dir if not exists
 	//with read/write/search permissions for owner and group, and with read/search permissions for others if not already exists
@@ -671,15 +647,19 @@ if( per == 22. ) {
 
 /* -------------------- output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves -------------------- */
 void EQKAnalyzer::OutputSourcePatterns( const ModelInfo& mi ) {
+	if( outname_srcR.empty() && outname_srcL.empty() ) return;
+	// call PredictAll for Afactors (needs a new, less redundant method here!)
+	PredictAll( mi, true );
+	/*
 	float stk = mi.stk, dip = mi.dip, rak = mi.rak, dep = mi.dep;
 	//stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
 	//rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
 	_rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
 	_rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
+	*/
 
 	// output source predictions (R)
-	_rpR.OutputPreds(outname_srcR);
-	_rpL.OutputPreds(outname_srcL);
+	if( ! outname_srcR.empty() ) _rpR.OutputPreds(outname_srcR, _AfactorR);
+	if( ! outname_srcL.empty() ) _rpL.OutputPreds(outname_srcL, _AfactorL);
 }
-
 

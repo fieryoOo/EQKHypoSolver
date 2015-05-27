@@ -14,7 +14,7 @@ if [ `echo $ampmin $ampmax | awk '{if($1<0||$1>=$2){print 0}else{print 1}}'` == 
 	exit
 fi
 psout=results_${type}.ps 
-color=(orange lightred forestgreen steelblue midnightblue darkgray)
+color=(orange lightred green steelblue midnightblue darkgray)
 gmtset HEADER_FONT_SIZE 15
 gmtset HEADER_OFFSET -1.5
 gmtset ANNOT_FONT_SIZE 10
@@ -58,8 +58,14 @@ iper=$iperbeg
 for per in ${perlst[@]}; do
    fsta=${type}_azi_data_pred_${per}sec.txt_sta
 	fbin=${type}_azi_data_pred_${per}sec.txt_bin
+	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
+	fsource=SourcePatterns_${type}.txt
    grep -v '\-12345' $fsta | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$5-$6}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
-   grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$7}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
+		awk -v per=$per '$5==per{print $1,$2}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	else
+		grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$7}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	fi
 	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$2+$3,$4}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
    let iper++
 done
@@ -73,8 +79,14 @@ iper=$iperbeg
 for per in ${perlst[@]}; do
    fsta=${type}_azi_data_pred_${per}sec.txt_sta
 	fbin=${type}_azi_data_pred_${per}sec.txt_bin
+	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
+	fsource=SourcePatterns_${type}.txt
    grep -v '\-12345' $fsta | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$8-$9}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
-   grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$10}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
+		awk -v per=$per '$5==per{print $1,$3}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	else
+		grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$10}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	fi
 	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$5+$6,$7}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
    let iper++
 done
@@ -93,8 +105,14 @@ fi
 for per in ${perlst[@]}; do
    fsta=${type}_azi_data_pred_${per}sec.txt_sta
 	fbin=${type}_azi_data_pred_${per}sec.txt_bin
+	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
+	fsource=SourcePatterns_${type}.txt
    grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$11}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
-   grep -v '\-12345' $fsta | awk -v iter=$iter -v ampfactor=$ampfactor 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter&&NF>0){print $4,$12*ampfactor}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
+		awk -v per=$per '$5==per{print $1,$4}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	else
+		grep -v '\-12345' $fsta | awk -v iter=$iter -v ampfactor=$ampfactor 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter&&NF>0){print $4,$12*ampfactor}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
+	fi
 	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8+$9,$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
    let iper++
 done

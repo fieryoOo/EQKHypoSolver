@@ -8,11 +8,11 @@ const int nazi = RadPattern::nazi;
 extern"C" {
    void rad_pattern_r_(char *feig_buff, int *eig_len, int *phvnper, int *phvdper,
                        const float *strike, const float *dip, const float *rake, const float *depth,
-		       const float *per, int *nper,
+							  const float *per, int *nper,
                        float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
    void rad_pattern_l_(char *feig_buff, int *eig_len, int *phvnper, int *phvdper,
                        const float *strike, const float *dip, const float *rake, const float *depth,
-		       const float *per, int *nper,
+							  const float *per, int *nper,
                        float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
 }
 
@@ -273,7 +273,7 @@ bool RadPattern::GetPred( const float per, const float azi,
 	return true;
 }
 
-void RadPattern::OutputPreds( const std::string& fname ) {
+void RadPattern::OutputPreds( const std::string& fname, const float Afactor ) {
 	if( grtM.size() == 0 ) return;
 
 	std::ofstream fout( fname );
@@ -289,7 +289,7 @@ void RadPattern::OutputPreds( const std::string& fname ) {
 			if( grt == RadPattern::NaN ) continue;
 			float pht = phtV.at(iazi);
 			float amp = ampV.at(iazi);
-			fout<<azi<<" "<<grt<<" "<<pht<<" "<<amp<<" "<<per<<"\n";
+			fout<<azi<<" "<<grt<<" "<<pht<<" "<<amp*Afactor<<" "<<per<<"\n";
 		}
 		fout<<"\n\n";
 	}

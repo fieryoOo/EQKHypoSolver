@@ -107,12 +107,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			Plon = pertfactor * Rlon; Plat = pertfactor * Rlat;
 			Pstk = Pdip = Prak = Pdep = 0.;
 		}
-		void unFix() {
-			Ptim = pertfactor * Rtim;
-			Plon = pertfactor * Rlon; Plat = pertfactor * Rlat;
-			Pstk = pertfactor * Rstk; Pdip = pertfactor * Rdip;
-			Prak = pertfactor * Rrak; Pdep = pertfactor * Rdep;
-		}
+		void unFix() {	resetPerturb(); }
 
 		void SetFreeFocal( bool rand_init = false) {
 			// searching centers and ranges
@@ -131,12 +126,30 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			}
 		}
 
-		void BoundFocal( float Rfactor = 1. ) {
-			ModelSpace ms;	// create default model space
+		// centralize the model space around the current MState
+		void Centralize() {
+			// set model center to the current MState
+			Clon = lon; Clat = lat; Ctim = t0;
+			Cstk = stk; Cdip = dip; Crak = rak; Cdep = dep;
+		}
+
+		void Bound( const float Rfactor = 1., const float pertf = NaN ) {
+			// create default model space
+			ModelSpace ms;
+			// reset perturb factor
+			if( pertf > 0. ) {
+				pertfactor = pertf;
+			} else {
+				pertfactor = ms.pertfactor;
+			}
+			// reset perturb half lengths
+			Rtim = ms.Rtim*Rfactor;
+			Rlon = ms.Rlon*Rfactor; Rlat = ms.Rlat*Rfactor;
 			Rstk = ms.Rstk*Rfactor; Rdip = ms.Rdip*Rfactor;
 			Rrak = ms.Rrak*Rfactor; Rdep = ms.Rdep*Rfactor;
 			// reset model center, perturbation ranges, and random number generators
-			Initialize();
+			Centralize();
+			resetPerturb();
 		}
 
 		// decide perturb step length for each parameter based on the model sensitivity to them
@@ -274,7 +287,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 	private: // variables
 		//bool validS{false}, validP{false};
 		float Clon{NaN}, Clat{NaN}, Ctim{NaN}, Cstk{NaN}, Cdip{NaN}, Crak{NaN}, Cdep{NaN}; // model center
-		float Rlon{0.3}, Rlat{0.3}, Rtim{5.}, Rstk{30.}, Rdip{15.}, Rrak{30.}, Rdep{7.5}; // model param radius
+		float Rlon{0.15}, Rlat{0.15}, Rtim{2.}, Rstk{30.}, Rdip{20.}, Rrak{30.}, Rdep{5.}; // model param radius
 		float Plon{NaN}, Plat{NaN}, Ptim{NaN}, Pstk{NaN}, Pdip{NaN}, Prak{NaN}, Pdep{NaN}; // perturb length ( gaussian half length )
 		float pertfactor{0.1};
 		mutable std::vector<Rand> randO;

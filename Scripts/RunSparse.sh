@@ -104,8 +104,10 @@ while [ 1 == 1 ]; do
 	sleep 60
 done
 dir_sparse=results_Sparse
-rm -rf old_results/${dir_sparse}
-mv ${dir_sparse} old_results
+if [ -e ${dir_sparse} ]; then
+	rm -rf old_results/${dir_sparse}
+	mv ${dir_sparse} old_results
+fi
 mkdir ${dir_sparse}
 ls -d results_SAMC_?_*_*_Sparse* | xargs -I dir mv dir ${dir_sparse}
 
