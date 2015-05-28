@@ -125,7 +125,7 @@ PlotBeachball() {
 		echo $_lon $_lat | psxy -R -J -Sc${_size1} -G$_colorFill -W2,$_colorPen -O -K >> $_psout
 	fi
 	if [ $# -gt 9 ]; then
-		echo $_lon $_lat $_text | awk '{print $1, $2-0.002, "5. 0. 20 LT", $3}' | pstext -R -J -Wlightgray,O3 -O -K -N >> $psout
+		echo $_lon $_lat $_text | awk '{print $1, $2-0.002, "8. 0. 20 LT", $3}' | pstext -R -J -Wlightgray,O3 -O -K -N >> $psout
 	fi
 }
 
@@ -255,7 +255,7 @@ for (( idir=0; idir<$ndir; idir++ )); do
 	# point
 	#PlotPoint $psout $clocS $_colorP ${colorE[ilab]}
 	#PlotPoint $psout $clocS $_color $_color
-	PlotBeachball $psout `echo ${model_best[idir]} | awk '{print $1,$2,$3,$4,$5,$6}'` $_color $_color $trlno
+	PlotBeachball $psout `echo ${model_best[idir]} | awk '{print $1,$2,$3,$4,$5,$6}'` $_color #$_color $trlno
 done
 
 # plot results from other studies

@@ -1,59 +1,70 @@
+# --- excutables to build --- #
 BIN1 = EQKSolver
-
 BIN2 = Auxiliary
-
 BIN3 = PredSrcPatterns
 
+BINall = $(BIN1) $(BIN2) $(BIN3)
+all : $(BINall)
 
-OBJS = SDContainer.o Map.o RadPattern.o EQKAnalyzer.o 
-
-VPATH_Rad = RadPattern_src
-OBJS_Rad = $(VPATH_Rad)/rad_pattern4_Rayl.o $(VPATH_Rad)/rad_pattern4_Love.o \
-	   $(VPATH_Rad)/source.o $(VPATH_Rad)/surfread.o $(VPATH_Rad)/angles2tensor.o \
- 	   $(VPATH_Rad)/pha.o $(VPATH_Rad)/unwrapR.o $(VPATH_Rad)/unwrapL.o
-
-OMPflag = -fopenmp
-
-LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -O3
-
-cflags = -O3 -std=c++0x $(OMPflag) #-O3
-
-fflags = -e -O2 -ffixed-line-length-132 $(OMPflag) #-O2
-
-
+# --- compiliers --- #
 FC = gfortran
-
 CC = g++
 
-all : $(BIN1) $(BIN2) $(BIN3)
+# --- modules --- #
+MODULES	:= src_MISC src_RadPattern src_SDContainer
+MOD_DIRS := $(MODULES)
+#MOD_DIRS := $(addprefix mod_,$(MODULES))
 
-$(BIN1) : $(OBJS) $(OBJS_Rad) $(BIN1).o
-	$(FC) $^ $(LIBS) -o $@
+# --- find source files for cpp and fortran separately --- #
+#SRC_DIRS := . $(MOD_DIRS)
+#SRCS_C	:= $(foreach sdir,$(SRC_DIRS),$(wildcard $(sdir)/*.cpp))
+#SRCS_F	:= $(foreach sdir,$(SRC_DIRS),$(wildcard $(sdir)/*.f))
 
-$(BIN2) : $(OBJS) $(OBJS_Rad) $(BIN2).o
-	$(FC) $^ $(LIBS) -o $@
+#vpath %.cpp $(SRC_DIR)
+#vpath %.f $(SRC_DIR)
 
-$(BIN3) : $(OBJS) $(OBJS_Rad) $(BIN3).o
-	$(FC) $^ $(LIBS) -o $@
+# --- flags --- #
+INCLUDES	:= $(addprefix -I,$(MOD_DIRS))
+OMPflag = -fopenmp
+cflags = -O3 -std=c++11 $(OMPflag) $(INCLUDES)	#-O3
+fflags = -e -O2 -ffixed-line-length-132 $(OMPflag)	#-O2
+LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -O3
 
-$(BIN4) : $(OBJS) $(OBJS_Rad) $(BIN4).o
-	$(FC) $^ $(LIBS) -o $@
+# --- objects --- #
+#OBJS_C	:= $(patsubst %.cpp,%.o,$(SRCS_C))
+#OBJS_F	:= $(patsubst %.f,%.o,$(SRCS_F))
+OBJS_M	:= $(addsuffix .o,$(MOD_DIRS))
+OBJS	:= $(OBJS_M)
+#OBJS	+= $(patsubst %.cpp,%.o,$(wildcard ./*.cpp))
 
-$(BIN5) : $(OBJS) $(OBJS_Rad) $(BIN5).o
-	$(FC) $^ $(LIBS) -o $@
+# --- rules --- #
+define make-bin
+$(1) : $(OBJS) $(1).o
+	$(FC) $$^ $(LIBS) -o $$@
+endef
+$(foreach bin,$(BINall),$(eval $(call make-bin,$(bin))))
 
-$(BIN6) : $(OBJS) $(OBJS_Rad) $(BIN6).o
-	$(FC) $^ $(LIBS) -o $@
+#$(BIN1) : $(OBJS) $(BIN1).o
+#	$(FC) $^ $(LIBS) -o $@
 
-$(BINTEST) : $(OBJS) $(OBJS_Rad) $(BINTEST).o
-	$(FC) $^ $(LIBS) -o $@
-
-$(VPATH_Rad)/%.o : $(VPATH_Rad)/%.f
-	$(FC) $(fflags) -c $< -o $@
+define make-module-obj
+$(1).o : $(patsubst %.cpp,%.o,$(wildcard $(1)/*.cpp)) $(patsubst %.f,%.o,$(wildcard $(1)/*.f))
+	ld -r $$^ -o $$@
+endef
+$(foreach moddir,$(MOD_DIRS),$(eval $(call make-module-obj,$(moddir))))
 
 %.o : %.cpp
 	$(CC) $(cflags) -c $< -o $@
 
+%.o : %.f
+	$(FC) $(fflags) -c $< -o $@
+
+
+.PHONY : clean
 clean :
-	rm -f $(BIN1) $(BIN1).o $(BIN2) $(BIN2).o $(BIN3) $(BIN3).o $(OBJS) $(OBJS_Rad)
+	rm -f $(BINall) $(addsuffix .o,$(BINall)) $(OBJS)
+
+.PHONY : clean-mod
+clean-mod :
+	rm -f $(foreach moddir,$(MOD_DIRS),$(wildcard $(moddir)/*.o))
 

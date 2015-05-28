@@ -1,6 +1,7 @@
 #ifndef EQKANALYZER_H
 #define EQKANALYZER_H
 
+#include "ModelInfo.h"
 #include "RadPattern.h"
 #include "SDContainer.h"
 #include "Searcher.h"

@@ -1,11 +1,12 @@
 #include "SDContainer.h"
 #include "DisAzi.h"
+#include "StaList.h"
 #include "VectorOperations.h"
 #include <algorithm>
 #include <limits>
 
 /* IO */
-void SDContainer::LoadMeasurements( const std::string& fname ) {
+void SDContainer::LoadMeasurements( const std::string& fname, const std::string fsta ) {
 	// check input file
 	std::ifstream fin( fname );
 	if( ! fin ) 
@@ -15,10 +16,21 @@ void SDContainer::LoadMeasurements( const std::string& fname ) {
 	// correct the input phase traveltime measurements for phase shift!
 	float ph_shift = pio4_R==0 ? 0 : (-pio4_R*0.125*per);
 	// read from file
-	for(std::string line; std::getline(fin, line); ) {
-		StaData sdcur(line.c_str(), ph_shift);
-		if( ! sdcur.isComplete() ) continue;
-		dataV.push_back( sdcur );
+	if( fsta.empty() ) {
+		for(std::string line; std::getline(fin, line); ) {
+			StaData sdcur(line.c_str(), ph_shift);
+			if( ! sdcur.isComplete() ) continue;
+			dataV.push_back( sdcur );
+		}
+	} else {
+		StaList stalst( fsta );
+		for(std::string line; std::getline(fin, line); ) {
+			StaData sdcur(line.c_str(), ph_shift);
+			if( ! sdcur.isComplete() ) continue;
+			StaInfo data_find;
+			if( stalst.SearchLoc( sdcur.lon, sdcur.lat, data_find ) )
+				dataV.push_back( sdcur );
+		}
 	}
 }
 
@@ -46,8 +58,8 @@ void SDContainer::LoadMaps( const std::string& fmapG, const std::string& fmapP )
 
 // compute azimuth and distance for each station based on the input epicenter location
 void SDContainer::UpdateAziDis( const float srclon, const float srclat ) {
-	//if( model.lon==srclon && model.lat==srclat )	return;
-	//model.lon = srclon; model.lat=srclat;	// do not save source location unless UpdatePathPred is called!
+	//if( lon==srclon && lat==srclat )	return;
+	//lon = srclon; lat=srclat;	// do not save source location unless UpdatePathPred is called!
 	for( auto& sdtmp : dataV ) {
 		try {
 			Path<double> pathcur(srclon, srclat, sdtmp.lon, sdtmp.lat);
@@ -65,9 +77,9 @@ void SDContainer::UpdateAziDis( const float srclon, const float srclat ) {
 // predict traveltimes from VelMaps and store into Gpath&Ppath
 bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const float srct0 ) {
 	// return false if epicenter doesn't change
-	if( model.lon==srclon && model.lat==srclat && model.t0==srct0 ) return false;
+	if( lon==srclon && lat==srclat && t0==srct0 ) return false;
 	// save new source location and update azimuth/distance
-	model.lon = srclon; model.lat = srclat; model.t0 = srct0;
+	lon = srclon; lat = srclat; t0 = srct0;
 	UpdateAziDis( srclon, srclat );
 
 	// period and wavelength
@@ -111,8 +123,8 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 
 void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 	// save new focal info
-	model.stk = rad.stk; model.dip = rad.dip;
-	model.rak = rad.rak; model.dep = rad.dep;
+	stk = rad.stk; dip = rad.dip;
+	rak = rad.rak; dep = rad.dep;
 	/*
 	// and update source terms
 	radR.Predict( 'R', "TEST/SourceModels/245.25_41.25.R", "TEST/SourceModels/245.25_41.25.R.phv", stk, dip, rak, dep, SDContainer::perlst );

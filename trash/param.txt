@@ -1,0 +1,74 @@
+######### location range ##########
+#SA (thread 1) search# 1 (T=98.1133, tid=1): minfo = (210.208 39.6266 -93.3945  8.04806   245.117 41.2315  2.89362) N = 0 E = -671.25 (accepted)
+#lon 245.1629
+#lat 41.1527
+#t0 -4.0348
+lon	-115.
+lat	41.
+t0		0.
+pertfactor 0.1
+
+######### initial mechanism #########
+#stk 211.16
+#dip 39.33
+#rak -87.13
+#dep 8.07
+stk	110
+dip	50
+rak	-30
+dep	20
+
+######### weightings (implementation removed) #########
+#weightR_Loc 0.5
+#weightL_Loc 0.5
+#weightR_Foc 0.5
+#weightL_Foc 0.5
+
+######### source models ##########
+fRse TEST/SourceModels/245.25_41.25.R
+fRsp TEST/SourceModels/245.25_41.25.R.phv
+#fRse TEST/SourceModels/248_43.R
+#fRsp TEST/SourceModels/248_43.R.phv
+
+fLse TEST/SourceModels/245.25_41.25.L
+fLsp TEST/SourceModels/245.25_41.25.L.phv
+
+########## data to be used ###########
+dflag B		# datatype(s) to search with
+indep 0.1	# factor describing data independence
+#noG
+#noP
+#noA
+
+########## measurements and vel maps ###########
+fRm TEST/Measurements/R_Sta_grT_phT_Amp_10sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_10sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_10sec.txt 10
+fRm TEST/Measurements/R_Sta_grT_phT_Amp_16sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_16sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_16sec.txt 16
+fRm TEST/Measurements/R_Sta_grT_phT_Amp_22sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_22sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_22sec.txt 22
+fRm TEST/Measurements/R_Sta_grT_phT_Amp_30sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_30sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_30sec.txt 30
+fRm TEST/Measurements/R_Sta_grT_phT_Amp_40sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_40sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_40sec.txt 40
+
+fLm TEST/Measurements/L_Sta_grT_phT_Amp_10sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_10sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_10sec.txt 10
+fLm TEST/Measurements/L_Sta_grT_phT_Amp_16sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_16sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_16sec.txt 16
+fLm TEST/Measurements/L_Sta_grT_phT_Amp_22sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_22sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_22sec.txt 22
+fLm TEST/Measurements/L_Sta_grT_phT_Amp_30sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_30sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_30sec.txt 30
+fLm TEST/Measurements/L_Sta_grT_phT_Amp_40sec_dis1000.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_40sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_40sec.txt 40
+
+
+########## output names ############
+fmisL results_SAMC_B1000_Eikonal/Misfit2_L.out
+fmisF results_SAMC_B1000_Eikonal/Misfit2_F.out
+fmisAll results_SAMC_B1000_Eikonal/Misfits_All.out
+fpos  results_SAMC_B1000_Eikonal/PosteriorD.txt
+
+ffitR results_SAMC_B1000_Eikonal/R_azi_data_pred_10sec.txt 10
+ffitR results_SAMC_B1000_Eikonal/R_azi_data_pred_16sec.txt 16
+ffitR results_SAMC_B1000_Eikonal/R_azi_data_pred_22sec.txt 22
+ffitR results_SAMC_B1000_Eikonal/R_azi_data_pred_30sec.txt 30
+ffitR results_SAMC_B1000_Eikonal/R_azi_data_pred_40sec.txt 40
+
+ffitL results_SAMC_B1000_Eikonal/L_azi_data_pred_10sec.txt 10
+ffitL results_SAMC_B1000_Eikonal/L_azi_data_pred_16sec.txt 16
+ffitL results_SAMC_B1000_Eikonal/L_azi_data_pred_22sec.txt 22
+ffitL results_SAMC_B1000_Eikonal/L_azi_data_pred_30sec.txt 30
+ffitL results_SAMC_B1000_Eikonal/L_azi_data_pred_40sec.txt 40
+

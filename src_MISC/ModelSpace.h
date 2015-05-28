@@ -1,6 +1,7 @@
 #ifndef MODELSPACE_H
 #define MODELSPACE_H
 
+#include "ModelInfo.h"
 #include "MyOMP.h"
 #include "Searcher.h"
 #include "EQKAnalyzer.h"
