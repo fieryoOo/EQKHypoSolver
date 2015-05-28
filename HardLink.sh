@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # check code directory
-dirs=(${dir_code} /home/tianye/code)
+dirs=(/projects/yeti4009/code /home/tianye/code)
 dir_code='dir_NaN'
 for dir in ${dirs[@]}; do
 	if [ -e $dir ]; then
