@@ -49,7 +49,8 @@ int main( int argc, char* argv[] ) {
 			eka.chiSquare( ms, chiS, Ndata );
 			std::ofstream fout( eka.outname_misAll, std::ofstream::app );
 			if(fout) fout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
-			std::cout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<"   E="<<eka.Energy(ms, Ndata)<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
+			float E; eka.Energy(ms, E, Ndata);
+			std::cout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<"   E="<<E<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
 		}
 
 		// option -r: output initial source patterns

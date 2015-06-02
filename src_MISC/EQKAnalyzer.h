@@ -155,12 +155,12 @@ public:
 
 	void chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const;
 
-	float Energy( const ModelInfo& minfo, int& Ndata ) const {
+	void Energy( const ModelInfo& minfo, float& E, int& Ndata ) const {
 		float chiS;
 		chiSquare( minfo, chiS, Ndata );
+		E = chiS * _indep_factor; //chiS/(Ndata-8.);
 		if( Ndata < NdataMin )
 			throw ErrorEA::InsufData( FuncName, std::to_string(Ndata) + " < " + std::to_string(NdataMin) );
-		return chiS * _indep_factor; //chiS/(Ndata-8.);
 	}
 
    /* output misfit-v.s.-focal_corrections
@@ -177,7 +177,7 @@ public:
 	void OutputSourcePatterns( const ModelInfo& mi );
 
 protected:
-	static const int NdataMin = 10;
+	static const int NdataMin = 5;
 
 public:
 	/* ---------- input parameters that needs to be externally accessible ---------- */

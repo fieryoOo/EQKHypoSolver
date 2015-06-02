@@ -161,7 +161,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			//if( sfactor == NaN ) sfactor = pertfactor;
 			std::cout<<"### Estimating for resonable perturb step sizes:"<<std::endl;
 			int Ndata;
-			float Emin = eka.Energy(*this, Ndata);
+			float Emin; eka.Energy(*this, Emin, Ndata);
 			ModelInfo minfo = *this;
 			#pragma omp parallel firstprivate(minfo)
 			{ // parallel begins
@@ -351,7 +351,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			for(int isearch=0; isearch<nsearch; isearch++) {
 				key += steplen * direct;
 				int Ndata;
-				float E = eka.Energy(minfo, Ndata);
+				float E; eka.Energy(minfo, Emin, Ndata);
 				float P = exp(0.5*(Emin-E));
 				//std::cerr<<"m_direction="<<direct<<"; after_move: key="<<key<<" E="<<E<<" P="<<P<<"   Pthred="<<Pthsd<<"   bound="<<key_orig<<"->"<<bound<<"\n";
 				if( P < Pthsd ) direct = -1;    // moving backward

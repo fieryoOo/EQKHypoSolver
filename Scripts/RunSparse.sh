@@ -43,9 +43,10 @@ Nsta=$3
 Ntrl=$4
 
 
-for wtype in B R L; do # wave type ( B R L )
-	for dtype in 1000; do # data type ( 500 1000 1000sparse 1000PIazi )
+for wtype in L; do # wave type ( B R L )
+	for dtype in 1000G; do # data type ( 1000 1000G )
 		for mtype in Ei 1D; do # model type ( Ei 3D 1D )
+			if [ $dtype == "1000G" ] && [ $wtype != 'L' ]; then continue; fi
 			for ((itrl=1; itrl<=$Ntrl; itrl++)); do
 			### label
 			_label=${wtype}_${dtype}_${mtype}_Sparse${itrl}
@@ -83,20 +84,39 @@ for wtype in B R L; do # wave type ( B R L )
 			# station list (sparse)
 			mv $fsta $_dir
 			fsta=${_dir}/${fsta}
+			# distance
+			dis=`echo ${dtype} | sed s/'G'/''/ | sed s/'P'/''/ | sed s/'A'/''/`
+			# data to be used
+			if [ $dis == $dtype ]; then 
+				exdata=""
+			else
+				exdata="noG\nnoP\nnoA"
+				for c in `echo $dtype | awk '{for(i=1;i<=length($1);i++)print substr($1,i,1)}'`; do
+					if [ $c == 'G' ]; then
+						exdata=`echo ${exdata} | sed s/'noG'/'#noG'/`
+					elif [ $c == 'P' ]; then
+						exdata=`echo ${exdata} | sed s/'noP'/'#noP'/`
+					elif [ $c == 'A' ]; then
+						exdata=`echo ${exdata} | sed s/'noA'/'#noA'/`
+					fi
+				done
+			fi
 			# produce fparam
-			#_dis_measure_label=`echo $dis | sed s/'_freeF'/''/`
-			more $fparam  | sed s/'dflag base'/'dflag '${wtype}/ | sed s/'VelMaps'/${_mdir}/g | sed s/'txt_base'/${_msuf}/g | sed s/'_dis500'/'_dis'${dtype}/g | sed s/'results_SAMC_default'/${_dir}/g | awk -v fsta=$fsta '{if($1=="fRm"||$1=="fLm"){print $0,fsta}else{print $0}}' > ${_dir}/param.txt
+			more $fparam  | sed s/'dflag base'/'dflag '${wtype}/ | sed s/'VelMaps'/${_mdir}/g | sed s/'txt_base'/${_msuf}/g | sed s/'_dis500'/'_dis'${dis}/g | sed s/'results_SAMC_default'/${_dir}/g | awk -v fsta=$fsta -v ex=$exdata '{if($1=="fRm"||$1=="fLm"){print $0,fsta}else{print $0}}END{print ex}' > ${_dir}/param.txt
 			ProduceSBATCH ${_dir}/param.txt ${_dir} $Rtime ${_dir}/run.sbatch -c
 			# run/submit
 			echo Starting ${_dir}...
 			sbatch ${_dir}/run.sbatch
 			#sh ${_dir}/run.sbatch
-			sleep 1
+			sleep 0.2
 			done # itrl
 		done
 	done
 done
 
+
+exit
+# wait until the end and move the results
 echo "Waiting for results..."
 
 while [ 1 == 1 ]; do

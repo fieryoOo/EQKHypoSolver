@@ -5,14 +5,24 @@ PlotText() {
 	local _REG=$1
 	local _text=$2
 	local _XS=$3
+	local _YS=$4
+	local _bbox=true
+	if [ $# -ge 5 ]; then _bbox=$5; fi
+	local _color=lightgray
+	if [ $# -ge 6 ]; then _color=$6; fi
+
+	local _flag=-W${_color},O3
+	if [ $_bbox == false ]; then
+		_flag="-G"${_color}
+	fi
 
 	#local _lb=('a' 'b' 'c' 'd' 'e' 'f')
 	#local _title=`echo ${_text} | awk -v lb=${_lb[ifile]} '{print "("lb")  "$0}'`
 	local _title=$_text
-	echo ${_title}
+	echo ${_title} $_XS $_YS $_flag
 	local _llon=`echo $_REG | sed s/'\-R'/''/ | awk -F/ -v xs=$_XS '{print $1+(0.01+xs)*($2-$1)}'`
-	local _ulat=`echo $_REG | sed s/'\-R'/''/ | awk -F/ '{print $4+0.02*($4-$3)}'`
-	echo $_title | awk -v llon=$_llon -v ulat=$_ulat '{print llon, ulat, "15. 0. 20 LT", $0}' | pstext -R -J -Wlightgray,O3 -O -K -N >> $psout
+	local _ulat=`echo $_REG | sed s/'\-R'/''/ | awk -F/ -v ys=$_YS '{print $4+(0.02+ys)*($4-$3)}'`
+	echo $_title | awk -v llon=$_llon -v ulat=$_ulat '{print llon, ulat, "15. 0. 20 LT", $0}' | pstext -R -J $_flag -O -K -N >> $psout
 	let ifile++
 }
 
@@ -91,6 +101,18 @@ PlotEllipse() {
 }
 
 
+ComputePlotEllipse() {
+	local _fEdata=$1
+	local _xtext=$2
+	local _ytext=$3
+	local _color=$4
+	prob=0.9
+	Einfo=`/projects/yeti4009/code/Programs/mini_tools/BivariateNormal/FitBivariateNormal $_fEdata $prob | awk '{print $1,$2,90.-$3,$4,$5}'`
+   texts=`echo $Einfo | awk -v p=$prob '{printf "%.0f% : %.1fkm %.1fkm",p*100,$4*0.5,$5*0.5}'`
+   echo $Einfo | psxy -R -J -SE -W5,${_color} -O -K >> $psout
+	#echo "1.0 4 16 0.0 4 LT "$texts | pstext -R -J -V -X15 -Y0 -O -K -N >> $psout
+	PlotText $REG "$texts" $_xtext $_ytext false $_color
+}
 
 PlotPoint() {
 	local _psout=$1
@@ -144,10 +166,10 @@ REG=-R360/-360/90/-90
 
 idir=0
 lonavg=0
-for rdir in `ls -d results_SAMC_L_1000_1D_Sparse* results_SAMC_R_1000_1D_Sparse* results_SAMC_B_1000_1D_Sparse* results_SAMC_L_1000_Ei_Sparse* results_SAMC_R_1000_Ei_Sparse* results_SAMC_B_1000_Ei_Sparse*`; do
-#for rdir in `ls -d results_SAMC_L_1000_1D_Sparse? results_SAMC_R_1000_1D_Sparse? results_SAMC_B_1000_1D_Sparse? results_SAMC_L_1000_Ei_Sparse? results_SAMC_R_1000_Ei_Sparse? results_SAMC_B_1000_Ei_Sparse?`; do
-#for rdir in `ls -d results_SAMC_L_1000_1D_Sparse1 results_SAMC_R_1000_1D_Sparse1 results_SAMC_B_1000_1D_Sparse1 results_SAMC_L_1000_Ei_Sparse1 results_SAMC_R_1000_Ei_Sparse1 results_SAMC_B_1000_Ei_Sparse1`; do
-#for rdir in `ls -d results_SAMC_?_1000_Ei`; do
+fres=ResultsAll.txt; rm -f $fres
+#for rdir in `ls -d results_SAMC_L_1000_1D_Sparse* results_SAMC_R_1000_1D_Sparse* results_SAMC_L_1000G_1D_Sparse* results_SAMC_B_1000_1D_Sparse* results_SAMC_L_1000_Ei_Sparse* results_SAMC_R_1000_Ei_Sparse* results_SAMC_L_1000G_Ei_Sparse* results_SAMC_B_1000_Ei_Sparse*`; do
+for rdir in `ls -d results_SAMC_L_1000_1D_Sparse? results_SAMC_R_1000_1D_Sparse? results_SAMC_L_1000G_1D_Sparse? results_SAMC_B_1000_1D_Sparse? results_SAMC_L_1000_Ei_Sparse? results_SAMC_R_1000_Ei_Sparse? results_SAMC_L_1000G_Ei_Sparse? results_SAMC_B_1000_Ei_Sparse?`; do
+#for rdir in `ls -d results_SAMC_B_1000_Ei_Sparse*`; do
 
 	type[idir]=`echo $rdir | awk -F/ '{print $NF}' | cut -d_ -f3,4,5,6`
 
@@ -157,6 +179,8 @@ for rdir in `ls -d results_SAMC_L_1000_1D_Sparse* results_SAMC_R_1000_1D_Sparse*
 		echo "   Warning: file "$fMC" not found"
 		continue
 	fi
+
+if [ 0 == 1 ]; then
 	# extract data: discard the initial search and then the first 1000 points
 	# output format: nsearch reduced-chiS Ndata stk dip rak dep lon lat t0
 	is=1000; ie=999999
@@ -175,25 +199,29 @@ for rdir in `ls -d results_SAMC_L_1000_1D_Sparse* results_SAMC_R_1000_1D_Sparse*
 	stdlon[idir]=`echo $reslon | awk '{print $2}'`
 	meanlat[idir]=`echo $reslat | awk '{print $1}'`
 	stdlat[idir]=`echo $reslat | awk '{print $2}'`
+	ExtendRegion ${meanlon[idir]} ${meanlat[idir]} ${stdlon[idir]} ${stdlat[idir]}
+
+	rm -f .PlotPosterior_tmp
+fi
 
 	# best fitting model
 	# check if the last line of fMC is marked as 'best'
-	if [ `tail -n1 $fMC | grep -c 'best'` != 1 ]; then
-		echo "best fitting model not found in "$fMC
-		continue
-	fi
-	# tail -n1: best fitting from MC;  tail -n2: minimum from SA
-	model_best[idir]=`tail -n1 .PlotPosterior_tmp | awk '{print $4,$5,$6,$7,$8,$9,$10}'`
+	line=`tail -n1 $fMC`
+   if [ `echo $line | grep -c 'best'` != 1 ]; then
+      echo "best fitting model not found in "$fMC
+      continue
+   fi
+	echo $line | awk -F'minfo = \\(' '{print $2}' | awk -v type=${type[idir]} -F')' '{print $1,type}' >> $fres
+	# this is wrong! model_best[idir]=`tail -n1 .PlotPosterior_tmp | awk '{print $4,$5,$6,$7,$8,$9,$10}'`
+	model_best[idir]=`echo $line | awk -F'(' '{print $3}' | cut -d')' -f1 | awk '{print $1,$2,$3,$4,$5,$6,$7}'`
 	#cloc[idir]=`echo ${model_best[idir]} | awk '{print $5"_"$6}'`
 
-	rm -f .PlotPosterior_tmp
 
 	# extend region to plot
-	ExtendRegion ${meanlon[idir]} ${meanlat[idir]} ${stdlon[idir]} ${stdlat[idir]}
 	ExtendRegion `echo ${model_best[idir]} | awk '{print $5,$6}'`
 
-	echo $rdir
-	echo "   "${meanlon[idir]} ${meanlat[idir]}"   -   "${model_best[idir]}
+	echo -e $rdir":\t"${model_best[idir]}
+	#echo "   "${meanlon[idir]} ${meanlat[idir]}"   -   "${model_best[idir]}
 	let idir++
 done
 #lonavg=`echo $lonavg $idir | awk '{print $1/$2}'`
@@ -221,8 +249,8 @@ gmtset LABEL_FONT_SIZE 12
 gmtset ANNOT_FONT_SIZE 10
 gmtset PLOT_DEGREE_FORMAT ddd.xxxx
 psout=$ename'_locations.ps'
-scale=`echo $REG | sed s/'-R'/''/ | awk -F/ '{ddeg=$2-$1; if(ddeg<$4-$3){ddeg=$4-$3} printf "%.2f", 6.3/ddeg}'`
-pwd | psbasemap $REG -JN${lonmid}/${scale} -Ba0.1f0.02WeSn -K -X2 -Y6 -P > $psout
+scale=`echo $REG | sed s/'-R'/''/ | awk -F/ '{ddeg1=18./($2-$1); ddeg2=20./($4-$3); if(ddeg1>ddeg2){ddeg1=ddeg2} printf "%.2g", ddeg1}'`
+pwd | psbasemap $REG -Jn${lonmid}/${scale} -Ba0.1f0.02WeSn -K -X2.6 -Y3.5 -P > $psout
 PlotText $REG "Resulting Locations"
 pscoast -R -J -N3/0/0/0 -W3 -S135/206/235 -O -K >> $psout
 
@@ -230,9 +258,9 @@ pscoast -R -J -N3/0/0/0 -W3 -S135/206/235 -O -K >> $psout
 ndir=$idir
 #labels=('R_1000' 'L_1000' 'B_1000' 'R_500' 'L_500' 'B_500')
 #lnames=('Rayl' 'Love' 'Both' 'Both-Love' 'R_500' 'L_500' 'B_500' 'C_500')
-labels=('B_1000_Ei' 'R_1000_Ei' 'L_1000_Ei' 'B_1000_1D' 'R_1000_1D' 'L_1000_1D')
-lnames=('3D_Both' '3D_Rayl' '3D_Love' '1D_Both' '1D_Rayl' '1D_Love')
-colors=('black' 'blue' 'brown' 'darkgray' 'lightblue' 'lightpink')
+labels=('B_1000_Ei' 'R_1000_Ei' 'L_1000_Ei' 'L_1000G_Ei' 'B_1000_1D' 'R_1000_1D' 'L_1000_1D' 'L_1000G_1D')
+lnames=('3D_Both' '3D_Rayl' '3D_Love' '3D_LovG' '1D_Both' '1D_Rayl' '1D_Love' '1D_LovG')
+colors=('black' 'brown' 'blue' 'forestgreen' 'darkgray' 'lightpink' 'lightblue' 'lightgreen')
 Nlab=${#labels[@]}
 #colorE=('lightred' 'forestgreen' 'steelblue' '60/60/60' 'red' 'green' 'blue' 'black')
 #colorP=( '65/100/128' '225/64/0' ) #'60/60/60')
@@ -256,6 +284,7 @@ for (( idir=0; idir<$ndir; idir++ )); do
 	#PlotPoint $psout $clocS $_colorP ${colorE[ilab]}
 	#PlotPoint $psout $clocS $_color $_color
 	PlotBeachball $psout `echo ${model_best[idir]} | awk '{print $1,$2,$3,$4,$5,$6}'` $_color #$_color $trlno
+	PlotBeachball $psout `echo ${model_best[idir]} | awk '{print $1,$2,$3,$4,$5,$6}'` $_color #$_color $trlno
 done
 
 # plot results from other studies
@@ -264,6 +293,21 @@ for file in `ls ${predir}/results_*.txt`; do
 	#PlotPoint $psout `awk 'NR==1{print $5,$6}' $file` black black
 	PlotBeachball $psout `awk 'NR==1{print $1,$2,$3,$4,$5,$6}' $file` orange orange $study_name
 done
+
+
+# compute/plot error ellipses
+textloc=(0.05_0.12 0.05_0.09 0.05_0.06 0.05_0.03 0.55_0.12 0.55_0.09 0.55_0.06 0.55_0.03)
+fEdata=EllipseData.tmp
+ilab=0
+for _label in ${labels[@]}; do
+	if [ `grep $_label $fres | wc -l` == 0 ]; then continue; fi
+	grep $_label $fres | awk '{print $5,$6,$8}' > $fEdata
+	#echo "Check: "$_label $fEdata ${textloc[ilab]} ${colors[ilab]}
+	ComputePlotEllipse $fEdata `echo ${textloc[ilab]} | awk -F_ '{print $1,$2}'` ${colors[ilab]}
+	let ilab++
+done
+rm -f $fEdata
+
 
 # legends
 gmtset ANNOT_FONT_SIZE 12
@@ -288,7 +332,7 @@ llat=`echo $REG | sed s/'\-R'/''/ | awk -F/ '{print $3}'`
 #	G $gap
 #EOF
 echo $lonmid $latmid
-pslegend -R -J -D${ulon}/${llat}/3./5.2/BR -G200 -F -O -K <<- EOF >> $psout
+pslegend -R -J -D${ulon}/${llat}/3./6.5/BR -G200 -F -O -K <<- EOF >> $psout
 	G -0.15i
 	M $lonmid $latmid 3 p
 	G 0.12i
@@ -303,6 +347,10 @@ pslegend -R -J -D${ulon}/${llat}/3./5.2/BR -G200 -F -O -K <<- EOF >> $psout
 	S $dx1 c $size_a ${colors[4]} $pen,$colpen $dx2 ${lnames[4]}
 	G $gap
 	S $dx1 c $size_a ${colors[5]} $pen,$colpen $dx2 ${lnames[5]}
+	G $gap
+	S $dx1 c $size_a ${colors[6]} $pen,$colpen $dx2 ${lnames[6]}
+	G $gap
+	S $dx1 c $size_a ${colors[7]} $pen,$colpen $dx2 ${lnames[7]}
 	G $gap
 EOF
 

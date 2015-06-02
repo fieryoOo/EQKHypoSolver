@@ -22,7 +22,7 @@ namespace Searcher {
 
 	template < class MI >
 	class IDataHandler {
-		virtual float Energy( const MI&, int& Ndata ) const = 0;
+		virtual void Energy( const MI&, float& E, int& Ndata ) const = 0;
 	};
 
 
@@ -38,7 +38,7 @@ namespace Searcher {
 		int accepted;	// accepted in search?
 
 		SearchInfo() {}
-		SearchInfo( int isearch, float T, MI info, int Ndata, float E, bool accepted = false )
+		SearchInfo( int isearch, float T, MI info, int Ndata, float E, int accepted = 0 )
 			: isearch(isearch), T(T), info(info), Ndata(Ndata), E(E), accepted(accepted), ithread(omp_get_thread_num()) {}
 
 		friend bool operator< ( const SearchInfo& s1, const SearchInfo& s2 ) { return s1.isearch<s2.isearch; }
@@ -47,6 +47,7 @@ namespace Searcher {
 			  <<"):\tminfo = (" << mi.info << ")\tN = " << mi.Ndata << "\tE = " << mi.E;
 			if( mi.accepted == 1 ) o << " (accepted)";
 			else if( mi.accepted == 0 ) o << " (rejected)";
+			else if( mi.accepted == -1 ) o << " (skipped)";
 			else o << " (best)";
 			return o;
 		}
@@ -98,15 +99,16 @@ namespace Searcher {
 		bool saveacc = saveSI>=0;
 		bool saverej = saveSI==0;
 		// initial energy (force MS to be assignable to MI at compile time)
-		int Ndata;
-		float E = dh.Energy( ms, Ndata ), Ebest = E;
+		int Ndata0, Ndata;
+		float E; dh.Energy( ms, E, Ndata0 );
+		float Ebest = E;
 		// initial temperature
 		float T = Tinit>0. ? Tinit : std::fabs(E*Tinit);
 		// SearchInfo vector
 		std::vector< SearchInfo<MI> > VSinfo; 
 		VSinfo.reserve( nsearch/2*(saveacc+saverej) );
 		// save initial
-		SearchInfo<MI> sibest( 0, T, ms, Ndata, E, true );
+		SearchInfo<MI> sibest( 0, T, ms, Ndata0, E, true );
 		if( saveacc ) VSinfo.push_back( sibest );
 		sout<<sibest<<"\n";
 		_poc += pocinc;
@@ -115,16 +117,23 @@ namespace Searcher {
 		for( int i=0; i<nsearch; i++ ) {
 			MI minew;
 			ms.Perturb( minew );
-			float Enew = dh.Energy( minew, Ndata );
-			SearchInfo<MI> si( i+1, T, minew, Ndata, Enew );
+			float Enew; int isaccepted = 0;	// 0 for rejected
+			try {
+				dh.Energy( minew, Enew, Ndata );
+				Enew *= ((float)Ndata0 / Ndata);
+			} catch (const std::exception& e) {
+				std::cerr<<e.what()<<"   skipped!\n";
+				isaccepted = -1;	// -1 for skipped
+			}
+			SearchInfo<MI> si( i+1, T, minew, Ndata, Enew, isaccepted );
 			#pragma omp critical
 			{ // critical begins
 			//if( Enew<E || rnd()<exp((E-Enew)/T) ) {
-			if( Accept(E, Enew, T, rnd()) ) {
+			if( isaccepted==0 && Accept(E, Enew, T, rnd()) ) {
 				// update Energy and model state
 				ms.SetMState( minew ); E = Enew;
 				// mark as accepted
-				si.accepted = true;
+				si.accepted = 1;
 				// update (if is) the best
 				if( Enew < Ebest ) {
 					Ebest = Enew;
@@ -141,7 +150,7 @@ namespace Searcher {
 			} // critical ends
 		}
 		// output final result
-		sibest.accepted = -1;	// -1 for best fitting model
+		sibest.accepted = 2;	// 2 for best fitting model
 		sout<<sibest<<std::endl;
 		std::sort( VSinfo.begin(), VSinfo.end() );
 		// set model state to the best fitting model

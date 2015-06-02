@@ -2,6 +2,7 @@
 BIN1 = EQKSolver
 BIN2 = Auxiliary
 BIN3 = PredSrcPatterns
+BINT = Test
 
 BINall = $(BIN1) $(BIN2) $(BIN3)
 all : $(BINall)
