@@ -167,8 +167,8 @@ REG=-R360/-360/90/-90
 idir=0
 lonavg=0
 fres=ResultsAll.txt; rm -f $fres
-#for rdir in `ls -d results_SAMC_L_1000_1D_Sparse* results_SAMC_R_1000_1D_Sparse* results_SAMC_L_1000G_1D_Sparse* results_SAMC_B_1000_1D_Sparse* results_SAMC_L_1000_Ei_Sparse* results_SAMC_R_1000_Ei_Sparse* results_SAMC_L_1000G_Ei_Sparse* results_SAMC_B_1000_Ei_Sparse*`; do
-for rdir in `ls -d results_SAMC_L_1000_1D_Sparse? results_SAMC_R_1000_1D_Sparse? results_SAMC_L_1000G_1D_Sparse? results_SAMC_B_1000_1D_Sparse? results_SAMC_L_1000_Ei_Sparse? results_SAMC_R_1000_Ei_Sparse? results_SAMC_L_1000G_Ei_Sparse? results_SAMC_B_1000_Ei_Sparse?`; do
+for rdir in `ls -d results_SAMC_L_1000_1D_Sparse* results_SAMC_R_1000_1D_Sparse* results_SAMC_L_1000G_1D_Sparse* results_SAMC_B_1000_1D_Sparse* results_SAMC_L_1000_Ei_Sparse* results_SAMC_R_1000_Ei_Sparse* results_SAMC_L_1000G_Ei_Sparse* results_SAMC_B_1000_Ei_Sparse*`; do
+#for rdir in `ls -d results_SAMC_L_1000_1D_Sparse? results_SAMC_R_1000_1D_Sparse? results_SAMC_L_1000G_1D_Sparse? results_SAMC_B_1000_1D_Sparse? results_SAMC_L_1000_Ei_Sparse? results_SAMC_R_1000_Ei_Sparse? results_SAMC_L_1000G_Ei_Sparse? results_SAMC_B_1000_Ei_Sparse?`; do
 #for rdir in `ls -d results_SAMC_B_1000_Ei_Sparse*`; do
 
 	type[idir]=`echo $rdir | awk -F/ '{print $NF}' | cut -d_ -f3,4,5,6`

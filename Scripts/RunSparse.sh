@@ -43,8 +43,8 @@ Nsta=$3
 Ntrl=$4
 
 
-for wtype in L; do # wave type ( B R L )
-	for dtype in 1000G; do # data type ( 1000 1000G )
+for wtype in B R L; do # wave type ( B R L )
+	for dtype in 1000 1000G; do # data type ( 1000 1000G )
 		for mtype in Ei 1D; do # model type ( Ei 3D 1D )
 			if [ $dtype == "1000G" ] && [ $wtype != 'L' ]; then continue; fi
 			for ((itrl=1; itrl<=$Ntrl; itrl++)); do
