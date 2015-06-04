@@ -1,7 +1,11 @@
 #ifndef VOPERATIONS_H
 #define VOPERATIONS_H
 
+#include "StackTrace.h"
+#include <iostream>
+#include <fstream>
 #include <vector>
+#include <algorithm>
 #include <stdexcept>
 
 #ifndef FuncName

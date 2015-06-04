@@ -153,14 +153,15 @@ public:
 	// use Love group data only when isInit=true
 	void SetInitSearch( bool isInit ) { _isInit = isInit; }
 
-	void chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const;
+	bool chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const;
 
-	void Energy( const ModelInfo& minfo, float& E, int& Ndata ) const {
+	bool Energy( const ModelInfo& minfo, float& E, int& Ndata ) const {
 		float chiS;
-		chiSquare( minfo, chiS, Ndata );
+		bool isvalid = chiSquare( minfo, chiS, Ndata );
 		E = chiS * _indep_factor; //chiS/(Ndata-8.);
 		if( Ndata < NdataMin )
 			throw ErrorEA::InsufData( FuncName, std::to_string(Ndata) + " < " + std::to_string(NdataMin) );
+		return isvalid;
 	}
 
    /* output misfit-v.s.-focal_corrections

@@ -351,8 +351,14 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			for(int isearch=0; isearch<nsearch; isearch++) {
 				key += steplen * direct;
 				int Ndata;
-				float E; eka.Energy(minfo, Emin, Ndata);
-				float P = exp(0.5*(Emin-E));
+				float E;
+				// compute E and check validity
+				float P;
+				if( ! eka.Energy(minfo, Emin, Ndata) ) {	// boundary hit
+					P = 0.;
+				} else {	// not hit
+					P = exp(0.5*(Emin-E));
+				}
 				//std::cerr<<"m_direction="<<direct<<"; after_move: key="<<key<<" E="<<E<<" P="<<P<<"   Pthred="<<Pthsd<<"   bound="<<key_orig<<"->"<<bound<<"\n";
 				if( P < Pthsd ) direct = -1;    // moving backward
 				else direct = 1;

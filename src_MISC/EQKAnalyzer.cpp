@@ -406,9 +406,10 @@ void EQKAnalyzer::PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& 
 }
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
-void EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
+bool EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
 	// check input params (will be corrected in PredictAll)
-	if( ! minfo.isValid() ) {
+	bool isvalid = minfo.isValid();
+	if( ! isvalid ) {
 		std::stringstream ss; ss<<minfo;
 		//throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
 		WarningEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() + ". Corrected!" );
@@ -480,6 +481,8 @@ void EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const
 			//std::cerr<<"Love at per="<<sdc.per<<": "<<chiS<<" "<<N<<" "<<chiS/(N-8.)<<"\n";
 		}
 	}
+
+	return isvalid;
 }
 
 

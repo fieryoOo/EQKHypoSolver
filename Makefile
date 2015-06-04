@@ -41,7 +41,7 @@ OBJS	:= $(OBJS_M)
 # --- rules --- #
 define make-bin
 $(1) : $(OBJS) $(1).o
-	$(FC) $$^ $(LIBS) -o $$@
+	$(FC) $$^ -o $$@ $(LIBS)
 endef
 $(foreach bin,$(BINall),$(eval $(call make-bin,$(bin))))
 
