@@ -6,6 +6,7 @@
 #include "SDContainer.h"
 #include "Searcher.h"
 #include "FileName.h"
+#include "SacRec.h"
 #include <vector>
 #include <map>
 
@@ -153,11 +154,15 @@ public:
 	// use Love group data only when isInit=true
 	void SetInitSearch( bool isInit ) { _isInit = isInit; }
 
-	bool chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const;
+	// chi-square misfits from measurements-predictions
+	bool chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) const;
+
+	// chi-square misfits from waveform data-synthetics
+	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const;
 
 	bool Energy( const ModelInfo& minfo, float& E, int& Ndata ) const {
 		float chiS;
-		bool isvalid = chiSquare( minfo, chiS, Ndata );
+		bool isvalid = chiSquareM( minfo, chiS, Ndata );
 		E = chiS * _indep_factor; //chiS/(Ndata-8.);
 		if( Ndata < NdataMin )
 			throw ErrorEA::InsufData( FuncName, std::to_string(Ndata) + " < " + std::to_string(NdataMin) );
@@ -189,6 +194,8 @@ public:
 	FileName outname_srcR;				// filename for output Rayl source patterns
 	FileName outname_srcL;				// filename for output Love source patterns
 
+protected:
+	static constexpr float NaN = AziData::NaN;
 private:
 	// RadPattern objects for predicting source terms
 	RadPattern _rpR, _rpL;
@@ -197,6 +204,8 @@ private:
 	/* store measurements/predictions of each station with a StaData,
 	 * all StaDatas at a single period is handeled by a SDContainer */
 	std::vector<SDContainer> _dataR, _dataL;
+
+	std::vector<SacRec> _sacVR, _sacVL;
 
 	/* ---------- input parameters ---------- */
 	// search area of epicenter
@@ -207,6 +216,7 @@ private:
 	Dtype datatype;
 	float _indep_factor = 1.;		// describes the correlations among data (0: 100% correlated, 1: 100% independent)
 	bool _useG = true, _useP = true, _useA = true;
+	bool _usewaveform = false;
 	bool _isInit = false;
 	// data weightings (!!!not implemented, adjust varmins in SDContainer instead!!!)
    float weightR_Loc = 1., weightL_Loc = 1.;  // weighting between Rayleigh and Love data for Location search
@@ -216,6 +226,10 @@ private:
 	// Input eigen-function and phase-velocity files
 	FileName fReigname, fRphvname;
    FileName fLeigname, fLphvname;
+	// Input saclists and model file for the waveform synthetic
+	FileName fmodel;
+	FileName fsaclistR, fsaclistL;
+	float f1 = NaN, f2 = NaN, f3 = NaN, f4 = NaN;
 	// output files
 	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit
    std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions

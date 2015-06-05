@@ -29,6 +29,17 @@ indep 0.5	# factor describing data independence
 #noG
 #noP
 #noA
+
+# the input data is either the
+########## (1) original SAC data ##########
+fsaclistR
+fsaclistL
+fmodel
+permin 8
+permax 18
+
+# or the
+########## (2) DISP data ##########
 fRm Measurements/R_Sta_grT_phT_Amp_10sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_10sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_10sec.txt 10
 fRm Measurements/R_Sta_grT_phT_Amp_16sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_16sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_16sec.txt 16
 #fRm Measurements/R_Sta_grT_phT_Amp_22sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_22sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_22sec.txt 22

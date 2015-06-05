@@ -1,7 +1,8 @@
-#include "Synthetics.h"
+#include "SynGenerator.h"
+#include "SacRec.h"
 
 int main() {
-	Synthetics syn;
-	syn.Run();
+	SynGenerator sg("blabla.mod");
+	sg.Run();
 	return 0;
 }

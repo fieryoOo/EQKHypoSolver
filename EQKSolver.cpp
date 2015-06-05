@@ -39,6 +39,12 @@ int main( int argc, char* argv[] ) {
 		EQKAnalyzer eka( fparam );
 		eka.LoadData();
 
+float chiS; int Ndata;
+std::cerr<<"before chiSW\n";
+eka.chiSquareW( ms, chiS, Ndata );
+std::cerr<<"after chiSW\n";
+exit(-3);
+
 		// initial output
 		eka.Output( ms );
 		eka.OutputMisfits( ms );
@@ -46,7 +52,7 @@ int main( int argc, char* argv[] ) {
 		// option -c: print out initial chiSquare
 		if( std::find(options.begin(), options.end(), 'c') != options.end() ) {
 			float chiS; int Ndata;
-			eka.chiSquare( ms, chiS, Ndata );
+			eka.chiSquareM( ms, chiS, Ndata );
 			std::ofstream fout( eka.outname_misAll, std::ofstream::app );
 			if(fout) fout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
 			float E; eka.Energy(ms, E, Ndata);

@@ -8,7 +8,7 @@ FC = gfortran
 
 DBG =
 
-LIBS = -lstdc++
+LIBS = -lstdc++ -lfftw3 -fopenmp
 
 # --- flags --- #
 cflags = -std=c++11 -O3 

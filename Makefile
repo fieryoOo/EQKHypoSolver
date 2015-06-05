@@ -12,7 +12,7 @@ FC = gfortran
 CC = g++
 
 # --- modules --- #
-MODULES	:= src_MISC src_RadPattern src_SDContainer
+MODULES	:= src_Driver src_RadPattern src_SDContainer src_Synthetic
 MOD_DIRS := $(MODULES)
 #MOD_DIRS := $(addprefix mod_,$(MODULES))
 
@@ -29,7 +29,7 @@ INCLUDES	:= $(addprefix -I,$(MOD_DIRS))
 OMPflag = -fopenmp
 cflags = -O3 -std=c++11 $(OMPflag) $(INCLUDES)	#-O3
 fflags = -e -O2 -ffixed-line-length-132 $(OMPflag)	#-O2
-LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -O3
+LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -lSacRec -lfftw3 -O3
 
 # --- objects --- #
 #OBJS_C	:= $(patsubst %.cpp,%.o,$(SRCS_C))
@@ -49,7 +49,7 @@ $(foreach bin,$(BINall),$(eval $(call make-bin,$(bin))))
 #	$(FC) $^ $(LIBS) -o $@
 
 define make-module-obj
-$(1).o : $(patsubst %.cpp,%.o,$(wildcard $(1)/*.cpp)) $(patsubst %.f,%.o,$(wildcard $(1)/*.f))
+$(1).o : $(patsubst %.cpp,%.o,$(filter-out $(1)/Test.cpp,$(wildcard $(1)/*.cpp))) $(patsubst %.f,%.o,$(wildcard $(1)/*.f))
 	ld -r $$^ -o $$@
 endef
 $(foreach moddir,$(MOD_DIRS),$(eval $(call make-module-obj,$(moddir))))

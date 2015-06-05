@@ -7,8 +7,8 @@ C---f0: starting frequency; df -frequency increment; npoints-n. of output points
 C-----------wv: wavenumbers; u_int: gr.vel; q_int:apparent surface wave Q;
 C-----------sre, sim: spectrum--------------------------------
 C------------OUTPUT: seism------------------------------------
-         real*4 sre(2048),sim(2048),seism(4096),wv(2048),q_int(2048),u_int(2048)
-         real*4 asre(4096),asim(4096),amp(2048),T_curr(2048)
+         real*4 sre(2048),sim(2048),seism(8192),wv(2048),q_int(2048),u_int(2048)
+         real*4 asre(8192),asim(8192),amp(2048),T_curr(2048)
          logical key_compr
              data pi2/6.2831854/
              nbase=2**n2pow

@@ -95,11 +95,11 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 			float minP = dis>15. ? (Min_Perc - 9./dis) : (Min_Perc - 0.6);
 			//float minP = Min_Perc;
 			float vel = mapG.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lam, perc ).Data();
-			if( perc > minP ) sd.Gpath = dis / vel - srct0;
+			if( perc > minP ) sd.Gpath = dis / vel + srct0;
 		}
 	} else {
 		// update Tpaths from the fixed velocity
-		for( auto& sd : dataV )	sd.Gpath = sd.dis / _velG - srct0;
+		for( auto& sd : dataV )	sd.Gpath = sd.dis / _velG + srct0;
 	}
 
 	if( _velP == NaN ) {
@@ -112,10 +112,10 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 			float minP = dis>15. ? (Min_Perc - 9./dis) : (Min_Perc - 0.6);
 			//float minP = Min_Perc;
 			float vel = mapP.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lam, perc ).Data();
-			if( perc > minP ) sd.Ppath = dis / vel - srct0;
+			if( perc > minP ) sd.Ppath = dis / vel + srct0;
 		}
 	} else {
-		for( auto& sd : dataV ) sd.Ppath = sd.dis / _velP - srct0;
+		for( auto& sd : dataV ) sd.Ppath = sd.dis / _velP + srct0;
 	}
 
 	return true;	// updated!

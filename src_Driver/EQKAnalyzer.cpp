@@ -1,4 +1,5 @@
 #include "EQKAnalyzer.h"
+#include "SynGenerator.h"
 //#include "DataTypes.h"
 #include <sstream>
 #include <sys/stat.h>
@@ -96,6 +97,19 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "noG" ) { succeed = true; _useG = false; }
 	else if( stmp == "noP" ) { succeed = true; _useP = false; }
 	else if( stmp == "noA" ) { succeed = true; _useA = false; }
+	else if( stmp == "fmodel" ) succeed = buff >> fmodel;
+	else if( stmp == "fsaclistR" ) succeed = buff >> fsaclistR;
+	else if( stmp == "fsaclistL" ) succeed = buff >> fsaclistL;
+	else if( stmp == "permin" ) {
+		float permin;
+		succeed = buff >> permin;
+		f3 = 1./permin; f4 = 1.2/permin;
+	}
+	else if( stmp == "permax" ) {
+		float permax;
+		succeed = buff >> permax;
+		f1 = 0.8/permax; f2 = 1./permax;
+	}
 	else if( stmp == "indep" ) { 
 		succeed = buff >> _indep_factor;
 		if( _indep_factor<=0. || _indep_factor>1. )
@@ -146,6 +160,8 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 			rename(outname.c_str(), oldname.c_str());
 		}
 		*/
+	}
+	else if( stmp == "fsaclistR" ) {
 	}
 	else if( stmp == "fmisF" ) {
 		FileName& outname = outname_misF;
@@ -288,35 +304,72 @@ bool EQKAnalyzer::FilenameToVel( const FileName& fname, float& vel ) const {
 	}
 }
 void EQKAnalyzer::LoadData() {
-	// Rayleigh
-	_dataR.clear();
-	for( const auto& fR : fRlist ) {
-		const float per = fR.first;
-		const auto& farray = fR.second;
-		// farray[0]: measurement file
-		// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
-		float velG, velP;
-		if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-			_dataR.push_back( SDContainer(per, 'R', farray[0], velG, velP, farray[3]) );
-		} else {
-			_dataR.push_back( SDContainer(per, 'R', farray[0], farray[1], farray[2], farray[3]) );
+	// check input params
+	// do waveform fitting if model and saclist are input
+	_usewaveform = !fsaclistR.empty() && !fsaclistL.empty() && !fmodel.empty();
+
+	if( _usewaveform ) {	// read in sacs
+		// period band
+		if( f2<0. || f3<0. || f2>=f3 )
+			throw ErrorSC::BadParam(FuncName, "invalid freq range: "+std::to_string(f2)+" - "+std::to_string(f3));
+		// Rayleigh
+		std::ifstream fin( fsaclistR );
+		if( ! fin )
+	      throw ErrorSC::BadFile(FuncName, fsaclistR);
+		_sacVR.clear();
+		for( std::string line; std::getline(fin, line); ) {
+			std::stringstream ss(line); ss >> line;
+			SacRec sac(line); sac.Load();
+			sac.Filter(f1,f2,f3,f4);
+			_sacVR.push_back( sac );
 		}
+		fin.close(); fin.clear();
+
+		// Love
+		fin.open( fsaclistL );
+		if( ! fin )
+	      throw ErrorSC::BadFile(FuncName, fsaclistL);
+		_sacVL.clear();
+		for( std::string line; std::getline(fin, line); ) {
+			std::stringstream ss(line); ss >> line;
+			SacRec sac(line); sac.Load();
+			sac.Filter(f1,f2,f3,f4);
+			_sacVL.push_back( sac );
+		}
+
+		std::cout<<"### "<<_sacVR.size() + _sacVL.size()<<" sac file(s) loaded. ###"<<std::endl;
+	} else {	// read DISP measurements
+		// Rayleigh
+		_dataR.clear();
+		for( const auto& fR : fRlist ) {
+			const float per = fR.first;
+			const auto& farray = fR.second;
+			// farray[0]: measurement file
+			// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
+			float velG, velP;
+			if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
+				_dataR.push_back( SDContainer(per, 'R', farray[0], velG, velP, farray[3]) );
+			} else {
+				_dataR.push_back( SDContainer(per, 'R', farray[0], farray[1], farray[2], farray[3]) );
+			}
+		}
+
+		// Love
+		_dataL.clear(); 
+		for( const auto& fL : fLlist ) {
+			const float per = fL.first;
+			const auto& farray = fL.second;
+			float velG, velP;
+			if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
+				_dataL.push_back( SDContainer(per, 'L', farray[0], velG, velP, farray[3]) );
+			} else {
+				_dataL.push_back( SDContainer(per, 'L', farray[0], farray[1], farray[2], farray[3]) );
+			}
+		}
+
+		std::cout<<"### "<<_dataR.size() + _dataL.size()<<" data file(s) loaded. ###"<<std::endl;
 	}
 
-	// Love
-   _dataL.clear(); 
-	for( const auto& fL : fLlist ) {
-		const float per = fL.first;
-		const auto& farray = fL.second;
-		float velG, velP;
-		if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-			_dataL.push_back( SDContainer(per, 'L', farray[0], velG, velP, farray[3]) );
-		} else {
-			_dataL.push_back( SDContainer(per, 'L', farray[0], farray[1], farray[2], farray[3]) );
-		}
-	}
-
-   std::cout<<"### "<<_dataR.size() + _dataL.size()<<" data file(s) loaded. ###"<<std::endl;
 }
 
 
@@ -333,15 +386,15 @@ std::vector<float> EQKAnalyzer::perLlst() const {
 }
 
 // initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer based on the current model info
-void EQKAnalyzer::PredictAll( const ModelInfo& mi, bool updateSource ) {
-	PredictAll( mi, _rpR, _rpL, _dataR, _dataL, _AfactorR, _AfactorL, _source_updated, updateSource );
+void EQKAnalyzer::PredictAll( const ModelInfo& minfo, bool updateSource ) {
+	PredictAll( minfo, _rpR, _rpL, _dataR, _dataL, _AfactorR, _AfactorL, _source_updated, updateSource );
 }
-void EQKAnalyzer::PredictAll( const ModelInfo& mi,	std::vector<SDContainer>& dataR, 
+void EQKAnalyzer::PredictAll( const ModelInfo& minfo,	std::vector<SDContainer>& dataR, 
 										std::vector<SDContainer>& dataL, bool updateSource ) const {
 	auto rpR = _rpR, rpL = _rpL;
 	float AfactorR = _AfactorR, AfactorL = _AfactorL;
 	bool source_updated = _source_updated;
-	PredictAll( mi, rpR, rpL, dataR, dataL, AfactorR, AfactorL, source_updated, updateSource );
+	PredictAll( minfo, rpR, rpL, dataR, dataL, AfactorR, AfactorL, source_updated, updateSource );
 }
 // shift by T multiples according to lower and upper bound. Results not guranteed to be in the range
 inline float EQKAnalyzer::ShiftInto( float val, float lb, float ub, float T) const {
@@ -354,12 +407,12 @@ inline float EQKAnalyzer::BoundInto( float val, float lb, float ub ) const {
 	else if( val > ub ) val = ub;
 	return val;
 }
-void EQKAnalyzer::PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
+void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPattern& rpL,
 										std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
 										float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const {
 	// radpattern
 	bool model_updated = false;
-	float stk = mi.stk, dip = mi.dip, rak = mi.rak, dep = mi.dep;
+	float stk = minfo.stk, dip = minfo.dip, rak = minfo.rak, dep = minfo.dep;
 	stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
 	rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
 	model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
@@ -367,9 +420,9 @@ void EQKAnalyzer::PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& 
 
 	// SDContainer Tpaths
 	for( auto& sdc : dataR )
-		model_updated |= sdc.UpdatePathPred( mi.lon, mi.lat, mi.t0 );
+		model_updated |= sdc.UpdatePathPred( minfo.lon, minfo.lat, minfo.t0 );
 	for( auto& sdc : dataL )
-		model_updated |= sdc.UpdatePathPred( mi.lon, mi.lat, mi.t0 );
+		model_updated |= sdc.UpdatePathPred( minfo.lon, minfo.lat, minfo.t0 );
 
 	if( model_updated ) source_updated = false;	// source terms need to be updated
 	else if( source_updated ) return;				//	model state didn't change since the last source term update -- return
@@ -406,7 +459,7 @@ void EQKAnalyzer::PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& 
 }
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
-bool EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
+bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) const {
 	// check input params (will be corrected in PredictAll)
 	bool isvalid = minfo.isValid();
 	if( ! isvalid ) {
@@ -424,7 +477,7 @@ bool EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const
 	bool useG = _useG, useP = _useP, useA = _useA;
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);
-	if( _isInit ) {
+	if( _isInit && Lsize>0 ) {
 		useG = LFlag = true;
 		useA = useP = RFlag = false;
 	}
@@ -483,6 +536,22 @@ bool EQKAnalyzer::chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const
 	}
 
 	return isvalid;
+}
+
+
+bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
+	SynGenerator sg(fmodel, minfo);
+
+	for( const auto& sacM : _sacVR ) {
+		SacRec sacS;
+		// produce synthetic
+		if( ! sg.Synthetic( sacM.shd.stlo, sacM.shd.stla, sacM.chname(), f1,f2,f3,f4, sacS ) ) continue;
+		//std::cout<<sacM.shd.kstnm<<" "<<sacM.shd.stlo<<" "<<sacM.shd.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
+		std::cout<<sacM.fname<<" "<<sacS.fname<<"\n";
+		float dis = sacM.shd.dist;
+		std::cout<<sacM.Correlation( sacS, dis/5., dis/2. )<<std::endl;
+	}
+	exit(-3);
 }
 
 
