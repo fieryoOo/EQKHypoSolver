@@ -44,7 +44,6 @@ if [ $Nlinediff -gt 0 ]; then
 	echo "Stopped: difference(s) detected!!"
 	exit
 fi
-exit
 
 # link
 mkdir -p trash

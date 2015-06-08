@@ -296,7 +296,7 @@ done
 
 
 # compute/plot error ellipses
-textloc=(0.05_0.12 0.05_0.09 0.05_0.06 0.05_0.03 0.55_0.12 0.55_0.09 0.55_0.06 0.55_0.03)
+textloc=(0.05_0.145 0.05_0.11 0.05_0.075 0.05_0.04 0.55_0.145 0.55_0.11 0.55_0.075 0.55_0.04)
 fEdata=EllipseData.tmp
 ilab=0
 for _label in ${labels[@]}; do

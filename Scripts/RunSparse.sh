@@ -10,6 +10,11 @@ local _nthreads=12
 #local _run_exe=/projects/yeti4009/code/Programs/ExploitEvent/SearchLocation/SearchSource_SA_MC
 local _run_exe=/projects/yeti4009/eqkhyposolver/EQKSolver
 #local _run_exe=/home/tianye/EQKHypoSolver/EQKSolver
+
+# convert _Rtime from hrs to hh::mm:00
+_Rtime=`echo $_Rtime | awk '{hh=int($1);mm=int(($1-hh)*60);printf "%d:%02d:00",hh,mm}'`
+
+# produce sbatch script
 echo "#!/bin/bash
 
 #SBATCH -J EQKSearch_${_logdir}
@@ -17,7 +22,7 @@ echo "#!/bin/bash
 #SBATCH -e ${_logdir}/log_EQKSearch_%j.err
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=${_nthreads}
-#SBATCH --time=${_Rtime}:00:00
+#SBATCH --time=${_Rtime}
 #SBATCH --mem=1gb
 
 ulimit -c unlimited
@@ -68,7 +73,7 @@ for wtype in B R L; do # wave type ( B R L )
 			fi
 			fsta=`/projects/yeti4009/eqkhyposolver/Scripts/PickStaSparse.sh $clon $clat $Nsta`
 			### running time
-			Rtime=`echo $Nsta | awk '{nhr=0.5+$1*0.1; if(nhr>12){nhr=12} printf "%.0f\n", nhr}'`
+			Rtime=`echo $Nsta | awk '{nhr=1.5+$1*0.1; if(nhr>12){nhr=12} printf "%.1f\n", nhr}'`
 			### check param file
 			if [ ! -e $fparam ]; then
 				echo "no "$fparam" found!"
