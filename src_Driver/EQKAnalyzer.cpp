@@ -542,14 +542,34 @@ bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) cons
 bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
 	SynGenerator sg(fmodel, minfo);
 
-	for( const auto& sacM : _sacVR ) {
+	for( auto sacM : _sacVR ) {
 		SacRec sacS;
 		// produce synthetic
 		if( ! sg.Synthetic( sacM.shd.stlo, sacM.shd.stla, sacM.chname(), f1,f2,f3,f4, sacS ) ) continue;
+		sacS.Resample();
 		//std::cout<<sacM.shd.kstnm<<" "<<sacM.shd.stlo<<" "<<sacM.shd.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
 		std::cout<<sacM.fname<<" "<<sacS.fname<<"\n";
 		float dis = sacM.shd.dist;
-		std::cout<<sacM.Correlation( sacS, dis/5., dis/2. )<<std::endl;
+		float tmin = dis*0.2, tmax = dis*0.5;
+		// time-domain correlation
+		sacM.cut(tmin, tmax); sacS.cut(tmin, tmax);
+		SacRec sac_am1, sac_ph1, sac_am2, sac_ph2, sac_sratio;
+		std::cout<<sacM.Correlation( sacS, tmin, tmax )<<std::endl;
+		// freq-domain correlation
+		sacM.ToAmPh(sac_am1, sac_ph1);
+		sacS.ToAmPh(sac_am2, sac_ph2);
+sac_am1.Smooth(0.002, sac_sratio);
+sac_sratio.cut(f2,f3); sac_am2.cut(f2,f3);
+	sac_sratio.Divf(sac_am2);
+float sratio; sac_sratio.Mean( sratio );
+std::cerr<<sacS.shd.stlo<<" "<<sacS.shd.stla<<"   "<<dis<<" "<<sratio<<"   "<<sacS.stname()<<std::endl;
+continue;
+		std::cout<<sac_am1.Correlation(sac_am2, f2, f3)<<" "<<sac_ph1.Correlation(sac_ph2, f2, f3)<<std::endl;
+		// freq-domain rms
+		float Arms, Prms;
+		sac_am1.Subf(sac_am2); sac_ph1.Subf(sac_ph2);
+		sac_am1.RMSAvg(f2, f3, Arms);	sac_ph1.RMSAvg(f2, f3, Prms);
+		std::cout<<f2<<" "<<f3<<"   "<<Arms<<" "<<Prms<<std::endl;
 	}
 	exit(-3);
 }
