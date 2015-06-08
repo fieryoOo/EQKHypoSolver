@@ -15,7 +15,7 @@ if [ $dir_code == "dir_NaN" ]; then
 fi
 
 # file lists to link
-filelist1=(src_SDContainer/Point.h src_SDContainer/Map.h src_SDContainer/Array2D.h src_SDContainer/DisAzi.h src_SDContainer/Map.cpp src_SDContainer/StaList.h src_MISC/MyOMP.h src_MISC/StackTrace.h src_MISC/VectorOperations.h src_RadPattern/RadPattern.h src_RadPattern/RadPattern.cpp)
+filelist1=(src_SDContainer/Point.h src_SDContainer/Map.h src_SDContainer/Array2D.h src_SDContainer/DisAzi.h src_SDContainer/Map.cpp src_SDContainer/StaList.h src_Driver/MyOMP.h src_Driver/StackTrace.h src_SDContainer/VectorOperations.h src_RadPattern/RadPattern.h src_RadPattern/RadPattern.cpp)
 
 filelist2=(${dir_code}/MyLibs/include/Point.h ${dir_code}/MyLibs/include/Map.h ${dir_code}/MyLibs/include/Array2D.h ${dir_code}/MyLibs/include/DisAzi.h ${dir_code}/MyLibs/sources/Map/Map.cpp ${dir_code}/MyLibs/include/StaList.h ${dir_code}/MyLibs/include/MyOMP.h ${dir_code}/MyLibs/include/StackTrace.h ${dir_code}/MyLibs/include/VectorOperations.h ${dir_code}/Programs/RadPattern/RadPattern_C/RadPattern.h ${dir_code}/Programs/RadPattern/RadPattern_C/RadPattern.cpp)
 
