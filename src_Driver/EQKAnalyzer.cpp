@@ -564,14 +564,13 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) cons
 		SacRec sac_am1, sac_ph1, sac_am2, sac_ph2;
 		sacM.ToAmPh(sac_am1, sac_ph1);
 		sacS.ToAmPh(sac_am2, sac_ph2);
-		//SacRec sac_sratio; sac_am1.Smooth(0.002, sac_sratio);
-/*
+SacRec sac_sratio; sac_am1.Smooth(0.002, sac_sratio);
 sac_sratio.cut(f2,f3); sac_am2.cut(f2,f3);
+float dataamp; sac_sratio.Mean( dataamp );
 sac_sratio.Divf(sac_am2);
 float sratio; sac_sratio.Mean( sratio );
-std::cerr<<sacS.shd.stlo<<" "<<sacS.shd.stla<<"   "<<dis<<" "<<sratio<<"   "<<sacS.stname()<<std::endl;
+std::cerr<<sacS.shd.stlo<<" "<<sacS.shd.stla<<"   "<<dis<<" "<<sratio<<" "<<dataamp<<"   "<<sacS.stname()<<std::endl;
 continue;
-*/
 //sac_ph1.Write("debug1.sac"); sac_ph2.Write("debug2.sac");
 		std::cout<<"CC_amp = "<<sac_am1.Correlation(sac_am2, f2, f3)<<"   CC_pha = "<<sac_ph1.Correlation(sac_ph2, f2, f3)<<std::endl;
 		// freq-domain rms
