@@ -153,9 +153,9 @@ void SDContainer::ToMisfitV( std::vector<AziData>& adV ) const {
 }
 
 /* compute bin average */
-void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood ) {
+void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2pi ) {
 	// dump into AziData vector
-	Correct2PI();
+	if( c2pi ) Correct2PI();
 	std::vector<AziData> adVori;
 	ToMisfitV( adVori );
 
@@ -177,9 +177,9 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood ) {
 	VO::SelectData( dataV, sdVgood, adVmean, adVstd, exfactor );
 }
 
-void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar ) {
+void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi ) {
 	// dump into AziData vector
-	Correct2PI();
+	if( c2pi ) Correct2PI();
 	std::vector<AziData> adVori;
 	ToMisfitV( adVori );
 	//for( const auto& ad : adVori )	std::cerr<<ad<<std::endl;

@@ -40,9 +40,7 @@ int main( int argc, char* argv[] ) {
 		eka.LoadData();
 
 float chiS; int Ndata;
-std::cerr<<"before chiSW\n";
 eka.chiSquareW( ms, chiS, Ndata );
-std::cerr<<"after chiSW\n";
 exit(-3);
 
 		// initial output

@@ -46,12 +46,12 @@ fi
 
 perlst=( 8 10 16 22 30 40 )
 iperbeg=0
-ps=0.1
+ps=0.05
 lw=2
 ### plot Group fit results ###
 iter=$2
-#REG=-R0/360/-50/50
-REG=-R0/360/-25/25
+REG=-R0/360/-50/50
+#REG=-R0/360/-25/25
 SCA=-JX10/8
 psbasemap -Ba60f20/a20f5:."Fit Group":WeSn $REG $SCA -X12 -Y1 -O -K >> $psout
 iper=$iperbeg
@@ -71,8 +71,8 @@ for per in ${perlst[@]}; do
 done
 
 ### plot Phase fit results ###
-#REG=-R0/360/-30/30
-REG=-R0/360/-15/15
+REG=-R0/360/-30/30
+#REG=-R0/360/-15/15
 SCA=-JX10/8
 psbasemap -Ba60f20/a15f5:."Fit Phase":WeSn $REG $SCA -X-12 -Y-10 -O -K >> $psout
 iper=$iperbeg

@@ -52,6 +52,7 @@ bool SynGenerator::Synthetic( const float lon, const float lat, const std::strin
 		sac.Mul(-1.);
 		sac.Filter(f1,f2,f3,f4);
 		sac.shd.b -= minfo.t0;
+		sac.Resample();
 	}
 	return found;
 }

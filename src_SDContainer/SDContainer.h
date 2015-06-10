@@ -114,8 +114,8 @@ public:
 	}
 
 	/* compute bin average */
-	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar );
-	void BinAverage_ExcludeBad( std::vector<StaData>& sdVgood );
+	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, const bool c2pi = true );
+	void BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, const bool c2pi = true );
 
 	/* IO */
 	void LoadMeasurements( const std::string& fmeasure, const std::string fsta="" );
