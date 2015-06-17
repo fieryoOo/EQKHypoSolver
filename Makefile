@@ -2,9 +2,10 @@
 BIN1 = EQKSolver
 BIN2 = Auxiliary
 BIN3 = PredSrcPatterns
+BIN4 = MTensor
 BINT = Test
 
-BINall = $(BIN1) $(BIN2) $(BIN3)
+BINall = $(BIN1) $(BIN2) $(BIN3) $(BIN4)
 all : $(BINall)
 
 # --- compiliers --- #
@@ -29,7 +30,7 @@ INCLUDES	:= $(addprefix -I,$(MOD_DIRS))
 OMPflag = -fopenmp
 cflags = -O3 -std=c++11 $(OMPflag) $(INCLUDES)	#-O3
 fflags = -e -O2 -ffixed-line-length-132 $(OMPflag)	#-O2
-LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -lSacRec -lfftw3 -O3
+LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -lfftw3 -O3
 
 # --- objects --- #
 #OBJS_C	:= $(patsubst %.cpp,%.o,$(SRCS_C))

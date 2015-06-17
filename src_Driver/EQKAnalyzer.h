@@ -12,8 +12,8 @@
 
 //class ModelInfo;class SDContainer;
 
-/* -------------------- data structures -------------------- */
-enum Dtype { Undefined=0, B, R, L }; // type of data to be used
+/* -------------------- data type -------------------- */
+//enum Dtype { Undefined=0, B, R, L }; // type of data to be used
 
 /* -------------------- exceptions -------------------- */
 namespace WarningEA {
@@ -229,6 +229,7 @@ private:
 	// Input saclists and model file for the waveform synthetic
 	FileName fmodel;
 	FileName fsaclistR, fsaclistL;
+	short sacRtype = NaN, sacLtype = NaN;	// expecting 0 for displacement or 1 for velocity
 	float f1 = NaN, f2 = NaN, f3 = NaN, f4 = NaN;
 	// output files
 	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit

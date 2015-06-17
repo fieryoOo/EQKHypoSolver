@@ -49,7 +49,7 @@ bool SynGenerator::Synthetic( const float lon, const float lat, const std::strin
 	if( ! found ) {
 		sac.clear();
 	} else {
-		sac.Mul(-1.);
+		//sac.Mul(-1.);	// is the synthetic upside down???
 		sac.Filter(f1,f2,f3,f4);
 		sac.shd.b -= minfo.t0;
 		sac.Resample();

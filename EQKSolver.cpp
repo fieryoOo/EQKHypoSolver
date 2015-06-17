@@ -39,9 +39,12 @@ int main( int argc, char* argv[] ) {
 		EQKAnalyzer eka( fparam );
 		eka.LoadData();
 
+/*
 float chiS; int Ndata;
 eka.chiSquareW( ms, chiS, Ndata );
+std::cerr<<"chi square = "<<chiS<<" "<<Ndata<<std::endl;
 exit(-3);
+*/
 
 		// initial output
 		eka.Output( ms );

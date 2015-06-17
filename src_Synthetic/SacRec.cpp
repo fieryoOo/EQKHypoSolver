@@ -1,4 +1,5 @@
 #include "SacRec.h"
+#include "DisAzi.h"
 //#include "MyLogger.h"
 //#include "SysTools.h"
 #include <fftw3.h>
@@ -328,6 +329,17 @@ struct SacRec::SRimpl {
       }
       return jd + d;
    }
+
+	#ifdef DISAZI_H
+	void ComputeDisAzi( SAC_HD& shd ) {
+		try {
+			Path<float> path( shd.evlo, shd.evla, shd.stlo, shd.stla );
+			shd.dist = path.Dist(); shd.az = path.Azi1(); shd.baz = path.Azi2();
+		} catch (const std::exception& e) {}
+	}
+	#else
+	void ComputeDisAzi( SAC_HD& shd ) { throw ErrorSR::UndefMethod( FuncName, "DisAzi.h not included!" ); }
+	#endif
 };
 
 
@@ -792,6 +804,25 @@ void SacRec::ChHdr(const std::string& fieldin, const std::string& value){
 }
 
 
+float SacRec::Dis() const {
+	auto shdl = shd;
+	if( shdl.dist == NaN ) pimpl->ComputeDisAzi( shdl );
+	return shdl.dist;
+}
+float SacRec::Dis() {
+	if( shd.dist == NaN ) pimpl->ComputeDisAzi( shd );
+	return shd.dist;
+}
+float SacRec::Azi() const {
+	auto shdl = shd;
+	if( shdl.az == NaN ) pimpl->ComputeDisAzi( shdl );
+	return shdl.az;
+}
+float SacRec::Azi() {
+	if( shd.az == NaN ) pimpl->ComputeDisAzi( shd );
+	return shd.az;
+}
+
 double SacRec::AbsTime () {
    //if( ! sig ) return -1.;
    //if( shd == sac_null ) return -1.; // operator== not defined yet
@@ -1017,8 +1048,8 @@ bool SacRec::MeanStd ( float tbegin, float tend, int step, float& mean, float& s
 }
 
 
-/* performs integration using the trapezoidal rule */
-void SacRec::Integrate( SacRec& sac_out ) const {
+/* performs integration in time domain using the trapezoidal rule */
+void SacRec::IntegrateT( SacRec& sac_out ) const {
 	if( &sac_out != this ) sac_out = *this;
 	float dt = shd.delta, hdt = dt * 0.5;
 	float sum = -hdt * sig[0];
@@ -1029,6 +1060,56 @@ void SacRec::Integrate( SacRec& sac_out ) const {
 		sum += fadd;
 	} );
 }
+
+/* performs integration in the frequency domain (omega arithmetic) */
+void SacRec::Integrate( SacRec& sac_out ) const {
+	// FFT
+	SacRec sac_am, sac_ph;
+	ToAmPh( sac_am, sac_ph );
+	// shift phase by -pi/2 (FFT is backward!)
+	float HLF_PI = M_PI * 0.5, TWO_PI = M_PI * 2.;
+	sac_ph.Transform( [&](float& val) {
+		val += HLF_PI;
+		if( val >= M_PI ) val -= TWO_PI;
+	} );
+	// lowpass filtering at 1000 sec
+	float fl = 0.001; size_t ifl = sac_am.Index(fl);
+	sac_am.Transform( [](float& val) { 
+		val = 0.; 
+	}, 1, ifl );
+	// and divide amplitude by omega
+	float domega = sac_am.shd.delta * 2. * M_PI, omega = ifl * domega;
+	sac_am.Transform( [&](float& val) {
+		val /= omega;
+		omega += domega;
+	}, fl );
+	// IFFT
+	sac_out.shd = shd;
+	sac_out.FromAmPh( sac_am, sac_ph );
+}
+
+/* performs differentiation in the frequency domain (omega arithmetic) */
+void SacRec::Differentiate( SacRec& sac_out ) const {
+	// FFT
+	SacRec sac_am, sac_ph;
+	ToAmPh( sac_am, sac_ph );
+	// shift phase by pi/2 (FFT is backward!)
+	float HLF_PI = M_PI * 0.5, TWO_PI = M_PI * 2.;
+	sac_ph.Transform( [&](float& val) {
+		val -= HLF_PI;
+		if( val < -M_PI ) val += TWO_PI;
+	} );
+	// multiply amplitude by omega
+	float domega = sac_am.shd.delta * 2. * M_PI, omega = 0.;
+	sac_am.Transform( [&](float& val) {
+		val *= omega;
+		omega += domega;
+	} );
+	// IFFT
+	sac_out.shd = shd;
+	sac_out.FromAmPh( sac_am, sac_ph );
+}
+
 
 /* ---------------------------------------- time - frequency ---------------------------------------- */
 /* convert to amplitude */

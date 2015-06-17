@@ -47,19 +47,34 @@ namespace ErrorSC {
    };
 }
 
+/* -------------------- data type enum -------------------- */
+enum Dtype { Undefined=0, B, R, L }; // type of data to be used
+
+
+/* ----- station data container ----- */
 class SDContainer {
 public:
 	const float per = NaN;
-	const char type = 'N';
+	//const char type = 'N';
+	const Dtype type = Undefined;
 
 	/* con/destructors */
 
+	// waveform: No vel maps needed. Misfits will be pushed back (to Pdata and Adata) on the fly. Path and source terms will be set to zero
+	SDContainer( const float perin, const Dtype typein )
+		: per(perin), type(typein) {
+		if( type!=R && type!=L ) {
+			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
+			throw ErrorSC::BadParam( FuncName, str );
+		}
+	}
+
 	// 3D model: Path velocities (and thus Tpaths) are predicted on the fly from vel maps
-	SDContainer( const float perin, const char typein, const std::string fmeasure, 
+	SDContainer( const float perin, const Dtype typein, const std::string fmeasure, 
 					 const std::string fmapG, const std::string fmapP, const std::string fsta="" ) 
 		: per(perin), oop(1./perin), type(typein) {
-		if( type!='R' && type!='L' ) {
-			std::string str("unknown data type: "); str.push_back(type);
+		if( type!=R && type!=L ) {
+			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
 		}
 		LoadMeasurements( fmeasure, fsta );
@@ -67,12 +82,12 @@ public:
 	}
 
 	// 1D model: Path velocities are fixed at the input velocities
-	SDContainer( const float perin, const char typein, const std::string fmeasure, 
+	SDContainer( const float perin, const Dtype typein, const std::string fmeasure, 
 					 const float velG, const float velP, const std::string fsta="" ) 
 		: per(perin), oop(1./perin), type(typein), 
 		  _velG(velG), _velP(velP) {
-		if( type!='R' && type!='L' ) {
-			std::string str("unknown data type: "); str.push_back(type);
+		if( type!=R && type!=L ) {
+			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
 		}
 		LoadMeasurements( fmeasure, fsta );
@@ -85,11 +100,15 @@ public:
 		: per(perin), dataV( std::move(datain) ) {}
 	*/
 
+	void Sort() { std::sort(dataV.begin(), dataV.end()); }
+
+	void push_back( const StaData& sd ) { dataV.push_back(sd); }
+
 	std::size_t size() const { return dataV.size(); }
 
 	/* dump into an AziData vector */
 	//void ToAziVector( std::vector<AziData>& adV );
-	void ToMisfitV( std::vector<AziData>& adV ) const;
+	void ToMisfitV( std::vector<AziData>& adV, const float Tmin ) const;
 
 	/* compute azimuth and distance to a given center location */
 	void UpdateAziDis( const float srclon, const float srclat );
@@ -114,7 +133,7 @@ public:
 	}
 
 	/* compute bin average */
-	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, const bool c2pi = true );
+	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, const bool c2pi = true, const bool c3wave = true );
 	void BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, const bool c2pi = true );
 
 	/* IO */
@@ -125,8 +144,6 @@ public:
 			sout<<sd<<"\n";
 	}
 
-	// for debug!
-	friend int main( int argc, char* argv[] );
 
 protected:
    /* define class scope constants */

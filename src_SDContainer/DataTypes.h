@@ -27,10 +27,10 @@ struct AziData {
 	// check if (all attributes are) within a given range defined by two other AziDatas
 	virtual bool isWithin( const AziData& lbound, const AziData& ubound ) const {
 		return (
-			azi >= lbound.azi && azi < ubound.azi &&
-			Gdata >= lbound.Gdata && Gdata < ubound.Gdata &&
-			Pdata >= lbound.Pdata && Pdata < ubound.Pdata &&
-			Adata >= lbound.Adata && Adata < ubound.Adata
+			azi >= lbound.azi && azi <= ubound.azi &&
+			Gdata >= lbound.Gdata && Gdata <= ubound.Gdata &&
+			Pdata >= lbound.Pdata && Pdata <= ubound.Pdata &&
+			Adata >= lbound.Adata && Adata <= ubound.Adata
 		);
 	}
 	//if(debug) std::cerr<<"ExcludeBad: "<<adcur.azi<<"   "<<adcur.misG<<" "<<lbG<<" "<<ubG<<"   "<<adcur.misP<<" "<<lbP<<" "<<ubP<<"   "<<adcur.A<<" "<<lbA<<" "<<ubA<<std::endl;
@@ -191,6 +191,10 @@ struct StaData : public AziData {
       : AziData( aziin, misGin, misPin, ampin )
       , lon(lonin), lat(latin), dis(disin), Gdata(Gdatain), Pdata(Pdatain) {}
 */
+
+	StaData( const float azi, const float lon, const float lat, const float Gdata, const float Pdata, const float Adata, const float init )
+		: lon(lon), lat(lat), Gpath(init), Gsource(init), Ppath(init), Psource(init), Asource(init),
+		  AziData(azi, Gdata, Pdata, Adata) {}
 
    StaData( const char *input, float ph_shift = 0. )
       : StaData() {

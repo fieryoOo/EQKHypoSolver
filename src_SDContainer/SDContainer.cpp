@@ -140,16 +140,17 @@ void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 
 // output a vector of AziData
 //void SDContainer::ToAziVector( std::vector<AziData>& adV ) {
-void SDContainer::ToMisfitV( std::vector<AziData>& adV ) const {
+void SDContainer::ToMisfitV( std::vector<AziData>& adV, const float Tmin ) const {
 	adV.clear();
-	const float Tmin = 3. * per;	// three wavelength criterion
-	for( const auto& sdcur : dataV )
+	//const float Tmin = 3. * per;	// three wavelength criterion
+	for( const auto& sdcur : dataV ) {
 		if( sdcur.azi!=NaN ) {
 			if( sdcur.Pdata < Tmin ) continue;
 			AziData ad;
 			if( sdcur.ToMisfit( ad ) ) adV.push_back(ad);
 				//std::cerr<<"ToMisfitV:   "<<sdcur<<"   "<<ad<<std::endl;
 		}
+	}
 }
 
 /* compute bin average */
@@ -157,7 +158,8 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 	// dump into AziData vector
 	if( c2pi ) Correct2PI();
 	std::vector<AziData> adVori;
-	ToMisfitV( adVori );
+	const float Tmin = 3. * per;	// three wavelength criterion
+	ToMisfitV( adVori, Tmin );
 
 	// periodic extension
 	std::vector<AziData> adVext;
@@ -177,11 +179,16 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 	VO::SelectData( dataV, sdVgood, adVmean, adVstd, exfactor );
 }
 
-void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi ) {
+void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi, bool c3wave ) {
 	// dump into AziData vector
 	if( c2pi ) Correct2PI();
+VO::Output( dataV, "debug1.txt" );
 	std::vector<AziData> adVori;
-	ToMisfitV( adVori );
+	float Tmin;
+	if( c3wave ) Tmin = 3. * per;	// three wavelength criterion
+	else Tmin = -99999.;
+	ToMisfitV( adVori, Tmin );
+VO::Output( adVori, "debug2.txt" );
 	//for( const auto& ad : adVori )	std::cerr<<ad<<std::endl;
 
 	// periodic extension
@@ -213,7 +220,7 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	// compute variance by combining the data std-dev with the internally defined variance (for path predictions)
 	// (old: pull up any std-devs that are smaller than defined minimum)
 	AziData ad_varpath;
-	if( type == 'R' ) {
+	if( type == R ) {
 		ad_varpath = AziData{ NaN, varRGmin, varRPmin, varRAmin };
 	} else {
 		ad_varpath = AziData{ NaN, varLGmin, varLPmin, varLAmin };

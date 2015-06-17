@@ -193,20 +193,21 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
 	for( int iper=0; iper<perlst.size(); iper++ ) {
 		float per = perlst[iper];
 
-/*
 		// copy as is
 		auto &grV = grtM[per], &phV = phtM[per], &amV = ampM[per];
       grV = std::vector<float>( grT[iper], grT[iper]+nazi );
       phV = std::vector<float>( phT[iper], phT[iper]+nazi );
       amV = std::vector<float>( amp[iper], amp[iper]+nazi );
-		// flip
-		std::transform( grV.begin(), grV.end(), grV.begin(), std::negate<float>() );
+		// flip the phase only
+		//std::transform( grV.begin(), grV.end(), grV.begin(), std::negate<float>() );
 		std::transform( phV.begin(), phV.end(), phV.begin(), std::negate<float>() );
-*/
+/*
 		// shift by 180 degree
 		ShiftCopy( grtM[per], grT[iper], nazi );
 		ShiftCopy( phtM[per], phT[iper], nazi );
 		ShiftCopy( ampM[per], amp[iper], nazi );
+*/
+
    }
 	//aziV = std::vector<float>( azi, azi+nazi );
 

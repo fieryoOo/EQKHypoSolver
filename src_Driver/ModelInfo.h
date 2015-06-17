@@ -83,6 +83,22 @@ struct FocalInfo {
 		Correct2PI();
 	}
 
+	void MomentTensor( const float M0 ) const {
+		float deg2rad = M_PI/180.;
+		float stk = this->stk, dip = this->dip, rak = this->rak;
+		stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
+		float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
+		float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
+		float sinr = sin(rak), cosr = cos(rak);
+		const float Mxx = -M0 * (sind*cosr*sin2s + sin2d*sinr*sins*sins);
+		const float Mxy =  M0 * (sind*cosr*cos2s + sin2d*sinr*sins*coss);
+		const float Mxz = -M0 * (cosd*cosr*coss + cos2d*sinr*sins);
+		const float Myy =  M0 * (sind*cosr*sin2s - sin2d*sinr*coss*coss);
+		const float Myz = -M0 * (cosd*cosr*sins - cos2d*sinr*coss);
+		const float Mzz =  M0 * (sin2d*sinr);
+		std::cout<<Mxx<<" "<<Mxy<<" "<<Mxz<<" "<<Myy<<" "<<Myz<<" "<<Mzz<<std::endl;
+	}
+
    friend std::ostream& operator<< ( std::ostream& o, const FocalInfo& f ) {
       //o<<std::fixed<<std::setprecision(2)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(6)<<f.rak<<"  "<<std::setw(6)<<f.dep;
       o<<std::fixed<<std::setprecision(3)

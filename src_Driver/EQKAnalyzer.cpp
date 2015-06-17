@@ -98,8 +98,16 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "noP" ) { succeed = true; _useP = false; }
 	else if( stmp == "noA" ) { succeed = true; _useA = false; }
 	else if( stmp == "fmodel" ) succeed = buff >> fmodel;
-	else if( stmp == "fsaclistR" ) succeed = buff >> fsaclistR;
-	else if( stmp == "fsaclistL" ) succeed = buff >> fsaclistL;
+	else if( stmp == "fsaclistR" ) {
+		succeed = buff >> fsaclistR >> sacRtype;
+		if( sacRtype!=0 && sacRtype!=1 )
+			throw ErrorEA::BadParam( FuncName, "sacRtype: expecting either 0 (displacement) or 1 (velocity)");
+	}
+	else if( stmp == "fsaclistL" ) {
+		succeed = buff >> fsaclistL >> sacLtype;
+		if( sacLtype!=0 && sacLtype!=1 )
+			throw ErrorEA::BadParam( FuncName, "sacLtype: expecting either 0 (displacement) or 1 (velocity)");
+	}
 	else if( stmp == "permin" ) {
 		float permin;
 		succeed = buff >> permin;
@@ -321,6 +329,7 @@ void EQKAnalyzer::LoadData() {
 			std::stringstream ss(line); ss >> line;
 			SacRec sac(line); sac.Load();
 			sac.Resample();	// sample grid alignment
+			if( sacRtype == 1 ) sac.Differentiate();
 			sac.Filter(f1,f2,f3,f4);
 			_sacVR.push_back( sac );
 		}
@@ -335,6 +344,7 @@ void EQKAnalyzer::LoadData() {
 			std::stringstream ss(line); ss >> line;
 			SacRec sac(line); sac.Load();
 			sac.Resample();	// sample grid alignment
+			if( sacLtype == 1 ) sac.Differentiate();
 			sac.Filter(f1,f2,f3,f4);
 			_sacVL.push_back( sac );
 		}
@@ -350,9 +360,9 @@ void EQKAnalyzer::LoadData() {
 			// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
 			float velG, velP;
 			if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-				_dataR.push_back( SDContainer(per, 'R', farray[0], velG, velP, farray[3]) );
+				_dataR.push_back( SDContainer(per, R, farray[0], velG, velP, farray[3]) );
 			} else {
-				_dataR.push_back( SDContainer(per, 'R', farray[0], farray[1], farray[2], farray[3]) );
+				_dataR.push_back( SDContainer(per, R, farray[0], farray[1], farray[2], farray[3]) );
 			}
 		}
 
@@ -363,9 +373,9 @@ void EQKAnalyzer::LoadData() {
 			const auto& farray = fL.second;
 			float velG, velP;
 			if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-				_dataL.push_back( SDContainer(per, 'L', farray[0], velG, velP, farray[3]) );
+				_dataL.push_back( SDContainer(per, L, farray[0], velG, velP, farray[3]) );
 			} else {
-				_dataL.push_back( SDContainer(per, 'L', farray[0], farray[1], farray[2], farray[3]) );
+				_dataL.push_back( SDContainer(per, L, farray[0], farray[1], farray[2], farray[3]) );
 			}
 		}
 
@@ -541,20 +551,44 @@ bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) cons
 }
 
 
+static inline int nint( float val ) { return (int)floor(val + 0.5); }
 bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
+	// prepare SynGenerator
 	SynGenerator sg(fmodel, minfo);
 
+	// data flags
+	bool useG = false, useP = _useP, useA = _useA;
+	bool RFlag = (datatype==B || datatype==R);
+	bool LFlag = (datatype==B || datatype==L);
+
+	// initialize ADAdder
+	ADAdder adder( useG, useP, useA );
+	const int Nadd = useG + useP + useA;
+
+	chiS = 0.; N = 0;
+	float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
+	SDContainer dataR( pseudo_per, R );
+	float amp_sum = 0., pha_sum = 0.;
 	for( auto sacM : _sacVR ) {
 		SacRec sacS;
 
 		// produce synthetic
-		if( ! sg.Synthetic( sacM.shd.stlo, sacM.shd.stla, sacM.chname(), f1,f2,f3,f4, sacS ) ) continue;
+		float lon=sacM.shd.stlo, lat=sacM.shd.stla;
+		if( ! sg.Synthetic( lon, lat, sacM.chname(), f1,f2,f3,f4, sacS ) ) continue;
 		//std::cout<<sacM.shd.kstnm<<" "<<sacM.shd.stlo<<" "<<sacM.shd.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
 
-		// zoom in to surface wave window
+		// check for bad sac 
+		if( sacM.shd.depmax!=sacM.shd.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
+
+		// zoom in to the surface wave window
 		std::cout<<sacM.fname<<" "<<sacS.fname<<"\n";
-		float dis = sacM.shd.dist;
-		float tmin = dis*0.2, tmax = dis*0.5;
+		float dis = sacS.Dis(), tmin, tmax;
+		if( dis < 300. ) {
+			tmin = std::max(dis*0.35-45., 0.);
+			tmax = tmin + 90.;
+		} else {
+			tmin = dis*0.2; tmax = dis*0.5;
+		}
 		// time-domain correlation
 		sacM.cut(tmin, tmax); sacS.cut(tmin, tmax);
 
@@ -564,16 +598,23 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) cons
 		SacRec sac_am1, sac_ph1, sac_am2, sac_ph2;
 		sacM.ToAmPh(sac_am1, sac_ph1);
 		sacS.ToAmPh(sac_am2, sac_ph2);
-SacRec sac_sratio; sac_am1.Smooth(0.002, sac_sratio);
+
+SacRec sac_sratio; 
+sac_am1.Smooth(0.002, sac_sratio);
 sac_sratio.cut(f2,f3); sac_am2.cut(f2,f3);
-float dataamp; sac_sratio.Mean( dataamp );
-sac_sratio.Divf(sac_am2);
-float sratio; sac_sratio.Mean( sratio );
-std::cerr<<sacS.shd.stlo<<" "<<sacS.shd.stla<<"   "<<dis<<" "<<sratio<<" "<<dataamp<<"   "<<sacS.stname()<<std::endl;
+float dataamp; sac_sratio.Mean( f2, f3, dataamp );
+float synamp; sac_am2.Mean( f2, f3, synamp );
+//sac_sratio.Divf(sac_am2);
+//float sratio; if( ! sac_sratio.Mean( sratio ) ) continue;
+std::cerr<<sacS.stname()<<" "<<sacS.shd.stlo<<" "<<sacS.shd.stla<<" "<<sacS.Azi()<<" "<<dis<<"   "<<dataamp/synamp<<" "<<dataamp<<" "<<synamp<<"   "<<1./f3<<" "<<1./f2<<std::endl;
 continue;
+
 //sac_ph1.Write("debug1.sac"); sac_ph2.Write("debug2.sac");
 		std::cout<<"CC_amp = "<<sac_am1.Correlation(sac_am2, f2, f3)<<"   CC_pha = "<<sac_ph1.Correlation(sac_ph2, f2, f3)<<std::endl;
 		// freq-domain rms
+		float Amean1, Amean2;
+		if( !sac_am1.Mean(f2,f3,Amean1) || !sac_am2.Mean(f2,f3,Amean2) ) continue;
+		sac_am1.Mul( Amean2 / Amean1 );
 		sac_am1.Subf(sac_am2); sac_ph1.Subf(sac_ph2);
 		// correct for 2pi
 		const float TWO_PI = M_PI * 2.;
@@ -582,9 +623,27 @@ continue;
 			else if( val < -M_PI ) val += TWO_PI;
 		};
 		sac_ph1.Transform( correct2PI );
-		std::cout<<"RMS_amp = "<<sac_am1.RMSAvg(f2, f3)<<"   RMS_pha = "<<sac_ph1.RMSAvg(f2, f3)<<std::endl;
+		float rms_am = sac_am1.RMSAvg(f2, f3), rms_ph = sac_ph1.RMSAvg(f2, f3);
+		amp_sum += rms_am; pha_sum += rms_ph; N++;
+		std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
+		dataR.push_back( StaData(sacS.Azi(), lon, lat, 0., rms_ph, rms_am, 0.) );
 	}
-	exit(-3);
+	std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
+
+	// compute chi square
+	dataR.Sort();
+	chiS = 0.; N = 0;
+	std::vector<AziData> adVmean, adVvar;
+	dataR.BinAverage( adVmean, adVvar, false, false );	// do not correct for 2 pi, nor 3 wavelength !!!
+	for( int i=0; i<adVmean.size(); i++ ) {
+		const auto& admean = adVmean[i];
+		const auto& advar = adVvar[i];
+std::cerr<<admean<<" "<<advar<<std::endl;
+		// (mis * mis / variance)
+		chiS += adder( (admean * admean)/advar );
+		N += Nadd;
+	}
+
 }
 
 
