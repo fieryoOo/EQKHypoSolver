@@ -1,7 +1,7 @@
                    subroutine angles2tensor(the_d,dip_d,slip_d,m)
 C       input:  3 angles in degrees
 C       output: 6 components of the moment tensor in the order xx,yy,zz,xy,xz,yz
-C       Mxx, Myy, Mxz, Mxy, Mxz, Myz
+C       Mxx, Myy, Mzz, Mxy, Mxz, Myz
         real*4 m(6)
         data drad/0.0174533/
         the=the_d*drad

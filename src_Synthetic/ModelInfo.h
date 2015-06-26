@@ -31,11 +31,11 @@ public:
 template< class T >
 struct FocalInfo {
 	static constexpr float NaN = -12345.;
-   T stk, dip, rak, dep;
+   T stk, dip, rak, dep, M0;
 
    //FocalInfo( T stkin = 180, T dipin = 45, T rakin = 0, T depin = 10 )
-   FocalInfo( T stkin = NaN, T dipin = NaN, T rakin = NaN, T depin = NaN )
-      : stk(stkin), dip(dipin), rak(rakin), dep(depin) {}
+   FocalInfo( T stkin = NaN, T dipin = NaN, T rakin = NaN, T depin = NaN, T M0in = 1 )
+      : stk(stkin), dip(dipin), rak(rakin), dep(depin), M0(M0in) {}
 
 	/* check validation */
 	virtual bool isValid() const {
@@ -161,9 +161,9 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 		ModelInfo() {}
 
 		ModelInfo( const float lonin, const float latin, const float timin,
-				const float stkin, const float dipin, const float rakin, const float depin )
+				const float stkin, const float dipin, const float rakin, const float depin, const float M0in = 1. )
 			: EpicInfo(lonin, latin, timin)
-			, FocalInfo(stkin, dipin, rakin, depin) {}
+			, FocalInfo(stkin, dipin, rakin, depin, M0in) {}
 
 		ModelInfo( const EpicInfo& einfo, const FocalInfo& finfo )
 			: EpicInfo(einfo), FocalInfo(finfo) {}

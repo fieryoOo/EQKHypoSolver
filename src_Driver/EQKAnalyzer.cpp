@@ -97,7 +97,8 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "noG" ) { succeed = true; _useG = false; }
 	else if( stmp == "noP" ) { succeed = true; _useP = false; }
 	else if( stmp == "noA" ) { succeed = true; _useA = false; }
-	else if( stmp == "fmodel" ) succeed = buff >> fmodel;
+	else if( stmp == "fmodelR" ) succeed = buff >> fmodelR;
+	else if( stmp == "fmodelL" ) succeed = buff >> fmodelL;
 	else if( stmp == "fsaclistR" ) {
 		succeed = buff >> fsaclistR >> sacRtype;
 		if( sacRtype!=0 && sacRtype!=1 )
@@ -314,42 +315,46 @@ bool EQKAnalyzer::FilenameToVel( const FileName& fname, float& vel ) const {
 void EQKAnalyzer::LoadData() {
 	// check input params
 	// do waveform fitting if model and saclist are input
-	_usewaveform = !fsaclistR.empty() && !fsaclistL.empty() && !fmodel.empty();
+	_usewaveform = ( !fsaclistR.empty() && !fmodelR.empty() ) || ( !fsaclistL.empty() && !fmodelL.empty() );
 
 	if( _usewaveform ) {	// read in sacs
 		// period band
 		if( f2<0. || f3<0. || f2>=f3 )
 			throw ErrorSC::BadParam(FuncName, "invalid freq range: "+std::to_string(f2)+" - "+std::to_string(f3));
 		// Rayleigh
+		_synGR.Initialize(fmodelR, fRphvname, fReigname, 'R', 0);
 		std::ifstream fin( fsaclistR );
 		if( ! fin )
 	      throw ErrorSC::BadFile(FuncName, fsaclistR);
-		_sacVR.clear();
+		_sacVR.clear(); _synGR.ClearSta();
 		for( std::string line; std::getline(fin, line); ) {
 			std::stringstream ss(line); ss >> line;
 			SacRec sac(line); sac.Load();
 			sac.Resample();	// sample grid alignment
-			if( sacRtype == 1 ) sac.Differentiate();
+			if( sacRtype == 1 ) sac.Integrate();
 			sac.Filter(f1,f2,f3,f4);
-			_sacVR.push_back( sac );
+			_synGR.PushbackSta( sac );
+			_sacVR.push_back( std::move(sac) );
 		}
 		fin.close(); fin.clear();
 
 		// Love
+		_synGL.Initialize(fmodelL, fLphvname, fLeigname, 'L', 0);
 		fin.open( fsaclistL );
 		if( ! fin )
 	      throw ErrorSC::BadFile(FuncName, fsaclistL);
-		_sacVL.clear();
+		_sacVL.clear(); _synGL.ClearSta();
 		for( std::string line; std::getline(fin, line); ) {
 			std::stringstream ss(line); ss >> line;
 			SacRec sac(line); sac.Load();
 			sac.Resample();	// sample grid alignment
-			if( sacLtype == 1 ) sac.Differentiate();
+			if( sacLtype == 1 ) sac.Integrate();
 			sac.Filter(f1,f2,f3,f4);
-			_sacVL.push_back( sac );
+			_synGL.PushbackSta( sac );
+			_sacVL.push_back( std::move(sac) );
 		}
 
-		std::cout<<"### "<<_sacVR.size() + _sacVL.size()<<" sac file(s) loaded. ###"<<std::endl;
+		std::cout<<"### "<<_sacVR.size()<<"(Rayl) + "<<_sacVL.size()<<"(Love) sac file(s) loaded. ###"<<std::endl;
 	} else {	// read DISP measurements
 		// Rayleigh
 		_dataR.clear();
@@ -553,9 +558,6 @@ bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) cons
 
 static inline int nint( float val ) { return (int)floor(val + 0.5); }
 bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
-	// prepare SynGenerator
-	SynGenerator sg(fmodel, minfo);
-
 	// data flags
 	bool useG = false, useP = _useP, useA = _useA;
 	bool RFlag = (datatype==B || datatype==R);
@@ -565,23 +567,29 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) cons
 	ADAdder adder( useG, useP, useA );
 	const int Nadd = useG + useP + useA;
 
+	// prepare SynGenerator
+	auto synGR = _synGR;
+	synGR.SetEvent( minfo );
+
+	// compute chi square
 	chiS = 0.; N = 0;
 	float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
 	SDContainer dataR( pseudo_per, R );
 	float amp_sum = 0., pha_sum = 0.;
 	for( auto sacM : _sacVR ) {
-		SacRec sacS;
-
 		// produce synthetic
+		SacRec sacS, sacSN, sacSE;
 		float lon=sacM.shd.stlo, lat=sacM.shd.stla;
-		if( ! sg.Synthetic( lon, lat, sacM.chname(), f1,f2,f3,f4, sacS ) ) continue;
+		if( ! synGR.ComputeSyn( sacM.stname(), lon, lat, sacM.shd.npts, sacM.shd.delta, 
+									  f1,f2,f3,f4, sacS, sacSN, sacSE ) ) 
+			throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
+		sacSN.clear(); sacSE.clear();	// ignore N and E channels for now
 		//std::cout<<sacM.shd.kstnm<<" "<<sacM.shd.stlo<<" "<<sacM.shd.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
-
 		// check for bad sac 
 		if( sacM.shd.depmax!=sacM.shd.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
+		sacS.Resample();	// shift to regular sampling grids
 
 		// zoom in to the surface wave window
-		std::cout<<sacM.fname<<" "<<sacS.fname<<"\n";
 		float dis = sacS.Dis(), tmin, tmax;
 		if( dis < 300. ) {
 			tmin = std::max(dis*0.35-45., 0.);
@@ -589,16 +597,22 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) cons
 		} else {
 			tmin = dis*0.2; tmax = dis*0.5;
 		}
+std::stringstream ss(sacM.fname);
+std::string sacname;
+while( std::getline(ss, sacname, '/') );
+sacM.Write( "./debug/" + sacname + "_real" );
+sacS.Write( "./debug/" + sacname + "_syn" );
 		// time-domain correlation
 		sacM.cut(tmin, tmax); sacS.cut(tmin, tmax);
 
-		std::cout<<"CC_sigtime = "<<sacM.Correlation( sacS, tmin, tmax )<<std::endl;
+		std::cout<<lon<<" "<<lat<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";
 
-		// into freq-domain
+		// FFT into freq-domain
 		SacRec sac_am1, sac_ph1, sac_am2, sac_ph2;
 		sacM.ToAmPh(sac_am1, sac_ph1);
 		sacS.ToAmPh(sac_am2, sac_ph2);
 
+/*
 SacRec sac_sratio; 
 sac_am1.Smooth(0.002, sac_sratio);
 sac_sratio.cut(f2,f3); sac_am2.cut(f2,f3);
@@ -608,13 +622,16 @@ float synamp; sac_am2.Mean( f2, f3, synamp );
 //float sratio; if( ! sac_sratio.Mean( sratio ) ) continue;
 std::cerr<<sacS.stname()<<" "<<sacS.shd.stlo<<" "<<sacS.shd.stla<<" "<<sacS.Azi()<<" "<<dis<<"   "<<dataamp/synamp<<" "<<dataamp<<" "<<synamp<<"   "<<1./f3<<" "<<1./f2<<std::endl;
 continue;
+*/
 
 //sac_ph1.Write("debug1.sac"); sac_ph2.Write("debug2.sac");
-		std::cout<<"CC_amp = "<<sac_am1.Correlation(sac_am2, f2, f3)<<"   CC_pha = "<<sac_ph1.Correlation(sac_ph2, f2, f3)<<std::endl;
+		//std::cout<<"CC_amp = "<<sac_am1.Correlation(sac_am2, f2, f3)<<"   CC_pha = "<<sac_ph1.Correlation(sac_ph2, f2, f3)<<std::endl;
 		// freq-domain rms
+		/*
 		float Amean1, Amean2;
 		if( !sac_am1.Mean(f2,f3,Amean1) || !sac_am2.Mean(f2,f3,Amean2) ) continue;
 		sac_am1.Mul( Amean2 / Amean1 );
+		*/
 		sac_am1.Subf(sac_am2); sac_ph1.Subf(sac_ph2);
 		// correct for 2pi
 		const float TWO_PI = M_PI * 2.;
@@ -625,10 +642,12 @@ continue;
 		sac_ph1.Transform( correct2PI );
 		float rms_am = sac_am1.RMSAvg(f2, f3), rms_ph = sac_ph1.RMSAvg(f2, f3);
 		amp_sum += rms_am; pha_sum += rms_ph; N++;
-		std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
 		dataR.push_back( StaData(sacS.Azi(), lon, lat, 0., rms_ph, rms_am, 0.) );
+		//std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
+		//std::cerr<<dataR.back()<<std::endl;
+		std::cerr<<lon<<" "<<lat<<" "<<rms_ph<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_pha "<<sacM.fname<<"\n";
 	}
-	std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
+	//std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
 
 	// compute chi square
 	dataR.Sort();
@@ -638,7 +657,7 @@ continue;
 	for( int i=0; i<adVmean.size(); i++ ) {
 		const auto& admean = adVmean[i];
 		const auto& advar = adVvar[i];
-std::cerr<<admean<<" "<<advar<<std::endl;
+		//std::cerr<<"admean = "<<admean<<"   advar = "<<advar<<std::endl;
 		// (mis * mis / variance)
 		chiS += adder( (admean * admean)/advar );
 		N += Nadd;

@@ -1,4 +1,4 @@
-       subroutine surfread(infile,sigR,sigL,symb,nt,nd,depth,t,
+       subroutine surfread(infile,sigR,sigL,symb,nt,nd,depth,fr,
      +cr,ur,wvr,cl,ul,wvl,v,dvdz,ampr,ampl,ratio,qR,qL,I0)
 C------to read SURFLEV output for producing synthetic seismograms--
 C----------------INPUT ARGUMENTS-----------------------------------
@@ -11,14 +11,14 @@ C---------------OUTPUT ARGUMENTS-----------------------------------
 C------c is a phase velocity;u -group velocity;wvn -wavenumber;
 C------v(3,2000)---eigenfunction; dvdz(3,2000) - depth derivative; 
 C------amp -ampitude factor; ratio is ellipticity------
-                 character*80 infile,bred,vzdor,mura
-                 character*1 sigR,sigL
-                 character*2 symb
-                 real*4 v(3,2000),dvdz(3,2000),ratio(2000)
-                 real*4 t(2000),ur(2000),cr(2000),wvr(2000),ampr(2000),qR(2000)
-                 real*4        ul(2000),cl(2000),wvl(2000),ampl(2000),qL(2000)
-                 real*4 I0(2000)
-                 data pi2/6.28318/,tlim/10000.0/,eps/1.0/
+         character*80 infile,bred,vzdor,mura
+         character*1 sigR,sigL
+         character*2 symb
+         real*4 v(3,2000),dvdz(3,2000),ratio(2000)
+         real*4 t(2000),fr(2000),ur(2000),cr(2000),wvr(2000),ampr(2000),qR(2000)
+         real*4 ul(2000),cl(2000),wvl(2000),ampl(2000),qL(2000)
+         real*4 I0(2000)
+         data pi2/6.28318/,tlim/10000.0/,eps/1.0/
 C-----------------------------------------------------------------
            lsy=lnblnk(symb)
            wvl(1)=0.0
@@ -90,6 +90,7 @@ C----------------------------------PERIOD LOOP------S
            nd_real=nd
            read(1,'(a)',end=9797)vzdor
            read(1, '(7(E14.7,2X))') t(k),cr(k),ur(k),wvr(k),ampr(k),ratio(k),qR(k)
+           fr(k) = 1./t(k)
 c          read(1,'(a)') ,vzdor
            read(1,'(E14.7)') I0(k)
 C----------Rayl. Horizontal component------S

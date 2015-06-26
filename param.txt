@@ -34,7 +34,8 @@ indep 0.5	# factor describing data independence
 ########## (1) original SAC data ##########
 fsaclistR
 fsaclistL
-fmodel
+fmodelR
+fmodelL
 permin 8
 permax 18
 

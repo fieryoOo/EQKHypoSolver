@@ -2,6 +2,7 @@
 #define EQKANALYZER_H
 
 #include "ModelInfo.h"
+#include "SynGenerator.h"
 #include "RadPattern.h"
 #include "SDContainer.h"
 #include "Searcher.h"
@@ -197,6 +198,7 @@ public:
 protected:
 	static constexpr float NaN = AziData::NaN;
 private:
+	// option 1. measurements
 	// RadPattern objects for predicting source terms
 	RadPattern _rpR, _rpL;
 
@@ -205,7 +207,10 @@ private:
 	 * all StaDatas at a single period is handeled by a SDContainer */
 	std::vector<SDContainer> _dataR, _dataL;
 
+	// option 2. waveform fitting data
 	std::vector<SacRec> _sacVR, _sacVL;
+	SynGenerator _synGR, _synGL;
+	
 
 	/* ---------- input parameters ---------- */
 	// search area of epicenter
@@ -227,7 +232,7 @@ private:
 	FileName fReigname, fRphvname;
    FileName fLeigname, fLphvname;
 	// Input saclists and model file for the waveform synthetic
-	FileName fmodel;
+	FileName fmodelR, fmodelL;
 	FileName fsaclistR, fsaclistL;
 	short sacRtype = NaN, sacLtype = NaN;	// expecting 0 for displacement or 1 for velocity
 	float f1 = NaN, f2 = NaN, f3 = NaN, f4 = NaN;

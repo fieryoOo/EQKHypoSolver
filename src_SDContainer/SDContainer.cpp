@@ -182,13 +182,11 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi, bool c3wave ) {
 	// dump into AziData vector
 	if( c2pi ) Correct2PI();
-VO::Output( dataV, "debug1.txt" );
 	std::vector<AziData> adVori;
 	float Tmin;
 	if( c3wave ) Tmin = 3. * per;	// three wavelength criterion
 	else Tmin = -99999.;
 	ToMisfitV( adVori, Tmin );
-VO::Output( adVori, "debug2.txt" );
 	//for( const auto& ad : adVori )	std::cerr<<ad<<std::endl;
 
 	// periodic extension
@@ -214,7 +212,7 @@ VO::Output( adVori, "debug2.txt" );
 
 	// exclude empty bins and define undefined std-devs
 	ad_stdest = AziData{ NaN, stdGest, stdPest, stdAest };
-	// NOTE!: invalide adVvar[].Adata will be set to admean.user * ad_stdest.Adata
+	// NOTE!: invalid adVvar[].Adata will be set to admean.user * ad_stdest.Adata
 	HandleBadBins( adVmean, adVvar, ad_stdest );
 
 	// compute variance by combining the data std-dev with the internally defined variance (for path predictions)
@@ -238,12 +236,14 @@ void SDContainer::HandleBadBins( std::vector<AziData>& adVmean,
       auto& adstd = adVstd[i];
       // continue if the current bin was empty
       if( admean.azi == NaN ) continue;
+std::cerr<<"before badbin correction: admean = "<<admean<<"   adstd = "<<adstd<<"  admean.user = "<<admean.user<<" Aperc = "<<ad_stdest.Adata<<std::endl;
       // re-assign azi range and data std-devs
       if( ad_stdest.azi != NaN ) adstd.azi = ad_stdest.azi;
       if( adstd.Gdata == NaN ) adstd.Gdata = ad_stdest.Gdata;
       if( adstd.Pdata == NaN ) adstd.Pdata = ad_stdest.Pdata;
       if( adstd.Adata == NaN ) adstd.Adata = admean.user * ad_stdest.Adata;
       // store
+std::cerr<<"after badbin correction: admean = "<<admean<<"   adstd = "<<adstd<<std::endl;
       adVmean2.push_back( std::move(admean) );
       adVstd2.push_back( std::move(adstd) );
       //std::cerr<<"mean = "<<admean<<"   std = "<<adstd<<std::endl;
@@ -260,6 +260,7 @@ void SDContainer::ComputeVariance( std::vector<AziData>& adVmean,
    for(int i=0; i<adVmean.size(); i++) {
       auto& admean = adVmean[i];
       auto& adstd = adVstd[i];
+std::cerr<<"before var correction: admean = "<<admean<<"   adstd = "<<adstd<<std::endl;
 		//if( adstd.Gdata < Gmin ) adstd.Gdata = Gmin;
 		//if( adstd.Pdata < Pmin ) adstd.Pdata = Pmin;
 		//float Amin = admean.user * Asca;
@@ -268,6 +269,7 @@ void SDContainer::ComputeVariance( std::vector<AziData>& adVmean,
 		adstd.Gdata = adstd.Gdata*adstd.Gdata + Gin;
 		adstd.Pdata = adstd.Pdata*adstd.Pdata + Pin;
 		adstd.Adata = adstd.Adata*adstd.Adata + Ain;
+std::cerr<<"after var correction: admean = "<<admean<<"   advar = "<<adstd<<std::endl;
 	}
 }
 

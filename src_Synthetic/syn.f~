@@ -1,5 +1,5 @@
              subroutine syn(wv,dist,dt,f0,df,sre,sim,u_int,q_int,seism,tstart,
-     + vmax,n2pow,npoints,key_compr,fix_vel,amp,T_curr,f2,f3,k_spec)
+     + vmax,n2pow,npoints,key_compr,fix_vel,amp,T_curr,tmin,tmax,k_spec)
 C------------to calculate seismogram----------------------
 C------------INPUT ARGUMENTS------------------------------
 C---n2pow: power of 2; dist:distance; dt: time increment;vmax: max.gr.vel;
@@ -9,7 +9,7 @@ C-----------sre, sim: spectrum--------------------------------
 C------------OUTPUT: seism------------------------------------
          real*4 sre(2048),sim(2048),seism(8192),wv(2048),q_int(2048),u_int(2048)
          real*4 asre(8192),asim(8192),amp(2048),T_curr(2048)
-         logical*1 key_compr
+         logical key_compr
              data pi2/6.2831854/
              nbase=2**n2pow
              n=nbase/2
@@ -20,18 +20,15 @@ C------------OUTPUT: seism------------------------------------
              arg=wv(i)*dist
              if(key_compr)arg=om_curr*dist/fix_vel
 C-----dnom: geometrical spreading----
-c MB         dnom=sqrt(arg)
-             dnom=sqrt(dist)
+             dnom=sqrt(arg)
 C---- aq: phase delay----------------
              aq=arg+pi2/8.-tstart*om_curr
 cMB          aq=pi2/8.-tstart*om_curr
-C      write(*,*) "debug2: ",aq," ",arg," ",pi2," ",tstart," ",om_curr," ",wv(i)," ",dist
 C-----att: attenuation factor--------
              power=dist*om_curr/u_int(i)/q_int(i)/2.
              att=0.0
              if(power.lt.20.)  att=exp(-power)
 C-----full spectrum=source spectrum*propagation factor----S
-             att = 1.0
              cs=cos(aq)/dnom*att
              sc=sin(-aq)/dnom*att
              sr=2.*sre(i)/dt
@@ -56,11 +53,10 @@ C----------seismogram outputting----------S
            k_spec=0
            do kkk=2, n
            T_c=1./(f0+df*(kkk-1))
-           if(T_c.lt.(1.0/f3).or.T_c.gt.(1.0/f2))go to 2222 
+           if(T_c.lt.tmin.or.T_c.gt.tmax)go to 2222 
            k_spec=k_spec+1
            T_curr(k_spec)=T_c
            amp(k_spec)=sqrt(asre(k_spec)**2+asim(k_spec)**2)
-C      write(*,*) "debug3: amp=",amp(k_spec)," asre=",asre(k_spec)," asim=",asim(k_spec)
 2222       continue
            enddo
               call FFT(n2pow,asre,asim,1)

@@ -23,7 +23,7 @@ c ---
       dff = e(3)
       if(dabs(dff).gt.1.d0) dff = dsign(1.d0,e(3))
       dff = DASIN(dff)/drad
-      if(dbg.ne.0) write(*,*) 'Point: ',dff,dfl
+C      if(dbg.ne.0) write(*,*) 'Point: ',dff,dfl
 c --- check that e is model's internal point
       if(dff.lt.bf.or.dff.gt.ef.or.dfl.lt.bl.or.dfl.gt.el) then
         goto 9

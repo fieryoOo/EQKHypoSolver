@@ -50,11 +50,11 @@ c-----------------------------------------------------------------------
       ibit(i)=iabs((i-1)*(i-2))
       fsig(x1,x2,r)=(x1-r)*(x2-r)
       if(ibit(ind1)+ibit(ind2).eq.0) go to 60
-      write(2,2)ind1,ind2
+C      write(2,2)ind1,ind2
     2 format(/' !!!!!***stop-spline:ind1=',i5,' ind2=',i5)
       go to 999
    60 if(n.le.2000) go to 1
-      write(2, 62)n
+C      write(2, 62)n
    62 format(/' !!!!!***stop-spline: length of array=',i4,'>2000')
   999 stop
     1 ac0=mod(ind1,2)

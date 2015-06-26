@@ -35,16 +35,15 @@ int main( int argc, char* argv[] ) {
 		// ********** Preparations ********** //
 		// initialize model space
 		ModelSpace ms( fparam );
+		ms.M0 = 1.04e23;
 		// initialize eqk analyzer
 		EQKAnalyzer eka( fparam );
 		eka.LoadData();
 
-/*
 float chiS; int Ndata;
 eka.chiSquareW( ms, chiS, Ndata );
 std::cerr<<"chi square = "<<chiS<<" "<<Ndata<<std::endl;
 exit(-3);
-*/
 
 		// initial output
 		eka.Output( ms );

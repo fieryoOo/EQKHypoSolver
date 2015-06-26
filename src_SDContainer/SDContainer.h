@@ -104,6 +104,8 @@ public:
 
 	void push_back( const StaData& sd ) { dataV.push_back(sd); }
 
+	StaData& back() { return dataV.back(); }
+
 	std::size_t size() const { return dataV.size(); }
 
 	/* dump into an AziData vector */

@@ -101,6 +101,7 @@ public:
    /* constructors */
 	SacRec( std::ostream& reportin = std::cerr );	// default 1
    SacRec( const std::string& fnamein, std::ostream& reportin = std::cerr );	// default 2
+	SacRec( const size_t npts, std::ostream& reportin = std::cerr );	// default 3
    SacRec( const SacRec& recin );		// copy
    SacRec( SacRec&& recin );			// move
    /* operators */
@@ -111,6 +112,17 @@ public:
 
 	/* assign header and allocate memory */
 	void MutateAs ( const SacRec& recin );
+
+	/* allocate memory for signal */
+	void ResizeSig() { ResizeSig(shd.npts); }
+	void ResizeSig( const size_t npts ) {
+		if( npts <= 0 )
+			throw ErrorSR::BadParam( FuncName, "negative npts!");
+		shd.npts = npts;
+		sig.reset(new float[npts]);
+		if( ! sig )
+			throw ErrorSR::MemError( FuncName, "new failed!");
+	}
 
    /* ------------------------------ sac file read/write ------------------------------ */
    /* load sac header from file 'fname' */

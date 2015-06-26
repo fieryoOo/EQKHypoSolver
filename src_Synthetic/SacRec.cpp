@@ -469,6 +469,12 @@ SacRec::SacRec( const std::string& fnamein, std::ostream& reportin )
 	pimpl(new SRimpl() ) {
 }
 
+/* constructor with initial signal npts */
+SacRec::SacRec( const size_t npts, std::ostream& reportin )
+	: SacRec( reportin ) {
+	ResizeSig(npts);
+}
+
 /* copy constructor */
 SacRec::SacRec( const SacRec& recin )
  : fname(recin.fname), report(recin.report),

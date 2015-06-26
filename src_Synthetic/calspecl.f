@@ -1,17 +1,21 @@
-        subroutine calspecl(nt,nf,f0,df,fr,al,sre,sim,tmin,tmax,iq)
+        subroutine calspecl(nt,nf,f0,df,fr,al,sre,sim,f1,f2,f3,f4,iq)
 C-------to produce interpolated Love wave spectrum--------
-        parameter(nsize=4096)
+        parameter(nsize=8192)
         real*4 fr(2000),sre(nsize),sim(nsize),ar(2000),ai(2000),s(nsize)
         complex*8 al(2000),rc
 C------------------------------------------------------------
-        n_end=int(fr(2)/df+0.5)
-        n_beg=int(fr(nt+1)/df-0.5)+1
-        nn=int(1./tmax/df+0.5)
-        nnn=int(1./tmin/df+0.5)
+C        n_end=int(fr(2)/df+0.5)
+C        n_beg=int(fr(nt+1)/df-0.5)+1
+C        nn=int(1./tmax/df+0.5)
+C        nnn=int(1./tmin/df+0.5)
+         n_beg=int(f1/df+0.5)
+         nn=int(f2/df+0.5)
+         nnn=int(f3/df+0.5)
+         n_end=int(f4/df+0.5)
         nw1=nn-n_beg
         nw2=n_end-nnn
-        print *,'tapering window:',1./(n_beg-1)/df,1./(nn-1)/df,
-     +          '   ',1./(nnn-1)/df,1./(n_end-1)/df
+C        print *,'tapering window:',1./(n_beg-1)/df,1./(nn-1)/df,
+C     +          '   ',1./(nnn-1)/df,1./(n_end-1)/df
         call tapwin1(nf,nw1,nw2,n_beg,n_end,iq,s)
         do i=1,nt+2
         rc=al(i)

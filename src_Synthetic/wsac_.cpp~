@@ -3,6 +3,12 @@
 #define MAIN
 #include "mysac.h"
 
+extern "C" 
+{
+	int wsac_(char *fname, float *elat, float *elon, char *cod, float *slat,
+				 float *slon, float *dt, char *chn, char *net, int *n, float *seis);
+}
+
 SAC_HD shd;
 /* function prototyps     */
 void write_sac (char *fname, float *sig, SAC_HD *SHD);

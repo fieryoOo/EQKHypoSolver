@@ -1,12 +1,12 @@
 c group velocity tracer for cross-correlation paths
 c ---
-      subroutine atracer(model,fsol,lsol,n)
+      subroutine atracer(model,fsol,lsol,n,applyQ, nstai,fici,lami, cor)
       implicit none
 c ---
-      character*8 cod(2000),codi(2000)
-      integer*4   nsta,nstai
-      real*4      fig(2000),lam(2000),figi(2000),fici(2000),lami(2000)
-      common /stn/nsta,nstai,cod,fig,lam,codi,figi,fici,lami
+C      character*8 codi(2000)
+      integer*4   nstai
+      real*4      fici(2000),lami(2000)
+C      common /stn/ nstai,codi,figi,fici,lami
 c --- common /mdl/ ----------------------
       integer*4 ic,jc,nn,nper,nfi,nla
       real*8 fi,sfi,la,sla,pper,sper,bf,ef,bl,el,bp,ep,
@@ -18,21 +18,23 @@ c --- common /mdl/ ----------------------
      +        hfi,hla,hper,chfi,uw,cw,gw,aw
 c ---
       real*4 cor(500,2,2000)
-      common /trk/ cor
+C      common /trk/ cor
 c ---
+      logical*1 applyQ
       real*4    fsol,lsol
       real*8     afi,del,per
-      real *8    GEO,rad,pi2,sol(3),dst(3),trres(4)
+      real *8    GEO,rad,pi2,sol(3),dst(3),trres(4),sine,cosi
       integer*4 ierr,k,ntr,n,m,lnblnk
 c     real*8     cor(500,2,2000)
       character *256 model
-      data GEO/1.0/
-c     data GEO/0.993277d0/
+C      data GEO/1.0/
+      data GEO/0.993277d0/
 c ---
       rad = datan(1.0d0)/45.0d0
       pi2 = datan(1.0d0)*8.0d0
-      write(*,*) model(1:lnblnk(model))
+C      write(*,*) model(1:lnblnk(model))
 c --- get event coordinates ----
+C      fsol = datan(GEO*dtan(rad*fsol))/rad
       afi = datan(GEO*dtan(rad*fsol))/rad
       sol(1)=DSIN((90.0d0-afi)*rad)*DCOS(lsol*rad)
       sol(2)=DSIN((90.0d0-afi)*rad)*DSIN(lsol*rad)
@@ -40,7 +42,7 @@ c --- get event coordinates ----
 c --- MAIN LOOP ------------
       ntr = 4
       call read_rect_model(model,0,per,ierr)
-      n = 0
+C      n = 0
       do k = 1,225
         call read_rect_model(model,1,per,ierr)
         do m = 1,nstai
@@ -57,7 +59,11 @@ cMB     trres(2) = trres(2)*pi2/per
 cMB     cor(k) = dcmplx(dcos(trres(2)),dsin(trres(2)))*dexp(-trres(3))*trres(4)
 cMB     write(*,*) 'A ', per,6371.0*del,trres(2)
             cor(k,1,m) = 6371.0*del/trres(2)
-            cor(k,2,m) = dexp(-trres(3))*trres(4)
+            if( applyQ ) then
+               cor(k,2,m) = dexp(-trres(3))*trres(4)
+            else
+               cor(k,2,m) = trres(4)
+            endif
 CCC     write(*,*) m,per, 6371.0*del,cor(k,1,m)
 c       write(*,*) per,trres,cor(k)
           else
@@ -66,6 +72,6 @@ c       write(*,*) per,trres,cor(k)
           endif
         enddo
       enddo
-      n = 225
+C      n = 225
       call read_rect_model(model,-1,per,ierr)
       end
