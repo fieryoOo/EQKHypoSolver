@@ -135,7 +135,7 @@ public:
 	}
 
 	/* compute bin average */
-	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, const bool c2pi = true, const bool c3wave = true );
+	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, const bool c2pi = true, const bool isFTAN = true );
 	void BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, const bool c2pi = true );
 
 	/* IO */
@@ -161,13 +161,16 @@ protected:
    static constexpr float DISMIN = 0.;								/* allowed min */
    static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */
 
-   static constexpr float stdGest = 4.5;							/* an estimation of GroupT, */
-   static constexpr float stdPest = 1.5;							/* PhaseT, */
+   static constexpr float stdGest = 4.5;							/* an estimation of GroupT (sec), */
+   static constexpr float stdPest = 1.5;							/* PhaseT (sec), */
+   static constexpr float stdPHest = 0.5;							/* Spectrum Phase Shift (radians) */
    static constexpr float stdAest = 0.35;							/* and Amplitude (as fraction of the amplitude!) std-dev */
-
-   static constexpr float varRGmin = 4.0, varLGmin = 4.0;		/* the lowerbound of GroupT, was 0.8 */
-   static constexpr float varRPmin = 0.5, varLPmin = 0.5;		/* PhaseT, was 0.3 */
+   static constexpr float varRGmin = 4.0, varLGmin = 4.0;		/* the lowerbound of GroupT (sec), was 0.8 */
+   static constexpr float varRPmin = 0.5, varLPmin = 0.5;		/* PhaseT (sec), was 0.3 */
+   static constexpr float varRPHmin = 0.05, varLPHmin = 0.05;	/* Specturm Phase Shift (radians), */
    static constexpr float varRAmin = 0.04, varLAmin = 0.04;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
+
+
 
    static constexpr int pio4_R = 0;									/* for initial phase test. normaly be 0. */
    static constexpr int pio4_L = 0;									/* is added to the FTAN coefficient piover4 */

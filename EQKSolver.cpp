@@ -9,10 +9,19 @@
 #include <algorithm>
 #include <stdexcept>
 
+/********** options **********
+i: Stop after outputing the initial fits, misfits, 
+	waveforms(when doing waveform fitting), chi-square(c), and rad-pattern(r)
+c: Computes/outputs the initial chi-square
+r: Output the initial source radiation pattern
+d: Debug mode. Computes the initial chi-square of 
+	multiple model states taken in from the standard input.
+******************************/
+
 int main( int argc, char* argv[] ) {
 	if( argc < 2 ) {
 		std::cerr<<"Usage: "<<argv[0]<<" [param file] "
-					<<"[options (-i=initial_only  -c=chiSquare_init -s=skip_SA -r=rad_patterns)]"<<std::endl;
+					<<"[options (-i=initial-only  -c=chiSquare-init -s=skip-SA -r=rad-patterns -d=debug-mode)]"<<std::endl;
 		return -1;
 	}
 
@@ -35,24 +44,43 @@ int main( int argc, char* argv[] ) {
 		// ********** Preparations ********** //
 		// initialize model space
 		ModelSpace ms( fparam );
-		ms.M0 = 1.04e23;
+		//ms.M0 = 1.04e23;
+		ms.M0 = 1.25e23;
 		// initialize eqk analyzer
 		EQKAnalyzer eka( fparam );
 		eka.LoadData();
 
-float chiS; int Ndata;
-eka.chiSquareW( ms, chiS, Ndata );
-std::cerr<<"chi square = "<<chiS<<" "<<Ndata<<std::endl;
-exit(-3);
-
 		// initial output
-		eka.Output( ms );
+		eka.OutputFits( ms );
 		eka.OutputMisfits( ms );
+		eka.OutputWaveforms( ms, eka.outdir_sac + "_init" );
+
+		// option -d: debug mode
+		if( std::find(options.begin(), options.end(), 'd') != options.end() ) {
+			for(int imodel=1; true; imodel++) {
+				std::cout<<"input model state "<<imodel<<" (lon, lat, t0, stk, dip, rak, dep, M0; '#' to stop): ";
+				std::string line; std::getline(std::cin, line);
+				if( line == "#" ) {
+					std::cout<<"  end of input\n";
+					break;
+				}
+				try {
+					ModelInfo mi(line);
+					float chiS; int Ndata;
+					//eka.chiSquare( mi, chiS, Ndata );
+					eka.Energy( mi, chiS, Ndata );
+					std::cout<<"  chi square = "<<chiS<<" Ndata = "<<Ndata<<std::endl;
+				} catch(...) {
+					std::cout<<"  What was that? Try again please\n";
+				}
+			}
+			return 0;
+		}
 
 		// option -c: print out initial chiSquare
 		if( std::find(options.begin(), options.end(), 'c') != options.end() ) {
 			float chiS; int Ndata;
-			eka.chiSquareM( ms, chiS, Ndata );
+			eka.chiSquare( ms, chiS, Ndata );
 			std::ofstream fout( eka.outname_misAll, std::ofstream::app );
 			if(fout) fout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
 			float E; eka.Energy(ms, E, Ndata);
@@ -73,7 +101,8 @@ exit(-3);
 		// option -s: skip simulated annealing
 		if( std::find(options.begin(), options.end(), 's') != options.end() ) niter = 0;
 		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
-		int nsearch = 8192, Tfactor = 16;
+		//int nsearch = 8192, Tfactor = 16;
+		int nsearch = 4096, Tfactor = 8;
 		for( int iter=0; iter<niter; iter++ ) {
 			// search for epicenter
 			ms.FixFocal();				// have focal mechanism fixed
@@ -91,7 +120,7 @@ exit(-3);
 			// centralize the model space around the current MState
 			ms.Centralize();
 			// output
-			eka.Output( ms );
+			eka.OutputFits( ms );
 			eka.OutputMisfits( ms );
 			nsearch /= 2, Tfactor /= 2;
 		}
@@ -107,7 +136,7 @@ exit(-3);
 		//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 		Tfactor = 2; float alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// alpha is emperically decided
 		Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
-		eka.Output( ms );
+		eka.OutputFits( ms );
 		eka.OutputMisfits( ms );
 		// decide perturb step length for each parameter based on the model sensitivity to them
 		// perturb steps are defined to be (ub-lb) * sfactor, where ub and lb are the boundaries decided by:
@@ -120,9 +149,10 @@ exit(-3);
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 
 		// final output
-		eka.Output( ms );
+		eka.OutputFits( ms );
 		eka.OutputMisfits( ms );
 		eka.OutputSourcePatterns( ms );
+		eka.OutputWaveforms( ms );
 
 	} catch(std::exception& e) {
       std::cerr<<e.what()<<std::endl;

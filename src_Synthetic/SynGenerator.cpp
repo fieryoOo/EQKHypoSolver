@@ -154,6 +154,7 @@ void SynGenerator::SetEvent( const ModelInfo mi ) {
 	angles2tensor_(&minfo.stk, &minfo.dip, &minfo.rak, tm);
 
 	// call surfread with the new depth
+	#pragma omp critical
 	surfread_( name_feigen.f_str(255), &sigR, &sigL, modestr, &nper, &nd, &(minfo.dep), freq, cr, ur, wvr,
 				  cl, ul, wvl, v, dvdz, ampr, ampl, ratio, qR, qL, I0 );
 

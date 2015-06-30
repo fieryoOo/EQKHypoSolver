@@ -254,6 +254,9 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			if( lb < 0. ) lb = 0.;
 			minew.dep = Neighbour_Reflect(this->dep, Pdep, lb, ub);
 
+			// M0
+			minew.M0 = M0;
+
 			// longitude
 			minew.lon = Neighbour_Reflect(this->lon, Plon, Clon-Rlon, Clon+Rlon);
 
@@ -262,6 +265,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 
 			// origin time
 			minew.t0 = Neighbour_Reflect(this->t0, Ptim, Ctim-Rtim, Ctim+Rtim);
+
 		}
 
 		/* streaming perturbation ranges */
@@ -273,9 +277,10 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			<<"  tim ("<<ms.Ctim-ms.Rtim<<"~"<<ms.Ctim+ms.Rtim<<", "<<ms.Ptim<<")\n"
 			<<std::setprecision(3)
 			<<"  stk ("<<ms.Cstk-ms.Rstk<<"~"<<ms.Cstk+ms.Rstk<<", "<<ms.Pstk<<")"
-			<<"  dip ("<<ms.Cdip-ms.Rdip<<"~"<<ms.Cdip+ms.Rdip<<", "<<ms.Pdip<<")\n"
-			<<"  rak ("<<ms.Crak-ms.Rrak<<"~"<<ms.Crak+ms.Rrak<<", "<<ms.Prak<<")"
-			<<"  dep ("<<ms.Cdep-ms.Rdep<<"~"<<ms.Cdep+ms.Rdep<<", "<<ms.Pdep<<")";
+			<<"  dip ("<<ms.Cdip-ms.Rdip<<"~"<<ms.Cdip+ms.Rdip<<", "<<ms.Pdip<<")"
+			<<"  rak ("<<ms.Crak-ms.Rrak<<"~"<<ms.Crak+ms.Rrak<<", "<<ms.Prak<<")\n"
+			<<"  dep ("<<ms.Cdep-ms.Rdep<<"~"<<ms.Cdep+ms.Rdep<<", "<<ms.Pdep<<")"
+			<<"  M0 "<<std::scientific<<ms.M0;
 			return o;
 		}
 

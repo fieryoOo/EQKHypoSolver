@@ -161,9 +161,18 @@ public:
 	// chi-square misfits from waveform data-synthetics
 	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const;
 
+	// call the relevant chiSquare method based on the _usewaveform value
+	inline bool chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
+		if( _usewaveform ) {
+			return chiSquareW( minfo, chiS, N );
+		} else {
+			return chiSquareM( minfo, chiS, N );
+		}
+	}
+
 	bool Energy( const ModelInfo& minfo, float& E, int& Ndata ) const {
-		float chiS;
-		bool isvalid = chiSquareM( minfo, chiS, Ndata );
+		float chiS; 
+		bool isvalid = chiSquare( minfo, chiS, Ndata );
 		E = chiS * _indep_factor; //chiS/(Ndata-8.);
 		if( Ndata < NdataMin )
 			throw ErrorEA::InsufData( FuncName, std::to_string(Ndata) + " < " + std::to_string(NdataMin) );
@@ -177,11 +186,14 @@ public:
    //void ComputeMisfitsAll();
 
    // output G,P,A data and predictions to separated files for each period
-	void Output( const ModelInfo& minfo );
+	void OutputFits( const ModelInfo& minfo );
    // compute and output misfits, separately, for group, phase, and amplitudes
 	void OutputMisfits( const ModelInfo& minfo );
 	// output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves
 	void OutputSourcePatterns( const ModelInfo& mi );
+	// output real (processed) and synthetic waveforms when the waveform fitting method is used
+	void OutputWaveforms( const ModelInfo& mi ) { OutputWaveforms( mi, outdir_sac );	}
+	void OutputWaveforms( const ModelInfo& mi, const std::string& outdir );
 
 protected:
 	static const int NdataMin = 5;
@@ -194,6 +206,7 @@ public:
    FileName outname_pos;            // filename for output posterior distribution
 	FileName outname_srcR;				// filename for output Rayl source patterns
 	FileName outname_srcL;				// filename for output Love source patterns
+	FileName outdir_sac;					// dirname for output real and synthetic sacs
 
 protected:
 	static constexpr float NaN = AziData::NaN;
@@ -236,12 +249,12 @@ private:
 	FileName fsaclistR, fsaclistL;
 	short sacRtype = NaN, sacLtype = NaN;	// expecting 0 for displacement or 1 for velocity
 	float f1 = NaN, f2 = NaN, f3 = NaN, f4 = NaN;
-	// output files
-	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit
-   std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions
 	/* ---------- internal variables ---------- */
 	bool _source_updated = false;
 	float _AfactorR = 1, _AfactorL = 1;
+	// output files
+	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit
+   std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions
 
 private:
 	// private functions
@@ -251,7 +264,8 @@ private:
 	inline float BoundInto( float val, float lb, float ub ) const;
 	//bool InitEpic();
 	bool MKDir(const char *dirname) const;
-	void MKDirFor( const std::string& path ) const;
+	void MKDirs( const std::string& path ) const { MKDirFor(path, true); }
+	void MKDirFor( const std::string& path, const bool isdir = false ) const;
 
 };
 

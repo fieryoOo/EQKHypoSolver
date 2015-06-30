@@ -102,7 +102,7 @@ struct FocalInfo {
    friend std::ostream& operator<< ( std::ostream& o, const FocalInfo& f ) {
       //o<<std::fixed<<std::setprecision(2)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(6)<<f.rak<<"  "<<std::setw(6)<<f.dep;
       o<<std::fixed<<std::setprecision(3)
-		 <<std::setw(7)<<f.stk<<" "<<std::setw(7)<<f.dip<<" "<<std::setw(8)<<f.rak<<" "<<std::setw(7)<<f.dep; 
+		 <<std::setw(7)<<f.stk<<" "<<std::setw(7)<<f.dip<<" "<<std::setw(8)<<f.rak<<" "<<std::setw(6)<<f.dep<<" "<<std::setw(7)<<std::scientific<<f.M0; 
       return o; 
    }
 
@@ -140,7 +140,7 @@ struct EpicInfo {
 	}
 
 	friend std::ostream& operator<< ( std::ostream& o, const EpicInfo& e ) {
-		o<<std::fixed<<std::setprecision(4)<<e.lon<<" "<<e.lat<<"  "<<std::setw(7)<<e.t0; 
+		o<<std::fixed<<std::setprecision(4)<<e.lon<<" "<<e.lat<<" "<<std::setw(7)<<e.t0; 
 		return o; 
 	}
 
@@ -164,6 +164,13 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 				const float stkin, const float dipin, const float rakin, const float depin, const float M0in = 1. )
 			: EpicInfo(lonin, latin, timin)
 			, FocalInfo(stkin, dipin, rakin, depin, M0in) {}
+
+		ModelInfo( const std::string& line ) {
+			std::stringstream ss(line);
+			if( !( ss >> lon >> lat >> t0 >> stk >> dip >> rak >> dep ) )
+				throw std::runtime_error("Error(ModelInfo::ModelInfo): format error in: " + line);
+			ss >> M0;
+		}
 
 		ModelInfo( const EpicInfo& einfo, const FocalInfo& finfo )
 			: EpicInfo(einfo), FocalInfo(finfo) {}

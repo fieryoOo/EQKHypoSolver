@@ -10,6 +10,7 @@ public:
 	fstring() : std::string() {}
 	fstring( const char* strin ) : std::string(strin) {}
 	fstring( const std::string& strin ) : std::string(strin) {}
+	fstring( const fstring& fstr2 ) : std::string(fstr2), pfstring(nullptr) {}
 	~fstring() { clearfstring(); }
 
 	char* f_str() const { return f_str( size()+1 ); }
@@ -32,7 +33,7 @@ public:
 
 private:
 	mutable char* pfstring = nullptr;
-	void clearfstring() const { if(pfstring!=nullptr) delete pfstring; pfstring=nullptr; }
+	void clearfstring() const { if(pfstring!=nullptr) delete [] pfstring; pfstring=nullptr; }
 };
 
 

@@ -69,8 +69,8 @@ C---------Love component---E
            ires=1
                       END IF
 C----------Reading Love stuff----------------------E
-11                if(ires.eq.0) print *,'NO LOVE'
-                   close(1)
+C11                if(ires.eq.0) print *,'NO LOVE'
+11                   close(1)
 C----------Reading Rayleigh stuff----------------------S
                  if (sigR.eq.'+') Then
                   open(1,file=infile,STATUS='OLD')

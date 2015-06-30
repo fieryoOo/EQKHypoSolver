@@ -179,14 +179,16 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 	VO::SelectData( dataV, sdVgood, adVmean, adVstd, exfactor );
 }
 
-void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi, bool c3wave ) {
-	// dump into AziData vector
+void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi, bool isFTAN ) {
+VO::Output(dataV, "debug1.txt");
 	if( c2pi ) Correct2PI();
-	std::vector<AziData> adVori;
+	// dump into AziData vector
 	float Tmin;
-	if( c3wave ) Tmin = 3. * per;	// three wavelength criterion
+	if( isFTAN ) Tmin = 3. * per;	// three wavelength criterion
 	else Tmin = -99999.;
+	std::vector<AziData> adVori;
 	ToMisfitV( adVori, Tmin );
+VO::Output(adVori, "debug2.txt");
 	//for( const auto& ad : adVori )	std::cerr<<ad<<std::endl;
 
 	// periodic extension
@@ -211,7 +213,8 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	VO::BinAvg( adVsel, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 2, true, false );
 
 	// exclude empty bins and define undefined std-devs
-	ad_stdest = AziData{ NaN, stdGest, stdPest, stdAest };
+	float stdest_phase = isFTAN ? stdPest : stdPHest;
+	ad_stdest = AziData{ NaN, stdGest, stdest_phase, stdAest };
 	// NOTE!: invalid adVvar[].Adata will be set to admean.user * ad_stdest.Adata
 	HandleBadBins( adVmean, adVvar, ad_stdest );
 
@@ -219,9 +222,11 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	// (old: pull up any std-devs that are smaller than defined minimum)
 	AziData ad_varpath;
 	if( type == R ) {
-		ad_varpath = AziData{ NaN, varRGmin, varRPmin, varRAmin };
+		float varmin_phase = isFTAN ? varRPmin : varRPHmin;
+		ad_varpath = AziData{ NaN, varRGmin, varmin_phase, varRAmin };
 	} else {
-		ad_varpath = AziData{ NaN, varLGmin, varLPmin, varLAmin };
+		float varmin_phase = isFTAN ? varLPmin : varLPHmin;
+		ad_varpath = AziData{ NaN, varLGmin, varmin_phase, varLAmin };
 	}
 	//WaterLevel( adVmean, adVstd, ad_stdmin );
 	ComputeVariance( adVmean, adVvar, ad_varpath );	// for adVvar: std-dev -> variance
@@ -236,14 +241,12 @@ void SDContainer::HandleBadBins( std::vector<AziData>& adVmean,
       auto& adstd = adVstd[i];
       // continue if the current bin was empty
       if( admean.azi == NaN ) continue;
-std::cerr<<"before badbin correction: admean = "<<admean<<"   adstd = "<<adstd<<"  admean.user = "<<admean.user<<" Aperc = "<<ad_stdest.Adata<<std::endl;
       // re-assign azi range and data std-devs
       if( ad_stdest.azi != NaN ) adstd.azi = ad_stdest.azi;
       if( adstd.Gdata == NaN ) adstd.Gdata = ad_stdest.Gdata;
       if( adstd.Pdata == NaN ) adstd.Pdata = ad_stdest.Pdata;
       if( adstd.Adata == NaN ) adstd.Adata = admean.user * ad_stdest.Adata;
       // store
-std::cerr<<"after badbin correction: admean = "<<admean<<"   adstd = "<<adstd<<std::endl;
       adVmean2.push_back( std::move(admean) );
       adVstd2.push_back( std::move(adstd) );
       //std::cerr<<"mean = "<<admean<<"   std = "<<adstd<<std::endl;
@@ -260,7 +263,7 @@ void SDContainer::ComputeVariance( std::vector<AziData>& adVmean,
    for(int i=0; i<adVmean.size(); i++) {
       auto& admean = adVmean[i];
       auto& adstd = adVstd[i];
-std::cerr<<"before var correction: admean = "<<admean<<"   adstd = "<<adstd<<std::endl;
+//std::cerr<<"before var correction: admean = "<<admean<<"   adstd = "<<adstd<<"   admean.user = "<<admean.user<<" Aperc = "<<Asca<<std::endl;
 		//if( adstd.Gdata < Gmin ) adstd.Gdata = Gmin;
 		//if( adstd.Pdata < Pmin ) adstd.Pdata = Pmin;
 		//float Amin = admean.user * Asca;
@@ -269,7 +272,7 @@ std::cerr<<"before var correction: admean = "<<admean<<"   adstd = "<<adstd<<std
 		adstd.Gdata = adstd.Gdata*adstd.Gdata + Gin;
 		adstd.Pdata = adstd.Pdata*adstd.Pdata + Pin;
 		adstd.Adata = adstd.Adata*adstd.Adata + Ain;
-std::cerr<<"after var correction: admean = "<<admean<<"   advar = "<<adstd<<std::endl;
+//std::cerr<<"after var correction: admean = "<<admean<<"   advar = "<<adstd<<std::endl;
 	}
 }
 

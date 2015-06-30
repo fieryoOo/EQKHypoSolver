@@ -192,9 +192,12 @@ struct StaData : public AziData {
       , lon(lonin), lat(latin), dis(disin), Gdata(Gdatain), Pdata(Pdatain) {}
 */
 
-	StaData( const float azi, const float lon, const float lat, const float Gdata, const float Pdata, const float Adata, const float init )
+	StaData( const float azi, const float lon, const float lat, const float Gdata, const float Pdata, const float Adata,
+				const float init = NaN, const float userin = NaN )
 		: lon(lon), lat(lat), Gpath(init), Gsource(init), Ppath(init), Psource(init), Asource(init),
-		  AziData(azi, Gdata, Pdata, Adata) {}
+		  AziData(azi, Gdata, Pdata, Adata, init) {
+		if( userin != NaN ) user = userin;
+	}
 
    StaData( const char *input, float ph_shift = 0. )
       : StaData() {

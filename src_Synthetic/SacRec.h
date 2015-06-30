@@ -171,12 +171,12 @@ public:
    /* update/reformat header time if shd.nzmsec is modified and is out of the range [0,1000) */
    void UpdateTime();
    /* search for min&max signal positions and amplitudes */
-	void MinMax (int& imin, int& imax);
-	void MinMax (int& imin, int& imax, float tbegin, float tend);
-   void MinMax ( float tbegin, float tend, float& tmin, float& min, float& tmax, float& max );
+	void MinMax (int& imin, int& imax) const;
+	void MinMax (int& imin, int& imax, float tbegin, float tend) const;
+   void MinMax ( float tbegin, float tend, float& tmin, float& min, float& tmax, float& max ) const;
    /* compute the root-mean-square average in a given window */
-   float RMSAvg ( float tbegin, float tend ) { return RMSAvg( tbegin, tend, 1); }
-   float RMSAvg ( float tbegin, float tend, int step );
+   float RMSAvg ( float tbegin, float tend ) const { return RMSAvg( tbegin, tend, 1); }
+   float RMSAvg ( float tbegin, float tend, int step ) const;
 	bool Mean ( float& mean ) const { return Mean(shd.b, shd.e, mean); }
 	bool Mean ( float tbegin, float tend, float& mean ) const { return Mean(tbegin, tend, 1, mean); }
 	bool Mean ( float tbegin, float tend, int step, float& mean ) const;
@@ -198,6 +198,8 @@ public:
 	void Addf( const SacRec& sac2 );
 	void Subf( const SacRec& sac2 );
 	void Divf( const SacRec& sac2 );
+
+	float SNR( const float tsignall, const float tsignalh, const float tnoisel, const float tnoiseh ) const;
 
 	/* performs integration in the time domain using the trapezoidal rule */
 	void IntegrateT() { IntegrateT(*this); }
