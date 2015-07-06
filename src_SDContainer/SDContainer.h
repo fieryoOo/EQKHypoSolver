@@ -54,11 +54,13 @@ enum Dtype { Undefined=0, B, R, L }; // type of data to be used
 /* ----- station data container ----- */
 class SDContainer {
 public:
-	const float per = NaN;
+	float per = NaN;
 	//const char type = 'N';
-	const Dtype type = Undefined;
+	Dtype type = Undefined;
 
 	/* con/destructors */
+
+	SDContainer(){}
 
 	// waveform: No vel maps needed. Misfits will be pushed back (to Pdata and Adata) on the fly. Path and source terms will be set to zero
 	SDContainer( const float perin, const Dtype typein )
@@ -178,13 +180,13 @@ protected:
 	static constexpr float NaN = AziData::NaN;
 
 private:
-	const float oop = NaN;
+	float oop = NaN;
 
 	//ModelInfo model;	// bad idea! not necessary and adds inter-module complexity
 	float lon = NaN, lat = NaN, t0 = NaN, stk = NaN, rak = NaN, dip = NaN, dep = NaN;
 
 	Map mapG, mapP;
-	const float _velG = NaN, _velP = NaN;
+	float _velG = NaN, _velP = NaN;
 	std::vector<StaData> dataV;
 
 	void HandleBadBins(std::vector<AziData>& adVmean, std::vector<AziData>& adVstd, const AziData adest ) const;

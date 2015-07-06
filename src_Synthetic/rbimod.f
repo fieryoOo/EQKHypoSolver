@@ -1,17 +1,14 @@
 c****************************************************************
-      subroutine rbimod(e,m,vv,dbg,ierr)
+      recursive subroutine rbimod(e,m,vv,dbg,ierr, mdl)
+      use mmodel
       implicit none
+
+      type (tmdl) mdl
       integer*4 m,ierr,dbg
       real*8    e(3),vv(4)
-c --- common /mdl/ ----------------------
-      integer*4 ic,jc,n,nper,nfi,nla
-      real*8 fi,sfi,la,sla,per,sper,bf,ef,bl,el,bp,ep,
-     +       hfi(97),hla(201),hper(225),chfi(97)
-      real*8 uw(97,201),cw(97,201)
-      real*8 gw(97,201),aw(97,201)
-      common /mdl/ic,jc,n,nper,nfi,nla,fi,sfi,la,sla,per,sper,
-     +        bf,ef,bl,el,bp,ep,
-     +        hfi,hla,hper,chfi,uw,cw,gw,aw
+C      common /mdl/ic,jc,n,nper,nfi,nla,fi,sfi,la,sla,per,sper,
+C     +        bf,ef,bl,el,bp,ep,
+C     +        hfi,hla,hper,chfi,uw,cw,gw,aw
 c ---
       real*8 drad,dff,dfl
       real*8 hf,dhf,hl,dhl,v1,v2,v3,v4
@@ -25,82 +22,82 @@ c ---
       dff = DASIN(dff)/drad
 C      if(dbg.ne.0) write(*,*) 'Point: ',dff,dfl
 c --- check that e is model's internal point
-      if(dff.lt.bf.or.dff.gt.ef.or.dfl.lt.bl.or.dfl.gt.el) then
+      if(dff.lt.mdl%bf.or.dff.gt.mdl%ef.or.dfl.lt.mdl%bl.or.dfl.gt.mdl%el) then
         goto 9
       endif
 c --- check that e is cell's internal point
-    2 if(dff.lt.chfi(ic)) then
-        ic = ic-1
-        if(ic.eq.0) then
-          ic = 1
+    2 if(dff.lt.mdl%chfi(mdl%ic)) then
+        mdl%ic = mdl%ic-1
+        if(mdl%ic.eq.0) then
+          mdl%ic = 1
           goto 9
         endif
         goto 2
       endif
 c ---
-    3 if(dff.gt.chfi(ic+1)) then
-        ic = ic+1
-        if(ic.gt.nfi) then
-          ic = nfi
+    3 if(dff.gt.mdl%chfi(mdl%ic+1)) then
+        mdl%ic = mdl%ic+1
+        if(mdl%ic.gt.mdl%nfi) then
+          mdl%ic = mdl%nfi
           goto 9
         endif
         goto 3
       endif
 c ---
-    4 if(dfl.lt.hla(jc)) then
-        jc = jc-1
-        if(jc.eq.0) then
-          jc = 1
+    4 if(dfl.lt.mdl%hla(mdl%jc)) then
+        mdl%jc = mdl%jc-1
+        if(mdl%jc.eq.0) then
+          mdl%jc = 1
           goto 9
         endif
         goto 4
       endif
 c ---
-    5 if(dfl.gt.hla(jc+1)) then
-        jc = jc+1
-        if(jc.gt.nla) then
-          jc = nla
+    5 if(dfl.gt.mdl%hla(mdl%jc+1)) then
+        mdl%jc = mdl%jc+1
+        if(mdl%jc.gt.mdl%nla) then
+          mdl%jc = mdl%nla
           goto 9
         endif
         goto 5
       endif
 c --- four maps  interpolation ---
       m = 0
-      hf = chfi(ic+1)-chfi(ic)
-      dhf = dff-chfi(ic)
-      hl = hla(jc+1)-hla(jc)
-      dhl = dfl-hla(jc)
-      v1 = uw(ic,jc)
-      v2 = uw(ic+1,jc)
-      v3 = uw(ic,jc+1)
-      v4 = uw(ic+1,jc+1)
+      hf = mdl%chfi(mdl%ic+1)-mdl%chfi(mdl%ic)
+      dhf = dff-mdl%chfi(mdl%ic)
+      hl = mdl%hla(mdl%jc+1)-mdl%hla(mdl%jc)
+      dhl = dfl-mdl%hla(mdl%jc)
+      v1 = mdl%uw(mdl%ic,mdl%jc)
+      v2 = mdl%uw(mdl%ic+1,mdl%jc)
+      v3 = mdl%uw(mdl%ic,mdl%jc+1)
+      v4 = mdl%uw(mdl%ic+1,mdl%jc+1)
       if(v1.lt.0.0d0.or.v2.lt.0.0d0.or.v3.lt.0.0d0.or.v4.lt.0.0d0) goto 9
       vv(1) = v1+(v2-v1)*dhf/hf+(v3-v1)*dhl/hl+
      *    (v1+v4-v2-v3)*dhf*dhl/hf/hl
       m = m+1
 c ---
-      v1 = cw(ic,jc)
-      v2 = cw(ic+1,jc)
-      v3 = cw(ic,jc+1)
-      v4 = cw(ic+1,jc+1)
+      v1 = mdl%cw(mdl%ic,mdl%jc)
+      v2 = mdl%cw(mdl%ic+1,mdl%jc)
+      v3 = mdl%cw(mdl%ic,mdl%jc+1)
+      v4 = mdl%cw(mdl%ic+1,mdl%jc+1)
       if(v1.lt.0.0d0.or.v2.lt.0.0d0.or.v3.lt.0.0d0.or.v4.lt.0.0d0) goto 9
       vv(2) = v1+(v2-v1)*dhf/hf+(v3-v1)*dhl/hl+
      *    (v1+v4-v2-v3)*dhf*dhl/hf/hl
       m = m+1
 c ---
-      v1 = gw(ic,jc)
-      v2 = gw(ic+1,jc)
-      v3 = gw(ic,jc+1)
-      v4 = gw(ic+1,jc+1)
+      v1 = mdl%gw(mdl%ic,mdl%jc)
+      v2 = mdl%gw(mdl%ic+1,mdl%jc)
+      v3 = mdl%gw(mdl%ic,mdl%jc+1)
+      v4 = mdl%gw(mdl%ic+1,mdl%jc+1)
       if(v1.lt.0.0d0.or.v2.lt.0.0d0.or.v3.lt.0.0d0.or.v4.lt.0.0d0) goto 9
       vv(3) = v1+(v2-v1)*dhf/hf+(v3-v1)*dhl/hl+
      *    (v1+v4-v2-v3)*dhf*dhl/hf/hl
       m = m+1
 c ---
-      v1 = aw(ic,jc)
-      v2 = aw(ic+1,jc)
-      v3 = aw(ic,jc+1)
-      v4 = aw(ic+1,jc+1)
+      v1 = mdl%aw(mdl%ic,mdl%jc)
+      v2 = mdl%aw(mdl%ic+1,mdl%jc)
+      v3 = mdl%aw(mdl%ic,mdl%jc+1)
+      v4 = mdl%aw(mdl%ic+1,mdl%jc+1)
       if(v1.lt.0.0d0.or.v2.lt.0.0d0.or.v3.lt.0.0d0.or.v4.lt.0.0d0) goto 9
       vv(4) = v1+(v2-v1)*dhf/hf+(v3-v1)*dhl/hl+
      *    (v1+v4-v2-v3)*dhf*dhl/hf/hl

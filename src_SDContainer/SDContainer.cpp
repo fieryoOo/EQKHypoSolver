@@ -180,7 +180,6 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 }
 
 void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi, bool isFTAN ) {
-VO::Output(dataV, "debug1.txt");
 	if( c2pi ) Correct2PI();
 	// dump into AziData vector
 	float Tmin;
@@ -188,7 +187,6 @@ VO::Output(dataV, "debug1.txt");
 	else Tmin = -99999.;
 	std::vector<AziData> adVori;
 	ToMisfitV( adVori, Tmin );
-VO::Output(adVori, "debug2.txt");
 	//for( const auto& ad : adVori )	std::cerr<<ad<<std::endl;
 
 	// periodic extension

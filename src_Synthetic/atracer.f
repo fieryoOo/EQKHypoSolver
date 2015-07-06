@@ -1,21 +1,38 @@
 c group velocity tracer for cross-correlation paths
 c ---
-      subroutine atracer(model,fsol,lsol,n,applyQ, nstai,fici,lami, cor)
+      module mmodel
+
+      type tmdl
+         integer*4 ic,jc,n,nper,nfi,nla
+         real*8 fi,sfi,la,sla,per,sper,bf,ef,bl,el,bp,ep,
+     +          hfi(97),hla(201),hper(225),chfi(97)
+         real*8 uw(97,201),cw(97,201)
+         real*8 gw(97,201),aw(97,201)
+      end type
+
+      type tmodel
+         integer*4 n, nper, nfi, nla
+         real*8 fi, sfi, la, sla, per, sper
+         real*8, allocatable, dimension(:,:,:) :: uw,cw,gw,aw
+C         real*8 uw(225,97,201), cw(225,97,201)
+C         real*8 gw(225,97,201), aw(225,97,201)
+      end type
+
+      end module mmodel
+
+      recursive subroutine atracer(fmodel,fsol,lsol,n,applyQ, nstai,fici,lami, cor)
+      use mmodel
+      use omp_lib
       implicit none
+
 c ---
 C      character*8 codi(2000)
       integer*4   nstai
       real*4      fici(2000),lami(2000)
 C      common /stn/ nstai,codi,figi,fici,lami
-c --- common /mdl/ ----------------------
-      integer*4 ic,jc,nn,nper,nfi,nla
-      real*8 fi,sfi,la,sla,pper,sper,bf,ef,bl,el,bp,ep,
-     +       hfi(97),hla(201),hper(225),chfi(97)
-      real*8 uw(97,201),cw(97,201)
-      real*8 gw(97,201),aw(97,201)
-      common /mdl/ic,jc,nn,nper,nfi,nla,fi,sfi,la,sla,pper,sper,
-     +        bf,ef,bl,el,bp,ep,
-     +        hfi,hla,hper,chfi,uw,cw,gw,aw
+C      common /mdl/ic,jc,nn,nper,nfi,nla,fi,sfi,la,sla,pper,sper,
+C     +        bf,ef,bl,el,bp,ep,
+C     +        hfi,hla,hper,chfi,uw,cw,gw,aw
 c ---
       real*4 cor(500,2,2000)
 C      common /trk/ cor
@@ -26,13 +43,20 @@ c ---
       real *8    GEO,rad,pi2,sol(3),dst(3),trres(4),sine,cosi
       integer*4 ierr,k,ntr,n,m,lnblnk
 c     real*8     cor(500,2,2000)
-      character *256 model
+      character *256 fmodel
 C      data GEO/1.0/
       data GEO/0.993277d0/
+
+      type (tmdl) mdl
+      type (tmodel) model
+      allocate (model%uw(255,97,201))
+      allocate (model%cw(255,97,201))
+      allocate (model%gw(255,97,201))
+      allocate (model%aw(255,97,201))
 c ---
       rad = datan(1.0d0)/45.0d0
       pi2 = datan(1.0d0)*8.0d0
-C      write(*,*) model(1:lnblnk(model))
+C      write(*,*) fmodel(1:lnblnk(fmodel))
 c --- get event coordinates ----
 C      fsol = datan(GEO*dtan(rad*fsol))/rad
       afi = datan(GEO*dtan(rad*fsol))/rad
@@ -41,10 +65,15 @@ C      fsol = datan(GEO*dtan(rad*fsol))/rad
       sol(3)=DCOS((90.0d0-afi)*rad)
 c --- MAIN LOOP ------------
       ntr = 4
-      call read_rect_model(model,0,per,ierr)
+
+!$OMP CRITICAL (IO)
+      call read_model_file(fmodel, model)
+!$OMP END CRITICAL (IO)
+
+      call read_rect_model(model,0,per,ierr, mdl)
 C      n = 0
       do k = 1,225
-        call read_rect_model(model,1,per,ierr)
+        call read_rect_model(model,1,per,ierr, mdl)
         do m = 1,nstai
 c     write(*,*) per,ierr
 c         afi = datan(GEO*dtan(rad*figi(m)))/rad
@@ -52,7 +81,7 @@ c         afi = datan(GEO*dtan(rad*figi(m)))/rad
           dst(1)=DSIN((90.0d0-afi)*rad)*DCOS(lami(m)*rad)
           dst(2)=DSIN((90.0d0-afi)*rad)*DSIN(lami(m)*rad)
           dst(3)=DCOS((90.0d0-afi)*rad)
-          call tracer(sol,dst,.01d0,ntr,trres,del,0,ierr)
+          call tracer(sol,dst,.01d0,ntr,trres,del,0,ierr, mdl)
 cMB    write(*,*) 'X ',per,trres,del
           if(ierr.eq.0) then  
 cMB     trres(2) = trres(2)*pi2/per
@@ -73,5 +102,9 @@ c       write(*,*) per,trres,cor(k)
         enddo
       enddo
 C      n = 225
-      call read_rect_model(model,-1,per,ierr)
+      call read_rect_model(model,-1,per,ierr, mdl)
+      deallocate (model%uw)
+      deallocate (model%cw)
+      deallocate (model%gw)
+      deallocate (model%aw)
       end

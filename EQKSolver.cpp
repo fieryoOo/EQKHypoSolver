@@ -45,7 +45,7 @@ int main( int argc, char* argv[] ) {
 		// initialize model space
 		ModelSpace ms( fparam );
 		//ms.M0 = 1.04e23;
-		ms.M0 = 1.25e23;
+		ms.M0 = 1.3e23;
 		// initialize eqk analyzer
 		EQKAnalyzer eka( fparam );
 		eka.LoadData();
@@ -101,22 +101,22 @@ int main( int argc, char* argv[] ) {
 		// option -s: skip simulated annealing
 		if( std::find(options.begin(), options.end(), 's') != options.end() ) niter = 0;
 		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
-		//int nsearch = 8192, Tfactor = 16;
-		int nsearch = 4096, Tfactor = 8;
+		int nsearch = 8192, Tfactor = 16;
+		//int nsearch = 4096, Tfactor = 8;
 		for( int iter=0; iter<niter; iter++ ) {
-			// search for epicenter
-			ms.FixFocal();				// have focal mechanism fixed
-			eka.PredictAll( ms );	// not necessary, but following search runs faster since Focal is fixed
-			if( iter==0 ) eka.SetInitSearch( true );			// use Love group data only!
-			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 500, 0., 0, std::cout, 1 );
-			VO::Output( SIV, eka.outname_misL, true );	// append to file
-			if( iter==0 ) eka.SetInitSearch( false );	// use all data
 			// search for focal info
 			ms.FixEpic();		// have epicenter fixed
 			eka.PredictAll( ms );	// not necessary, but following search runs faster since Epic is fixed
 			float alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// alpha is emperically decided
-			SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info fo accepted searches
+			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info fo accepted searches
 			VO::Output( SIV, eka.outname_misF, true );	// append to file
+			// search for epicenter
+			ms.FixFocal();				// have focal mechanism fixed
+			eka.PredictAll( ms );	// not necessary, but following search runs faster since Focal is fixed
+			if( iter==0 ) eka.SetInitSearch( true );			// use Love group data only!
+			SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 500, 0., 0, std::cout, 1 );
+			VO::Output( SIV, eka.outname_misL, true );	// append to file
+			if( iter==0 ) eka.SetInitSearch( false );	// use all data
 			// centralize the model space around the current MState
 			ms.Centralize();
 			// output

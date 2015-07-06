@@ -20,7 +20,8 @@ extern"C" {
 	void atracer_( char name_fmodel[256], float* elon, float* elat, int* ncor, bool* applyQ, int* nsta,
 						float latc[2000], float lon[2000], float* cor );
 
-	void surfread_( char name_feigen[255], char* sigR, char* sigL, char modestr[2], int* nper, int* nd, float* depth, float freq[2000],
+//	void surfread_( char name_feigen[255], char* sigR, char* sigL, char modestr[2], int* nper, int* nd, float* depth, float freq[2000],
+	void surfread_( char *feig_buff, int *eig_len, char* sigR, char* sigL, char modestr[2], int* nper, int* nd, float* depth, float freq[2000],
 						float cr[2000], float ur[2000], float wvr[2000], float cl[2000], float ul[2000], float wvl[2000], float v[2000][3], 
 						float dvdz[2000][3], float ampr[2000], float ampl[2000], float ratio[2000], float qR[2000], float qL[2000], float I0[2000] );
 
@@ -70,6 +71,14 @@ void SynGenerator::Initialize( const fstring& name_fmodel_in, const fstring& nam
 
 	// update permin, permax, and nt by fphvel
 	ReadPerRange( name_fphvel, mode );
+
+	// read feigen into memory
+	std::ifstream fin( name_feigen );
+	if( ! fin ) throw std::runtime_error("Error(Initialize): IO failed on "+name_feigen);
+	fin.seekg(0, std::ios::end); feig_len = fin.tellg();
+	peig.reset( new char[feig_len] );
+	fin.seekg(0, std::ios::beg);
+	fin.read(peig.get(), feig_len);
 }
 
 void SynGenerator::ReadPerRange( const std::string& name_fphvel, const int mode ) {
@@ -154,9 +163,10 @@ void SynGenerator::SetEvent( const ModelInfo mi ) {
 	angles2tensor_(&minfo.stk, &minfo.dip, &minfo.rak, tm);
 
 	// call surfread with the new depth
-	#pragma omp critical
-	surfread_( name_feigen.f_str(255), &sigR, &sigL, modestr, &nper, &nd, &(minfo.dep), freq, cr, ur, wvr,
+	//#pragma omp critical
+	surfread_( peig.get(), &feig_len, &sigR, &sigL, modestr, &nper, &nd, &(minfo.dep), freq, cr, ur, wvr,
 				  cl, ul, wvl, v, dvdz, ampr, ampl, ratio, qR, qL, I0 );
+	//surfread_( name_feigen.f_str(255), &sigR, &sigL, modestr, &nper, &nd, &(minfo.dep), freq, cr, ur, wvr,
 
 	// needs re-trace
 	traced = false;
@@ -170,9 +180,9 @@ void SynGenerator::TraceAll() {
 	pcor.reset( new float[2000*2*500]() );
 	if( ! pcor )
 		throw std::runtime_error("new failed for pcor!");
-	//atracer_( fstr_fmodel, &elat, &elon, &ncor, &applyQ, &nsta, latc, lon, pcor.get() );
-	#pragma omp critical
+	//#pragma omp critical
 	atracer_( name_fmodel.f_str(256), &elat, &elon, &ncor, &applyQ, &nsta, latc, lon, pcor.get() );
+	//atracer_( fstr_fmodel, &elat, &elon, &ncor, &applyQ, &nsta, latc, lon, pcor.get() );
 	// all traced
 	traced = true;
 }

@@ -411,15 +411,16 @@ void EQKAnalyzer::LoadData() {
 
 
 /* -------------------- fill the rpR and rpL objects with the current model state -------------------- */
-std::vector<float> EQKAnalyzer::perRlst() const {
-	std::vector<float> perlst;
-	for( const auto& data : _dataR ) perlst.push_back( data.per );
-	return perlst;
-}
-std::vector<float> EQKAnalyzer::perLlst() const {
-	std::vector<float> perlst;
-	for( const auto& data : _dataL ) perlst.push_back( data.per );
-	return perlst;
+inline std::vector<float> EQKAnalyzer::perlst(const Dtype dtype) const {
+	std::vector<float> perV;
+	if( _usewaveform ) {
+		perV.push_back(1./f3);
+		perV.push_back(1./f2);
+	} else {
+		auto dataV = dtype==R ? _dataR : _dataL;
+		for( const auto& data : dataV ) perV.push_back( data.per );
+	}
+	return perV;
 }
 
 // initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer based on the current model info
@@ -447,7 +448,6 @@ inline float EQKAnalyzer::BoundInto( float val, float lb, float ub ) const {
 void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPattern& rpL,
 										std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
 										float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const {
-	if( _usewaveform ) return;
 	// radpattern
 	bool model_updated = false;
 	float stk = minfo.stk, dip = minfo.dip, rak = minfo.rak, dep = minfo.dep;
@@ -455,6 +455,8 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 	rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
 	model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
 	model_updated |= rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
+
+	if( _usewaveform ) return;
 
 	// SDContainer Tpaths
 	for( auto& sdc : dataR )
@@ -467,33 +469,25 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 	if( ! updateSource ) return;						// do not update source for now
 	source_updated = true;								// do update source (now)
 
-	// SDContainer R: source terms
-	if( dataR.size() > 0 ) {
+	// lambda function, works on a single SDContainer vector
+	auto Usource = [&]( std::vector<SDContainer>& dataV, float& Afactor ) {
+		// update source predictions
+		for( auto& sdc : dataV ) sdc.UpdateSourcePred( rpR );
+		// rescale source amplitudes to match the data
 		std::vector<float> ampratioV;	
-		ampratioV.reserve( dataR.size() * dataR.at(0).size() );
-		for( auto& sdc : dataR ) {
-			sdc.UpdateSourcePred( rpR );
-			sdc.ComputeAmpRatios( ampratioV );
-		}
-		AfactorR = std::accumulate(ampratioV.begin(), ampratioV.end(), 0.) / ampratioV.size();
+		ampratioV.reserve( dataV.size() * dataV.at(0).size() );
+		for( auto& sdc : dataV ) sdc.ComputeAmpRatios( ampratioV );
+		Afactor = std::accumulate(ampratioV.begin(), ampratioV.end(), 0.) / ampratioV.size();
 		//std::cerr<<"   Afactor for Rayleigh: "<<Afactor<<" (was 50000.)\n";
-		for( auto& sdc : dataR )	// scale source amplitudes to match the observations
-			sdc.AmplifySource( AfactorR );
-	}
+		for( auto& sdc : dataV )	// scale source amplitudes to match the observations
+			sdc.AmplifySource( Afactor );
+	};
+
+	// SDContainer R: source terms
+	if( dataR.size() > 0 ) Usource( dataR, AfactorR );
 
 	// SDContainers L: source terms
-	if( dataL.size() > 0 ) {
-		std::vector<float> ampratioV;	
-		ampratioV.reserve( dataL.size() * dataL.at(0).size() );
-		for( auto& sdc : dataL ) {
-			sdc.UpdateSourcePred( rpL );
-			sdc.ComputeAmpRatios( ampratioV );
-		}
-		AfactorL = std::accumulate(ampratioV.begin(), ampratioV.end(), 0.) / ampratioV.size();
-		//std::cerr<<"   Afactor for Love: "<<Afactor<<" (was 55000.)\n";
-		for( auto& sdc : dataL )	// scale source amplitudes to match the observations
-			sdc.AmplifySource( AfactorL );
-	}
+	if( dataL.size() > 0 ) Usource( dataL, AfactorL );
 }
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
@@ -578,7 +572,7 @@ bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) cons
 
 
 static inline int nint( float val ) { return (int)floor(val + 0.5); }
-bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
+bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataRout, SDContainer& dataLout ) const {
 	// check input params (will be corrected in PredictAll)
 	bool isvalid = minfo.isValid();
 	if( ! isvalid ) {
@@ -674,9 +668,9 @@ continue;
 		//std::cerr<<lon<<" "<<lat<<" "<<100.*rms_am/AmpTheory<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_amp "<<sacM.fname<<"\n";
 	}
 	//std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
+	dataR.Sort();
 
 	// compute chi square
-	dataR.Sort();
 	chiS = 0.; N = 0;
 	std::vector<AziData> adVmean, adVvar;
 	dataR.BinAverage( adVmean, adVvar, false, false );	// do not correct for 2 pi, data taken as waveform rms misfits
@@ -687,6 +681,13 @@ continue;
 		// (mis * mis / variance)
 		chiS += adder( (admean * admean)/advar );
 		N += Nadd;
+	}
+
+	// feed dataRout and dataLout if requested
+	if( filldata ) {
+		dataR.UpdateAziDis(minfo.lon, minfo.lat);
+		dataRout = std::move(dataR);
+		//dataLout = std::move(dataL);
 	}
 
 	return isvalid;
@@ -733,164 +734,130 @@ sacS.Write( "./debug/" + sacname + "_syn" );
 
 /* -------------------- Output the data and predictions based on the input model info -------------------- */
 void EQKAnalyzer::OutputFits( const ModelInfo& minfo ) {
-	if( _usewaveform ) return;
 	// check input params
 	if( ! minfo.isValid() ) {
 		std::stringstream ss; ss<<minfo;
 		throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
 	}
+
+	// prepare/update data for the input minfo
+	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
+		FilldataW(minfo);
+	} else {	// update both path and source predictions for all SDcontainers
+		PredictAll( minfo, true );
+	}
+	bool isFTAN = ! _usewaveform;
+
+	// check data sizes
 	int Rsize = _dataR.size(), Lsize = _dataL.size();
 	if( Rsize==0 && Lsize==0 )
 		throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
 
-	// make a copy of the data and RadPattern objs (for multi-threading),
-	// update both path and source predictions for all SDcontainers
-	//auto rpR(_rpR), rpL(_rpL);
-	//auto dataR(_dataR), dataL(_dataL);
-	//bool source_updated = _source_updated;
-	//PredictAll( minfo, rpR, rpL, dataR, dataL, source_updated, true );
-	PredictAll( minfo, true );
-
-	// main loop for Rayleigh
-	if( Rsize>0 ) {
-		for( auto& sdc : _dataR ) {
-			const float per = sdc.per;
-			// outname for the current period
-			if( outlist_RF.find(per) == outlist_RF.end() ) continue;
-			const std::string& outname = outlist_RF.at(per);
-			// average in each (20 degree) bin,
-			std::vector<AziData> adVmean, adVvar;
-			sdc.BinAverage( adVmean, adVvar );	// correct for 2pi, data taken as FTAN measurements
-			// output data and predictions at each station (append at the end)
-			std::ofstream foutsta( outname + "_sta", std::ofstream::app );
-			foutsta<<"# [ minfo = "<<minfo<<" ]\n";
-			sdc.PrintAll( foutsta );
-			foutsta << "\n\n";
-			// output misfits and source preds at each bin azi (append at the end)
-			std::ofstream foutbin( outname + "_bin", std::ofstream::app );
-			foutbin<<"# [ minfo = "<<minfo<<" ]\n";
-			for( int i=0; i<adVmean.size(); i++ ) {
-				const auto& admean = adVmean[i];
-				const auto adstd = sqrt( adVvar[i] );
-				float Gsource, Psource, Asource;
+	// lambda function for outputing fit
+	auto outputF = [&]( SDContainer& sdc ) {
+		const float per = sdc.per;
+		// choose outlist by Dtype
+		const auto& outlist = sdc.type==R ? outlist_RF : outlist_LF;
+		std::string outname;
+		if( _usewaveform ) {
+			if( outlist.size() == 0 ) return;
+			outname = outlist.begin()->second;
+		} else { // outname for the current period
+			if( outlist.find(per) == outlist.end() ) return;
+			outname = outlist.at(per);
+		}
+		// output data and predictions at each station (append at the end)
+		std::ofstream foutsta( outname + "_sta", std::ofstream::app );
+		foutsta<<"# [ minfo = "<<minfo<<" ]\n";
+		sdc.PrintAll( foutsta );
+		foutsta << "\n\n";
+		// average in each (20 degree) bin,
+		std::vector<AziData> adVmean, adVvar;
+		sdc.BinAverage( adVmean, adVvar, isFTAN, isFTAN );	
+		// output misfits and source preds at each bin azi (append at the end)
+		std::ofstream foutbin( outname + "_bin", std::ofstream::app );
+		foutbin<<"# [ minfo = "<<minfo<<" ]\n";
+		for( int i=0; i<adVmean.size(); i++ ) {
+			const auto& admean = adVmean[i];
+			const auto adstd = sqrt( adVvar[i] );
+			float Gsource, Psource, Asource;
+			if( _usewaveform ) {
+				Gsource = Psource = Asource = 0.;
+			} else {
 				_rpR.GetPred( per, admean.azi,	Gsource, Psource, Asource );
 				Asource *= _AfactorR;
-				foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
-										 <<"  "<<Psource<<" "<<admean.Pdata<<" "<<adstd.Pdata
-										 <<"  "<<Asource<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
 			}
-			foutbin << "\n\n";
+			foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
+				<<"  "<<Psource<<" "<<admean.Pdata<<" "<<adstd.Pdata
+				<<"  "<<Asource<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
 		}
-	}
+		foutbin << "\n\n";
+	};
+
+	// main loop for Rayleigh
+	if( Rsize>0 ) for( auto& sdc : _dataR ) outputF(sdc);
 
 	// main loop for Love
-	if( Lsize>0 ) {
-		for( auto& sdc : _dataL ) {
-			const float per = sdc.per;
-			// outname for the current period
-			if( outlist_LF.find(per) == outlist_LF.end() ) continue;
-			const std::string& outname = outlist_LF.at(per);
-			// average in each (20 degree) bin,
-			std::vector<AziData> adVmean, adVvar;
-			sdc.BinAverage( adVmean, adVvar );	// correct for 2pi, data taken as FTAN measurements
-			// output data and predictions at each station (append at the end)
-			std::ofstream foutsta( outname + "_sta", std::ofstream::app );
-			foutsta<<"# [ minfo = "<<minfo<<" ]\n";
-			sdc.PrintAll( foutsta );
-			foutsta << "\n\n";
-			// output misfits and source preds at each bin azi (append at the end)
-			std::ofstream foutbin( outname + "_bin", std::ofstream::app );
-			foutbin<<"# [ minfo = "<<minfo<<" ]\n";
-			for( int i=0; i<adVmean.size(); i++ ) {
-				const auto& admean = adVmean[i];
-				const auto adstd = sqrt( adVvar[i] );
-				float Gsource, Psource, Asource;
-				_rpL.GetPred( per, admean.azi,	Gsource, Psource, Asource );
-				Asource *= _AfactorL;
-				foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
-										 <<"  "<<Psource<<" "<<admean.Pdata<<" "<<adstd.Pdata
-										 <<"  "<<Asource<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
-			}
-			foutbin << "\n\n";
-		}
-	}
+	if( Lsize>0 ) for( auto& sdc : _dataL ) outputF(sdc);
 
 }
 
 
 /* -------------------- compute and output misfits, separately, for group, phase, and amplitudes -------------------- */
 void EQKAnalyzer::OutputMisfits( const ModelInfo& minfo ) {
-	if( _usewaveform ) return;
 	// check input params
 	if( ! minfo.isValid() ) {
 		std::stringstream ss; ss<<minfo;
 		throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
 	}
+
+	// prepare/update data for the input minfo
+	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
+		FilldataW(minfo);
+	} else {	// update both path and source predictions for all SDcontainers
+		PredictAll( minfo, true );
+	}
+	bool isFTAN = ! _usewaveform;
+
+	// check data sizes
 	int Rsize = _dataR.size(), Lsize = _dataL.size();
 	if( Rsize==0 && Lsize==0 )
 		throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
-
-	PredictAll( minfo, true );
 
 	// prepare output file
 	std::ofstream fout( outname_misAll, std::ofstream::app );
 	fout<<"# [ minfo = "<<minfo<<" ]\n";
 	fout<<"wtype per  rmsG L1G rchisG  rmsP L1P rchisP  rmsA L1A rchisA\n";
 
-	// main loop for Rayleigh
-	if( Rsize>0 ) {
-		for( auto& sdc : _dataR ) {
-			const float per = sdc.per;
-			// average in each (20 degree) bin,
-			std::vector<AziData> adVmean, adVvar;
-			sdc.BinAverage( adVmean, adVvar );	// correct for 2pi, data taken as FTAN measurements
-			// output misfits and source preds at each bin azi (append at the end)
-			AziData misL1{0.}, misL2{0.}, chiS{0.}; 
-			float nbin = adVmean.size();
-			for( int i=0; i<nbin; i++ ) {
-				const auto& admean = adVmean[i];
-				const auto& advar = adVvar[i];
-				misL1 += fabs(admean); misL2 += admean * admean;
-				chiS += (admean*admean) / advar;
-/*
-if( per == 22. ) {
-	std::cerr<<" *** debug *** for R at per="<<per<<" azi="<<admean.azi<<": misA="<<admean.Adata<<" stdA="<<sqrt(advar.Adata)<<" chiSAsum="<<chiS.Adata<<"\n";
-}
-*/
-			}
-			misL1 /= nbin; misL2 = sqrt( misL2/(nbin-1.) );
-			chiS /= nbin;
-			fout << "R " << per << "  "
-				  << misL2.Gdata << " " << misL1.Gdata << " " <<  chiS.Gdata << "  "
-				  << misL2.Pdata << " " << misL1.Pdata << " " <<  chiS.Pdata << "  "
-				  << misL2.Adata << " " << misL1.Adata << " " <<  chiS.Adata << "\n";
+	// lambda function for outputing misfits
+	auto outputM = [&]( SDContainer& sdc ) {
+		const float per = sdc.per;
+		// average in each (20 degree) bin,
+		std::vector<AziData> adVmean, adVvar;
+		sdc.BinAverage( adVmean, adVvar, isFTAN, isFTAN );
+		// output misfits and source preds at each bin azi (append at the end)
+		AziData misL1{0.}, misL2{0.}, chiS{0.}; 
+		float nbin = adVmean.size();
+		for( int i=0; i<nbin; i++ ) {
+			const auto& admean = adVmean[i];
+			const auto& advar = adVvar[i];
+			misL1 += fabs(admean); misL2 += admean * admean;
+			chiS += (admean*admean) / advar;
 		}
-	}
+		misL1 /= nbin; misL2 = sqrt( misL2/(nbin-1.) );
+		chiS /= nbin;
+		char type = sdc.type==R ? 'R' : 'L';
+		fout << type << " " << per << "  "
+			<< misL2.Gdata << " " << misL1.Gdata << " " <<  chiS.Gdata << "  "
+			<< misL2.Pdata << " " << misL1.Pdata << " " <<  chiS.Pdata << "  "
+			<< misL2.Adata << " " << misL1.Adata << " " <<  chiS.Adata << "\n";
+	};
+
+	// main loop for Rayleigh
+	if( Rsize>0 ) for( auto& sdc : _dataR ) outputM(sdc);
 
 	// main loop for Love
-	if( Lsize>0 ) {
-		for( auto& sdc : _dataL ) {
-			const float per = sdc.per;
-			// average in each (20 degree) bin,
-			std::vector<AziData> adVmean, adVvar;
-			sdc.BinAverage( adVmean, adVvar );	// correct for 2pi, data taken as FTAN measurements
-			// output misfits and source preds at each bin azi (append at the end)
-			AziData misL1{0.}, misL2{0.}, chiS{0.}; 
-			float nbin = adVmean.size();
-			for( int i=0; i<nbin; i++ ) {
-				const auto& admean = adVmean[i];
-				const auto& advar = adVvar[i];
-				misL1 += fabs(admean); misL2 += admean * admean;
-				chiS += (admean*admean) / advar;
-			}
-			misL1 /= nbin; misL2 = sqrt( misL2/(nbin-1.) );
-			chiS /= nbin;
-			fout << "L " << per << "  "
-				  << misL2.Gdata << " " << misL1.Gdata << " " <<  chiS.Gdata << "  "
-				  << misL2.Pdata << " " << misL1.Pdata << " " <<  chiS.Pdata << "  "
-				  << misL2.Adata << " " << misL1.Adata << " " <<  chiS.Adata << "\n";
-		}
-	}
+	if( Lsize>0 ) for( auto& sdc : _dataL ) outputM(sdc);
 
 }
 

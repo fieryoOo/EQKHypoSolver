@@ -1,8 +1,11 @@
 c ===========================================================
 c ray tracer for epicor program
 c ===========================================================
-      subroutine tracer(x1,x2,step0,n,t,delta,dbg,ierr)
+      recursive subroutine tracer(x1,x2,step0,n,t,delta,dbg,ierr, mdl)
+      use mmodel
       implicit none
+
+      type (tmdl) mdl
       integer*4 ierr,n,dbg
       real*8    step0,x1(3),x2(3),t(100)
 c ---
@@ -13,7 +16,7 @@ c ---
       R = 6371.0d0
       drad = datan(1.0d0)/45.0d0
       call DEL_NORM(x1,x2,xn,delta)
-      call rbimod(x1,n,vx,0,ierr)
+      call rbimod(x1,n,vx,0,ierr, mdl)
       if(ierr.ne.0) return
       do i = 1,n
         t(i) = 0.0d0
@@ -31,7 +34,7 @@ c ---
       firot = (st2+st1)/2.0d0
       CALL RTURN(firot,xn,x1,e)
       call NORM(e,e)
-      call rbimod(e,nn,vx,dbg,ierr)
+      call rbimod(e,nn,vx,dbg,ierr, mdl)
       if(ierr.ne.0) return
       if(n.ne.nn) return
       t(1) = t(1)+step/vx(1)
@@ -45,7 +48,7 @@ c ---
     3 do i = 1,nn-1
         t(i) = t(i)*R
       enddo
-      call rbimod(x2,nn,vx,0,ierr)
+      call rbimod(x2,nn,vx,0,ierr, mdl)
       t(4) = vx(4)
       ierr = 0
       end

@@ -13,7 +13,7 @@ if [ `echo $ampmin $ampmax | awk '{if($1<0||$1>=$2){print 0}else{print 1}}'` == 
 	echo "Invalid min||max amp: "$ampmin" "$ampmax
 	exit
 fi
-psout=results_${type}.ps 
+psout=fits_${type}_Waveform.ps 
 color=(orange lightred green steelblue midnightblue darkgray)
 gmtset HEADER_FONT_SIZE 15
 gmtset HEADER_OFFSET -1.5
@@ -23,7 +23,7 @@ fMisL='Misfit2_L.out'
 Emul=1
 if [ $# -ge 5 ]; then Emul=$5; fi
 ### plot Location Misfits ###
-REG=-R1/500/0.1/5
+REG=-R1/500/0.1/8
 SCA=-JX10l/4
 psbasemap -Ba100f20/a1f0.2:."Misfit**2 Location":WeSn $REG $SCA -X4 -Y15.5 -K > $psout
 if [ -e $fMisL ]; then
@@ -34,7 +34,7 @@ fi
 
 fMisF='Misfit2_F.out'
 ### plot Focal Misfits ###
-REG=-R1/10000/0.1/20
+REG=-R1/10000/0.1/80
 SCA=-JX10/4
 psbasemap -Ba2000f500/a5f1:."Misfit**2 Focal":WeSn $REG $SCA -Y-5 -O -K >> $psout
 if [ -e $fMisF ]; then
@@ -44,22 +44,23 @@ if [ -e $fMisF ]; then
 	done
 fi
 
-perlst=( 8 10 16 22 30 40 )
+#perlst=( 8 10 16 22 30 40 )
+perlst=( 'nan' )
+fsource=${type}_source_patterns.txt
 iperbeg=0
 ps=0.05
 lw=2
 ### plot Group fit results ###
 iter=$2
-REG=-R0/360/-50/50
+REG=-R0/360/-10/10
 #REG=-R0/360/-25/25
 SCA=-JX10/8
 psbasemap -Ba60f20/a20f5:."Fit Group":WeSn $REG $SCA -X12 -Y1 -O -K >> $psout
 iper=$iperbeg
 for per in ${perlst[@]}; do
-   fsta=${type}_azi_data_pred_${per}sec.txt_sta
-	fbin=${type}_azi_data_pred_${per}sec.txt_bin
+   fsta=${type}_azi_data_pred.txt_sta
+	fbin=${type}_azi_data_pred.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
-	fsource=SourcePatterns_${type}.txt
    grep -v '\-12345' $fsta | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$5-$6}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
 	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per '$5==per{print $1,$2}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
@@ -71,16 +72,15 @@ for per in ${perlst[@]}; do
 done
 
 ### plot Phase fit results ###
-REG=-R0/360/-30/30
+REG=-R0/360/-10/10
 #REG=-R0/360/-15/15
 SCA=-JX10/8
-psbasemap -Ba60f20/a15f5:."Fit Phase":WeSn $REG $SCA -X-12 -Y-10 -O -K >> $psout
+psbasemap -Ba60f20/a5f1:."Fit Phase":WeSn $REG $SCA -X-12 -Y-10 -O -K >> $psout
 iper=$iperbeg
 for per in ${perlst[@]}; do
-   fsta=${type}_azi_data_pred_${per}sec.txt_sta
-	fbin=${type}_azi_data_pred_${per}sec.txt_bin
+   fsta=${type}_azi_data_pred.txt_sta
+	fbin=${type}_azi_data_pred.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
-	fsource=SourcePatterns_${type}.txt
    grep -v '\-12345' $fsta | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$8-$9}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
 	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per '$5==per{print $1,$3}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
@@ -95,7 +95,7 @@ done
 #REG=-R0/360/500/500000
 REG=-R0/360/${ampmin}/${ampmax}
 SCA=-JX10/8l
-psbasemap -Ba60f20/a20f5:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
+psbasemap -Ba60f20/a5f1:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
 iper=$iperbeg
 if [ $# -ge 6 ]; then
 	ampfactor=$6
@@ -103,10 +103,9 @@ else
 	ampfactor=1
 fi
 for per in ${perlst[@]}; do
-   fsta=${type}_azi_data_pred_${per}sec.txt_sta
-	fbin=${type}_azi_data_pred_${per}sec.txt_bin
+   fsta=${type}_azi_data_pred.txt_sta
+	fbin=${type}_azi_data_pred.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
-	fsource=SourcePatterns_${type}.txt
    grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$11}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
 	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per '$5==per{print $1,$4}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout

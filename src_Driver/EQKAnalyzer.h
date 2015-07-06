@@ -139,7 +139,9 @@ public:
    void CheckParams();
    void LoadData();
 
-	std::vector<float> perRlst() const, perLlst() const;
+	inline std::vector<float> perlst(const Dtype) const;
+	std::vector<float> perRlst() const { return perlst(R); }
+	std::vector<float> perLlst() const { return perlst(L); }
 
 	// initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer
 	// version (1): non-const, modifies internal states
@@ -159,7 +161,19 @@ public:
 	bool chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) const;
 
 	// chi-square misfits from waveform data-synthetics
-	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const;
+	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
+	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
+		SDContainer dataR, dataL;
+		chiSquareW( minfo, chiS, N, false, dataR, dataL );
+	}
+	bool FilldataW( const ModelInfo& minfo ) {
+		float chiS; int N;
+		SDContainer dataR, dataL;
+		chiSquareW( minfo, chiS, N, true, dataR, dataL );
+		_dataR.clear(); _dataL.clear(); 
+		if(dataR.type!=Undefined) _dataR.push_back( std::move(dataR) );
+		if(dataL.type!=Undefined) _dataL.push_back( std::move(dataL) );
+	}
 
 	// call the relevant chiSquare method based on the _usewaveform value
 	inline bool chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {

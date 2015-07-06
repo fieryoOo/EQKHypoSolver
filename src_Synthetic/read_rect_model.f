@@ -1,54 +1,69 @@
 c ==========================================================
 c read rectangular models into memory
 c ==========================================================
-      subroutine read_rect_model(namea,nmod,p,ierr)
+C      module mmodel
+C      type tmdl
+C         integer*4 ic,jc,n,nper,nfi,nla
+C         real*8 fi,sfi,la,sla,per,sper,bf,ef,bl,el,bp,ep,
+C     +          hfi(97),hla(201),hper(225),chfi(97)
+C         real*8 uw(97,201),cw(97,201)
+C         real*8 gw(97,201),aw(97,201)
+C      end type
+C      end module mmodel
+
+      recursive subroutine read_rect_model(model,nmod,p,ierr,mdl)
+      use mmodel
+      use omp_lib
       implicit none
-      integer*4 nmod,ierr
+      integer*4 i,nmod,ierr
       real*8    p,geo,drad
-      character*255 namea
-c --- common /mdl/ ----------------------
-      integer*4 ic,jc,n,nper,nfi,nla
-      real*8 fi,sfi,la,sla,per,sper,bf,ef,bl,el,bp,ep,
-     +       hfi(97),hla(201),hper(225),chfi(97)
-      real*8 uw(97,201),cw(97,201)
-      real*8 gw(97,201),aw(97,201)
-      common /mdl/ic,jc,n,nper,nfi,nla,fi,sfi,la,sla,per,sper,
-     +        bf,ef,bl,el,bp,ep,
-     +        hfi,hla,hper,chfi,uw,cw,gw,aw
+C      integer*4 TID
+
+      type (tmdl) mdl
+      type (tmodel) model
+
 c ---
-      integer*4 i
       ierr = 0
+C      TID = OMP_GET_THREAD_NUM()
 c --- read unformated file for period per--
       if(nmod.eq.0) then
-        ic = 1
-        jc = 1
+        mdl%ic = 1
+        mdl%jc = 1
         geo = 0.993277d0
         drad = datan(1.0d0)/45.0d0
-        open(10,file=namea,form='unformatted',status='old')
-        read(10) n,fi,nfi,sfi,la,nla,sla,per,nper,sper
-        n =0
-        do i = 1,nfi
-          hfi(i) = fi+(i-1)*sfi
-          chfi(i) = datan(geo*dtan(drad*hfi(i)))/drad
+C      open(fid,file=namea,form='unformatted')
+      mdl%n = model%n; mdl%fi = model%fi; mdl%nfi = model%nfi; mdl%sfi = model%sfi
+      mdl%la = model%la; mdl%nla = model%nla; mdl%sla = model%sla
+      mdl%per = model%per; mdl%nper = model%nper; mdl%sper = model%sper
+C      read(fid) mdl%n,mdl%fi,mdl%nfi,mdl%sfi,mdl%la,mdl%nla,mdl%sla,mdl%per,mdl%nper,mdl%sper
+C      write(*,*) " in read 1: tid=",OMP_GET_THREAD_NUM()," params = ",
+C     +           mdl%n,mdl%fi,mdl%nfi,mdl%sfi,mdl%la,mdl%nla,mdl%sla,mdl%per,mdl%nper,mdl%sper
+        mdl%n = 0
+        do i = 1,mdl%nfi
+          mdl%hfi(i) = mdl%fi+(i-1)*mdl%sfi
+          mdl%chfi(i) = datan(geo*dtan(drad*mdl%hfi(i)))/drad
         enddo
-        bf = chfi(1)
-        ef = chfi(nfi)
-        do i = 1,nla
-          hla(i) = la+(i-1)*sla
+        mdl%bf = mdl%chfi(1)
+        mdl%ef = mdl%chfi(mdl%nfi)
+        do i = 1,mdl%nla
+          mdl%hla(i) = mdl%la+(i-1)*mdl%sla
         enddo
-        bl = hla(1)
-        el = hla(nla)
-        do i = 1,nper
-          hper(i) = nper+(i-1)*sper
+        mdl%bl = mdl%hla(1)
+        mdl%el = mdl%hla(mdl%nla)
+        do i = 1,mdl%nper
+          mdl%hper(i) = mdl%nper+(i-1)*mdl%sper
         enddo
-        bp = hper(1)
-        ep = hper(nper)
+        mdl%bp = mdl%hper(1)
+        mdl%ep = mdl%hper(mdl%nper)
         return
       else if(nmod.eq.-1) then
-        close(10)
         return
       endif
-      p = per+n*sper
-      read(10) uw,cw,gw,aw
-      n = n+1
+      p = mdl%per+mdl%n*mdl%sper
+      mdl%n = mdl%n+1
+C      read(fid) mdl%uw,mdl%cw,mdl%gw,mdl%aw
+      mdl%uw = model%uw(mdl%n,:,:); mdl%cw = model%cw(mdl%n,:,:)
+      mdl%gw = model%gw(mdl%n,:,:); mdl%aw = model%aw(mdl%n,:,:)
+C      write(*,*) " in read 2: ",uw,cw,gw,aw
       end
+
