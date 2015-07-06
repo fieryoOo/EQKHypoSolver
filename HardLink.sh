@@ -10,7 +10,7 @@ for dir in ${dirs[@]}; do
 	fi
 done
 if [ $dir_code == "dir_NaN" ]; then
-	echo "cannot locate the code directory!"
+	echo "failed to locate the code directory!"
 	exit
 fi
 
