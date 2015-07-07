@@ -132,8 +132,9 @@ public:
 	}
 	// correct 2 pi for phase T misfits
 	void Correct2PI() {
-		for( auto& sd : dataV )
+		for( auto& sd : dataV ) {
 			sd.Pdata -= per * floor( (sd.Pdata-sd.Ppath-sd.Psource) *oop+0.5);
+		}
 	}
 
 	/* compute bin average */

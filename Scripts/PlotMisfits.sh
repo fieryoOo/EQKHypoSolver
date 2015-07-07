@@ -19,22 +19,38 @@ PlotText() {
 
 GetSNR() {
 	local _sta=$1
-	local _fsac=`ls waveforms/${_sta}.?HZ_real.SAC`
-	if [ ! -e $_fsac ]; then
-		echo "sac file "$_fsac" not found for SNR"
-		exit
-	fi
-	SNR=`/home/tianye/usr/bin/saclst user1 f $_fsac | awk '{print $2}'`
-	if [ $SNR == -12345 ]; then
-		echo "failed to read SNR from sacheader.user1"
-		exit
+	if [ $useW == true ]; then
+		GetSNR1 $_sta
+	else
+		GetSNR2 $_sta
 	fi
 }
 
 GetSNR1() {
+	local _sta=$1
+	local _fsac=`ls waveforms/${_sta}.?HZ_real.SAC 2> /dev/null`
+	succ=true
+	if [ `echo $_fsac | awk '{print NF}'` == 0 ] || [ ! -e $_fsac ]; then
+		echo "sac file "$_fsac" not found for SNR"
+		succ=false; return
+	fi
+	SNR=`~/usr/bin/saclst user1 f $_fsac | awk '{print $2}'`
+	if [ $SNR == -12345 ]; then
+		echo "failed to read SNR from sacheader.user1"
+		succ=false; return
+	fi
+}
+
+GetSNR2() {
+	succ=true
    local _sta=$1
    local _f1=/work1/tianye/EQKLocation/SAC/Disps/${event}_disp_LHZ_10sec.txt
    local _f2=/work1/tianye/EQKLocation/SAC/Disps/${event}_disp_LHZ_16sec.txt
+	if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then
+		_f1=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_LHZ_10sec.txt
+		_f2=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_LHZ_16sec.txt
+		if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then succ=false; return; fi
+	fi
 
 	#if [ $per == 10 ]; then
 	#	SNR=`awk -v sta=$_sta '$4==sta{print $11}' $_f1`
@@ -46,6 +62,17 @@ GetSNR1() {
    SNR1=`awk -v sta=$_sta '$4==sta{print $11}' $_f1`
    SNR2=`awk -v sta=$_sta '$4==sta{print $11}' $_f2`
    SNR=`echo $SNR1 $SNR2 | awk '{ if(NF<2){ snr=2 }else{ snr=$1; if(snr>$2){snr=$2} if(snr<2){snr=2} } print snr} '`
+}
+
+SNR2Size() {
+	local _SNR=$1
+	local _size=2
+	if [ $useW == true ]; then
+		_size=`echo $_SNR | awk '{size=0.01*$1; if(size>0.5){size=0.5;} print size}'`
+	else
+		_size=`echo $_SNR | awk '{size=0.03*$1; if(size>0.5){size=0.5;} print size}'`
+	fi
+	echo $_size
 }
 
 PlotHisto() {
@@ -92,15 +119,39 @@ gmtset LABEL_FONT_SIZE 12
 gmtset ANNOT_FONT_SIZE 10
 gmtset HEADER_OFFSET 0.
 
+### find script/header directory
+Sdir=/home/tianye/EQKHypoSolver/Scripts
+if [ ! -e $Sdir ]; then
+	Sdir=/projects/yeti4009/eqkhyposolver/Scripts
+	if [ ! -e $Sdir ]; then echo "Sdir not found"; exit; fi
+fi
+
+Hdir=/home/tianye/code/Programs/head
+if [ ! -e $Hdir ]; then
+	Hdir=/projects/yeti4009/code/Programs/head
+	if [ ! -e $Hdir ]; then echo "Hdir not found"; exit; fi
+fi
+
+fsta=${Sdir}/station.lst
+
+### check existence of dir ./waveforms
+if [ -e ./waveforms ]; then
+	useW=ture
+else
+	useW=false
+fi
+
 ### compute
 Ntmp=`grep -n '#' $fin | awk -F: '{print $1}' | tail -n1`
 #awk -v N=$Ntmp '{if(NR>N){print $1,$2,$8-$9-$10}}' $fin | awk 'NF==3' | psxy -R -J -Sc0.5 -W1,black -C$fcpt -O -K >> $psout
 fdata=${fin}.tmp; rm -f $fdata
 awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,($11-$12)/$12}}' $fin | awk 'NF==5' | while read lon lat grTmis phTmis ampPerc; do
 #awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6,$7}}' $fin | awk 'NF==4' | while read lon lat Tmis Tsrc; do
-	sta=`awk -v lon=$lon -v lat=$lat 'BEGIN{if(lon<0){lon+=360.}}{lonsta=$2; if(lonsta<0.){lonsta+=360.} latsta=$3; if( (lon-lonsta)**2+(lat-latsta)**2 < 0.0001 ){print $1} }' /home/tianye/EQKHypoSolver/Scripts/station.lst`
+	sta=`awk -v lon=$lon -v lat=$lat 'BEGIN{if(lon<0){lon+=360.}}{lonsta=$2; if(lonsta<0.){lonsta+=360.} latsta=$3; if( (lon-lonsta)**2+(lat-latsta)**2 < 0.0001 ){print $1} }' $fsta`
 	GetSNR $sta
-	echo $lon $lat $grTmis $phTmis $ampPerc $SNR | awk '{size=0.01*$6; if(size>0.5){size=0.5;} print $1,$2,$3,$4,$5,size,$6}' >> $fdata
+	if [ $succ == false ]; then exit; fi
+	size=`SNR2Size $SNR`
+	echo $lon $lat $grTmis $phTmis $ampPerc $size $SNR >> $fdata
 done
 
 ### plot
@@ -108,23 +159,29 @@ psout=${fin}.ps
 REG=-R-123/-109/34/48
 
 ### group T
-fcpt=/home/tianye/EQKHypoSolver/Scripts/GMisfit.cpt
+fcpt=${Sdir}/GMisfit.cpt
 psbasemap $REG -Jn-116/0.55 -Ba5f1/a5f1:."Group Time Misfit ($label)":WeSn -X4.5 -Y6 -K > $psout
 pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy /home/tianye/code/Programs/head/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy /home/tianye/code/Programs/head/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
 awk '{print $1,$2,$3,$6}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
-psscale  -C$fcpt -B1.5:"Source Phase (sec)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
+psscale  -C$fcpt -B4.5:"Misfit (sec)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
 #psscale  -C$fcpt -B:"Misfit (sec)": -P -D3.95/-1./7.9/0.4h -O -K >> $psout
 
 # legend (SNR - size)
-SNRs=( 15 30 50 )
+SNRs=( 0 0 0 )
+if [ $useW == true ]; then
+	SNRs=( 15 30 50 )
+else
+	SNRs=( 3 8 15 )
+fi
 sizes=( '' '' '' )
 for ((i=0;i<3;i++)); do
-   sizes[i]=`echo ${SNRs[i]} | awk '{size=0.01*$1; if(size>0.5){size=0.5;} print size}'`
+   #sizes[i]=`echo ${SNRs[i]} | awk '{size=0.01*$1; if(size>0.5){size=0.5;} print size}'`
+	sizes[i]=`SNR2Size ${SNRs[i]}`
 done
-echo "size: "${sizes[@]} 
 echo "snrs: "${SNRs[@]}
+echo "size: "${sizes[@]} 
 pslegend -R -D-123.5/33.5/2.4/2.2/BL -J -F -G220 -O -K <<- EOF >> $psout
 	G 0.05i
 	S 0.1i c ${sizes[0]} white 0p 0.3i SNR=${SNRs[0]}
@@ -137,11 +194,11 @@ EOF
 
 
 ### phase T
-fcpt=/home/tianye/EQKHypoSolver/Scripts/PMisfit.cpt
+fcpt=${Sdir}/PMisfit.cpt
 psbasemap -R -J -Ba5f1/a5f1:."Phase Time Misfit ($label)":WeSn -X8 -K -O >> $psout
 pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy /home/tianye/code/Programs/head/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy /home/tianye/code/Programs/head/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
 awk '{print $1,$2,$4,$6}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
 psscale  -C$fcpt -B1.5:"Misfit (sec)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
 
@@ -157,11 +214,11 @@ EOF
 
 
 ### amplitude misfits in percentage
-fcpt=/home/tianye/EQKHypoSolver/Scripts/AMisfit.cpt
+fcpt=${Sdir}/AMisfit.cpt
 psbasemap -R -J -Ba5f1/a5f1:."Amplitude Misfit Percentage ($label)":WeSn -X8 -K -O >> $psout
 pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy /home/tianye/code/Programs/head/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy /home/tianye/code/Programs/head/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
 awk '{print $1,$2,$5,$6}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
 psscale  -C$fcpt -B0.5:"Misfit (%)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
 

@@ -139,9 +139,9 @@ public:
    void CheckParams();
    void LoadData();
 
+	inline std::vector<float> perRlst() const;
+	inline std::vector<float> perLlst() const;
 	inline std::vector<float> perlst(const Dtype) const;
-	std::vector<float> perRlst() const { return perlst(R); }
-	std::vector<float> perLlst() const { return perlst(L); }
 
 	// initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer
 	// version (1): non-const, modifies internal states

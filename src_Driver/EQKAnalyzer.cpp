@@ -1,5 +1,6 @@
 #include "EQKAnalyzer.h"
 #include "SynGenerator.h"
+//#include "VectorOperations.h"
 //#include "DataTypes.h"
 #include <sstream>
 #include <sys/stat.h>
@@ -411,6 +412,8 @@ void EQKAnalyzer::LoadData() {
 
 
 /* -------------------- fill the rpR and rpL objects with the current model state -------------------- */
+inline std::vector<float> EQKAnalyzer::perRlst() const { return perlst(R); }
+inline std::vector<float> EQKAnalyzer::perLlst() const { return perlst(L); }
 inline std::vector<float> EQKAnalyzer::perlst(const Dtype dtype) const {
 	std::vector<float> perV;
 	if( _usewaveform ) {
@@ -472,7 +475,10 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 	// lambda function, works on a single SDContainer vector
 	auto Usource = [&]( std::vector<SDContainer>& dataV, float& Afactor ) {
 		// update source predictions
-		for( auto& sdc : dataV ) sdc.UpdateSourcePred( rpR );
+		for( auto& sdc : dataV ) {
+			const auto& rp = sdc.type==R ? rpR : rpL;
+			sdc.UpdateSourcePred( rp );
+		}
 		// rescale source amplitudes to match the data
 		std::vector<float> ampratioV;	
 		ampratioV.reserve( dataV.size() * dataV.at(0).size() );
@@ -758,6 +764,7 @@ void EQKAnalyzer::OutputFits( const ModelInfo& minfo ) {
 		const float per = sdc.per;
 		// choose outlist by Dtype
 		const auto& outlist = sdc.type==R ? outlist_RF : outlist_LF;
+		const auto& rp = sdc.type==R ? _rpR : _rpL;
 		std::string outname;
 		if( _usewaveform ) {
 			if( outlist.size() == 0 ) return;
@@ -766,14 +773,14 @@ void EQKAnalyzer::OutputFits( const ModelInfo& minfo ) {
 			if( outlist.find(per) == outlist.end() ) return;
 			outname = outlist.at(per);
 		}
+		// average in each (20 degree) bin,
+		std::vector<AziData> adVmean, adVvar;
+		sdc.BinAverage( adVmean, adVvar, isFTAN, isFTAN );	// 2pi gets corrected here
 		// output data and predictions at each station (append at the end)
 		std::ofstream foutsta( outname + "_sta", std::ofstream::app );
 		foutsta<<"# [ minfo = "<<minfo<<" ]\n";
 		sdc.PrintAll( foutsta );
 		foutsta << "\n\n";
-		// average in each (20 degree) bin,
-		std::vector<AziData> adVmean, adVvar;
-		sdc.BinAverage( adVmean, adVvar, isFTAN, isFTAN );	
 		// output misfits and source preds at each bin azi (append at the end)
 		std::ofstream foutbin( outname + "_bin", std::ofstream::app );
 		foutbin<<"# [ minfo = "<<minfo<<" ]\n";
@@ -784,7 +791,7 @@ void EQKAnalyzer::OutputFits( const ModelInfo& minfo ) {
 			if( _usewaveform ) {
 				Gsource = Psource = Asource = 0.;
 			} else {
-				_rpR.GetPred( per, admean.azi,	Gsource, Psource, Asource );
+				rp.GetPred( per, admean.azi,	Gsource, Psource, Asource );
 				Asource *= _AfactorR;
 			}
 			foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
