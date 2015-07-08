@@ -18,9 +18,10 @@ echo "#!/bin/bash
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=${_nthreads}
 #SBATCH --time=${_Rtime}:00:00
-#SBATCH --mem=1gb
+#SBATCH --mem=4gb
 
 ulimit -c unlimited
+ulimit -s 65536
 module load gcc/gcc-4.9.2
 
 export OMP_NUM_THREADS=${_nthreads}; time ${_run_exe} ${_fparam} ${_addoption}
@@ -34,7 +35,7 @@ export OMP_NUM_THREADS=${_nthreads}; time ${_run_exe} ${_fparam} ${_addoption}
 ### main 
 for wtype in R; do # wave type ( B R L )
 	for dtype in 1000; do # data type ( 500 1000 1000sparse 1000PIazi )
-		for mtype in 3D; do # model type ( Ei 3D 1D )
+		for mtype in 3D_W; do # model type ( Ei 3D 1D )
 			### label
 			_label=${wtype}_${dtype}_${mtype}
 			### path to the vel maps
@@ -50,6 +51,8 @@ for wtype in R; do # wave type ( B R L )
 				_mdir=VelMaps_Eikonal
 				_msuf=txt_avg
 				fparam=param_base_1D.txt
+			elif [ $mtype == "3D_W" ]; then
+				fparam=param_base.txt
 			else
 				echo "Unknown model type: "$mtype; exit
 			fi
@@ -77,7 +80,7 @@ for wtype in R; do # wave type ( B R L )
 			ProduceSBATCH ${_dir}/param.txt ${_dir} $Rtime ${_dir}/run.sbatch -c
 			# run/submit
 			echo Starting ${_dir}...
-			sbatch ${_dir}/run.sbatch
+			#sbatch ${_dir}/run.sbatch
 			#sh ${_dir}/run.sbatch
 			sleep 1
 		done

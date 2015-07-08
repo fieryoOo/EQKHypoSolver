@@ -98,6 +98,11 @@ namespace Searcher {
 
 		bool saveacc = saveSI>=0;
 		bool saverej = saveSI==0;
+
+		// search starts
+		if( ! (alpha==1 && Tinit==2.0) )	// not MonteCarlo
+			sout<<"### Starting simulated annealing search (#search="<<nsearch<<" alpha="<<alpha<<" Tinit="<<Tinit<<") ###"<<std::endl;
+
 		// initial energy (force MS to be assignable to MI at compile time)
 		int Ndata0, Ndata;
 		float E; dh.Energy( ms, E, Ndata0 );

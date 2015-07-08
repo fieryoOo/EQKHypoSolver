@@ -101,7 +101,7 @@ int main( int argc, char* argv[] ) {
 		// option -s: skip simulated annealing
 		int niterSA = 3, nsearchMI = 5000;
 		if( std::find(options.begin(), options.end(), 's') != options.end() ) {
-			niterSA = 0; nsearchMI = 10000;
+			niterSA = 0; nsearchMI = 20000;
 		}
 
 		// ********** iterative simulated annealing ********** //

@@ -344,7 +344,7 @@ void EQKAnalyzer::LoadData() {
 			// SNR
 			float dist = sac.shd.dist;
 			sac.shd.user1 = sac.SNR(dist*0.2, dist*0.5, dist*0.5+500., dist*0.5+1000.);
-			if( sac.shd.user1 < 15. ) continue;
+			if( sac.shd.user1 < 18. ) continue;
 			// filter
 			sac.Resample();	// sample grid alignment
 			if( sacRtype == 1 ) sac.Integrate();
@@ -366,7 +366,7 @@ void EQKAnalyzer::LoadData() {
 			// SNR
 			float dist = sac.shd.dist;
 			sac.shd.user1 = sac.SNR(dist*0.2, dist*0.5, dist*0.5+500., dist*0.5+1000.);
-			if( sac.shd.user1 < 15. ) continue;
+			if( sac.shd.user1 < 18. ) continue;
 			// filter
 			sac.Resample();	// sample grid alignment
 			if( sacLtype == 1 ) sac.Integrate();
