@@ -28,7 +28,7 @@ GetSNR() {
 
 GetSNR1() {
 	local _sta=$1
-	local _fsac=`ls waveforms/${_sta}.?HZ_real.SAC 2> /dev/null`
+	local _fsac=`ls ${wdir}/${_sta}.?HZ_real.SAC 2> /dev/null`
 	succ=true
 	if [ `echo $_fsac | awk '{print NF}'` == 0 ] || [ ! -e $_fsac ]; then
 		echo "sac file "$_fsac" not found for SNR"
@@ -136,9 +136,16 @@ fsta=${Sdir}/station.lst
 
 ### check existence of dir ./waveforms
 if [ -e ./waveforms ]; then
-	useW=ture
+	useW=true
+	wdir=./waveforms
+	echo "results recognized as Waveform fitting"
+elif [ -e ./waveforms_init ]; then
+	useW=true
+	wdir=./waveforms_init
+	echo "results recognized as Waveform fitting"
 else
 	useW=false
+	echo "results recognized as FTAN measurements"
 fi
 
 ### compute
