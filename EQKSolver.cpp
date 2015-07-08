@@ -14,6 +14,7 @@ i: Stop after outputing the initial fits, misfits,
 	waveforms(when doing waveform fitting), chi-square(c), and rad-pattern(r)
 c: Computes/outputs the initial chi-square
 r: Output the initial source radiation pattern
+e: Estimate/print perturbation steps at the initial state
 d: Debug mode. Computes the initial chi-square of 
 	multiple model states taken in from the standard input.
 ******************************/
@@ -21,7 +22,7 @@ d: Debug mode. Computes the initial chi-square of
 int main( int argc, char* argv[] ) {
 	if( argc < 2 ) {
 		std::cerr<<"Usage: "<<argv[0]<<" [param file] "
-					<<"[options (-i=initial-only  -c=chiSquare-init -s=skip-SA -r=rad-patterns -d=debug-mode)]"<<std::endl;
+					<<"[options (-i=initial-only  -c=chiSquare-init -s=skip-SA -r=rad-patterns -e=estimate-perturb -d=debug-mode)]"<<std::endl;
 		return -1;
 	}
 
@@ -43,9 +44,7 @@ int main( int argc, char* argv[] ) {
 
 		// ********** Preparations ********** //
 		// initialize model space
-		ModelSpace ms( fparam );
-		//ms.M0 = 1.04e23;
-		ms.M0 = 1.3e23;
+		ModelSpace ms( fparam ); //ms.M0 = 1.3e23;
 		// initialize eqk analyzer
 		EQKAnalyzer eka( fparam );
 		eka.LoadData();
@@ -91,32 +90,39 @@ int main( int argc, char* argv[] ) {
 		if( std::find(options.begin(), options.end(), 'r') != options.end() )
 			eka.OutputSourcePatterns(ms);
 
+		// option -e: Estimate/print perturbation steps at the initial state
+		if( std::find(options.begin(), options.end(), 'e') != options.end() )
+			ms.EstimatePerturbs( eka, 0.15 );
+
 		// option -i: stop after output initial fit and misfits
 		if( std::find(options.begin(), options.end(), 'i') != options.end() )
 			return 0;
 
+		// option -s: skip simulated annealing
+		int niterSA = 3, nsearchMI = 5000;
+		if( std::find(options.begin(), options.end(), 's') != options.end() ) {
+			niterSA = 0; nsearchMI = 10000;
+		}
+
 		// ********** iterative simulated annealing ********** //
 		// search for epicenter and focal mechanism separately
-		int niter = 3;
-		// option -s: skip simulated annealing
-		if( std::find(options.begin(), options.end(), 's') != options.end() ) niter = 0;
 		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
 		int nsearch = 8192, Tfactor = 16;
 		//int nsearch = 4096, Tfactor = 8;
-		for( int iter=0; iter<niter; iter++ ) {
-			// search for focal info
-			ms.FixEpic();		// have epicenter fixed
-			eka.PredictAll( ms );	// not necessary, but following search runs faster since Epic is fixed
-			float alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// alpha is emperically decided
-			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info fo accepted searches
-			VO::Output( SIV, eka.outname_misF, true );	// append to file
+		for( int iter=0; iter<niterSA; iter++ ) {
 			// search for epicenter
 			ms.FixFocal();				// have focal mechanism fixed
 			eka.PredictAll( ms );	// not necessary, but following search runs faster since Focal is fixed
 			if( iter==0 ) eka.SetInitSearch( true );			// use Love group data only!
-			SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 500, 0., 0, std::cout, 1 );
+			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 500, 0., 0, std::cout, 1 );
 			VO::Output( SIV, eka.outname_misL, true );	// append to file
 			if( iter==0 ) eka.SetInitSearch( false );	// use all data
+			// search for focal info
+			ms.FixEpic();		// have epicenter fixed
+			eka.PredictAll( ms );	// not necessary, but following search runs faster since Epic is fixed
+			float alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// alpha is emperically decided
+			SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info fo accepted searches
+			VO::Output( SIV, eka.outname_misF, true );	// append to file
 			// centralize the model space around the current MState
 			ms.Centralize();
 			// output
@@ -131,7 +137,7 @@ int main( int argc, char* argv[] ) {
 		// with a small pertfactor to approach the optimum solution faster
 		ms.Bound( 2.5, 0.03 );
 		// initial MC search around the SA result to stablize
-		nsearch = 5000;
+		nsearch = nsearchMI;
 		//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
 		//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 		Tfactor = 2; float alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// alpha is emperically decided

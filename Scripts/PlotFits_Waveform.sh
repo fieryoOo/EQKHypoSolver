@@ -62,7 +62,7 @@ for per in ${perlst[@]}; do
 	fbin=${type}_azi_data_pred.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
    grep -v '\-12345' $fsta | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$5-$6}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
-	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
+	if [ 0 == 1 ] && [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per '$5==per{print $1,$2}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	else
 		grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$7}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
@@ -82,7 +82,7 @@ for per in ${perlst[@]}; do
 	fbin=${type}_azi_data_pred.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
    grep -v '\-12345' $fsta | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$8-$9}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
-	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
+	if [ 0 == 1 ] && [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per '$5==per{print $1,$3}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	else
 		grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$10}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
@@ -107,7 +107,7 @@ for per in ${perlst[@]}; do
 	fbin=${type}_azi_data_pred.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
    grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$11}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
-	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
+	if [ 0 == 1 ] && [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per '$5==per{print $1,$4}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	else
 		grep -v '\-12345' $fsta | awk -v iter=$iter -v ampfactor=$ampfactor 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter&&NF>0){print $4,$12*ampfactor}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout

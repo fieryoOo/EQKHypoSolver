@@ -1,14 +1,23 @@
 ######### location range ##########
-lon	-115.
-lat	41.
-t0		0.
+lon	245.1053
+lat	41.1446
+t0		0.4886
+#lon	245.
+#lat	41.
+#t0		0.
 pertfactor 0.1
 
 ######### initial mechanism #########
-stk	110
-dip	50
-rak	-30
-dep	20
+#M0 1.0e23
+#stk 100
+#dip 20
+#rak -50
+#dep 10
+M0 1.2e23
+stk	250.458
+dip	34.946
+rak	-56.996
+dep	6.305
 
 ######### weightings (implementation removed) #########
 #weightR_Loc 0.5
@@ -17,60 +26,66 @@ dep	20
 #weightL_Foc 0.5
 
 ######### source models ##########
-fRse SourceModels/245_41.25.R
-fRsp SourceModels/245_41.25.R.phv
+#fRse SourceModels/245_41.25.R
+#fRsp SourceModels/245_41.25.R.phv
+fRse /work1/tianye/Syndat-1.1/TEST1/BRED/R.R
+fRsp /work1/tianye/Syndat-1.1/TEST1/BRED/R.R.phv
 
 fLse SourceModels/245_41.25.L
 fLsp SourceModels/245_41.25.L.phv
 
 ########## data to be used ###########
-dflag B		# datatype(s) to search with
+dflag base		# datatype(s) to search with
 indep 0.5	# factor describing data independence
 #noG
 #noP
 #noA
 
 # the input data is either the
-########## (1) original SAC data ##########
-fsaclistR
-fsaclistL
-fmodelR
-fmodelL
+########## (1) original SAC data (0=displacement, 1=velocity) ##########
+fsaclistR Measurements/saclistR.txt 1
+fsaclistL Measurements/saclistL.txt 1
+fmodelR /work1/tianye/Syndat-1.1/data/WUSmap.25.bin
 permin 8
 permax 18
 
 # or the
 ########## (2) DISP data ##########
-fRm Measurements/R_Sta_grT_phT_Amp_10sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_10sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_10sec.txt 10
-fRm Measurements/R_Sta_grT_phT_Amp_16sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_16sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_16sec.txt 16
-#fRm Measurements/R_Sta_grT_phT_Amp_22sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_22sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_22sec.txt 22
-#fRm Measurements/R_Sta_grT_phT_Amp_30sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_30sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_30sec.txt 30
-#fRm Measurements/R_Sta_grT_phT_Amp_40sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_40sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_40sec.txt 40
+fRm Measurements/R_Sta_grT_phT_Amp_10sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_10sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_10sec.txt 10
+fRm Measurements/R_Sta_grT_phT_Amp_16sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_16sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_16sec.txt 16
+#fRm Measurements/R_Sta_grT_phT_Amp_22sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_22sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_22sec.txt 22
+#fRm Measurements/R_Sta_grT_phT_Amp_30sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_30sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_30sec.txt 30
+#fRm Measurements/R_Sta_grT_phT_Amp_40sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_GroupSpeed_40sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_R_PhaseSpeed_40sec.txt 40
 
-fLm Measurements/L_Sta_grT_phT_Amp_10sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_10sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_10sec.txt 10
-fLm Measurements/L_Sta_grT_phT_Amp_16sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_16sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_16sec.txt 16
-fLm Measurements/L_Sta_grT_phT_Amp_22sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_22sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_22sec.txt 22
-#fLm Measurements/L_Sta_grT_phT_Amp_30sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_30sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_30sec.txt 30
-#fLm Measurements/L_Sta_grT_phT_Amp_40sec_dis1000.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_40sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_40sec.txt 40
+fLm Measurements/L_Sta_grT_phT_Amp_10sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_10sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_10sec.txt 10
+fLm Measurements/L_Sta_grT_phT_Amp_16sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_16sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_16sec.txt 16
+fLm Measurements/L_Sta_grT_phT_Amp_22sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_22sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_22sec.txt 22
+#fLm Measurements/L_Sta_grT_phT_Amp_30sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_30sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_30sec.txt 30
+#fLm Measurements/L_Sta_grT_phT_Amp_40sec_dis500.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_GroupSpeed_40sec.txt /work1/tianye/EQKLocation/VelMaps_Eikonal/Map_L_PhaseSpeed_40sec.txt 40
 
 
 ########## output names ############
-fmisL results_SAMC_B_1000_Ei/Misfit2_L.out
-fmisF results_SAMC_B_1000_Ei/Misfit2_F.out
-fmisAll results_SAMC_B_1000_Ei/Misfits_All.out
-fpos  results_SAMC_B_1000_Ei/PosteriorD.txt
-fsrcR results_SAMC_B_1000_Ei/SourcePatterns_R.txt
-fsrcL results_SAMC_B_1000_Ei/SourcePatterns_L.txt
+fmisL results_SAMC_default/Misfit2_L.out
+fmisF results_SAMC_default/Misfit2_F.out
+fmisAll results_SAMC_default/Misfits_All.out
+fpos  results_SAMC_default/PosteriorD.txt
 
-ffitR results_SAMC_B_1000_Ei/R_azi_data_pred_10sec.txt 10
-ffitR results_SAMC_B_1000_Ei/R_azi_data_pred_16sec.txt 16
-ffitR results_SAMC_B_1000_Ei/R_azi_data_pred_22sec.txt 22
-ffitR results_SAMC_B_1000_Ei/R_azi_data_pred_30sec.txt 30
-ffitR results_SAMC_B_1000_Ei/R_azi_data_pred_40sec.txt 40
+#ffitR results_SAMC_default/R_azi_data_pred.txt -12345
 
-ffitL results_SAMC_B_1000_Ei/L_azi_data_pred_10sec.txt 10
-ffitL results_SAMC_B_1000_Ei/L_azi_data_pred_16sec.txt 16
-ffitL results_SAMC_B_1000_Ei/L_azi_data_pred_22sec.txt 22
-ffitL results_SAMC_B_1000_Ei/L_azi_data_pred_30sec.txt 30
-ffitL results_SAMC_B_1000_Ei/L_azi_data_pred_40sec.txt 40
+ffitR results_SAMC_default/R_azi_data_pred_10sec.txt 10
+ffitR results_SAMC_default/R_azi_data_pred_16sec.txt 16
+ffitR results_SAMC_default/R_azi_data_pred_22sec.txt 22
+ffitR results_SAMC_default/R_azi_data_pred_30sec.txt 30
+ffitR results_SAMC_default/R_azi_data_pred_40sec.txt 40
+
+ffitL results_SAMC_default/L_azi_data_pred_10sec.txt 10
+ffitL results_SAMC_default/L_azi_data_pred_16sec.txt 16
+ffitL results_SAMC_default/L_azi_data_pred_22sec.txt 22
+ffitL results_SAMC_default/L_azi_data_pred_30sec.txt 30
+ffitL results_SAMC_default/L_azi_data_pred_40sec.txt 40
+
+fsrcR results_SAMC_default/R_source_patterns.txt
+fsrcL results_SAMC_default/L_source_patterns.txt
+
+dirsac results_SAMC_default/waveforms
 

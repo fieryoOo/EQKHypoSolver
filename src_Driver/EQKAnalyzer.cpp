@@ -515,9 +515,9 @@ bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) cons
 	bool useG = _useG, useP = _useP, useA = _useA;
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);
-	if( _isInit && Lsize>0 ) {
-		useG = LFlag = true;
-		useA = useP = RFlag = false;
+	if( _isInit ) {
+		useG = true; useA = useP = false;
+		if( Lsize > 0 ) {	RFlag = false; LFlag = true; }
 	}
 
 	// initialize ADAdder
@@ -588,13 +588,8 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 	}
 
 	// data flags
-	bool useG = false, useP = _useP, useA = _useA;
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);
-
-	// initialize ADAdder
-	ADAdder adder( useG, useP, useA );
-	const int Nadd = useG + useP + useA;
 
 	// prepare SynGenerator
 	auto synGR = _synGR;
@@ -618,16 +613,24 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 		sacS.Resample();	// shift to regular sampling grids
 
 		// zoom in to the surface wave window
-		float dis = sacS.Dis(), tmin, tmax;
+		float dis = sacS.Dis(), tb, te;
 		if( dis < 300. ) {
-			tmin = std::max(dis*0.35-45., 0.);
-			tmax = tmin + 90.;
+			tb = std::max(dis*0.35-45., 0.);
+			te = tb + 90.;
 		} else {
-			tmin = dis*0.2; tmax = dis*0.5;
+			tb = dis*0.2; te = dis*0.5;
 		}
-		// time-domain correlation
-		sacM.cut(tmin, tmax); sacS.cut(tmin, tmax);
+		sacM.cut(tb, te); sacS.cut(tb, te);
 
+		// group time shift
+		auto Tpeak = [&]( const SacRec& sac ) -> float {
+			float tmin, tmax, min, max;
+			sac.MinMax(tb, te, tmin, min, tmax, max);
+			return fabs(min)>fabs(max) ? tmin : tmax;
+		};
+		float grTShift = Tpeak(sacM) - Tpeak(sacS);
+
+		// time-domain correlation
 		//std::cout<<lon<<" "<<lat<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";
 
 		// FFT into freq-domain
@@ -667,7 +670,7 @@ continue;
 		float rms_am = sac_am1.RMSAvg(f2, f3), rms_ph = sac_ph1.RMSAvg(f2, f3);
 		//amp_sum += rms_am; pha_sum += rms_ph; N++;
 		// store rms misfits as StaData. Put amp of synthetic in .Asource for computing variance later
-		StaData sd(sacS.Azi(), lon, lat, 0., rms_ph, rms_am+AmpTheory, 0.); sd.Asource = AmpTheory;
+		StaData sd(sacS.Azi(), lon, lat, grTShift, rms_ph, rms_am+AmpTheory, 0.); sd.Asource = AmpTheory;
 		dataR.push_back( sd );
 		//std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
 		//std::cerr<<lon<<" "<<lat<<" "<<rms_ph<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_pha "<<sacM.fname<<"\n";
@@ -675,6 +678,15 @@ continue;
 	}
 	//std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
 	dataR.Sort();
+
+	// initialize ADAdder
+	bool useG = _useG, useP = _useP, useA = _useA;
+	if( _isInit ) {
+		useG = true; useA = useP = false;
+		//if( Lsize > 0 ) {	RFlag = false; LFlag = true; }
+	}
+	ADAdder adder( useG, useP, useA );
+	const int Nadd = useG + useP + useA;
 
 	// compute chi square
 	chiS = 0.; N = 0;

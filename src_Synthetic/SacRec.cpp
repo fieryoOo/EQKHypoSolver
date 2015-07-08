@@ -892,6 +892,7 @@ inline float SacRec::Time( const size_t index ) const {
 }
 
 /* search for min&max signal positions and amplitudes */
+/*
 void SacRec::MinMax (int& imin, int& imax) const {
 	float min, max;
 	float *sigsac = sig.get();
@@ -902,6 +903,7 @@ void SacRec::MinMax (int& imin, int& imax) const {
        else if ( max < sigsac[i] ) { max = sigsac[i]; imax = i; }
    }
 }
+*/
 void SacRec::MinMax (int& imin, int& imax, float tbegin, float tend) const {
    if( ! sig )
 		throw ErrorSR::EmptySig(FuncName);

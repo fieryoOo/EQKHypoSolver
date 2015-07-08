@@ -171,7 +171,7 @@ public:
    /* update/reformat header time if shd.nzmsec is modified and is out of the range [0,1000) */
    void UpdateTime();
    /* search for min&max signal positions and amplitudes */
-	void MinMax (int& imin, int& imax) const;
+	void MinMax (int& imin, int& imax) const { MinMax( imin, imax, shd.b, shd.e ); }
 	void MinMax (int& imin, int& imax, float tbegin, float tend) const;
    void MinMax ( float tbegin, float tend, float& tmin, float& min, float& tmax, float& max ) const;
    /* compute the root-mean-square average in a given window */

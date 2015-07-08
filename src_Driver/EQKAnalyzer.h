@@ -164,15 +164,16 @@ public:
 	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
 	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
 		SDContainer dataR, dataL;
-		chiSquareW( minfo, chiS, N, false, dataR, dataL );
+		return chiSquareW( minfo, chiS, N, false, dataR, dataL );
 	}
 	bool FilldataW( const ModelInfo& minfo ) {
 		float chiS; int N;
 		SDContainer dataR, dataL;
-		chiSquareW( minfo, chiS, N, true, dataR, dataL );
+		if( ! chiSquareW( minfo, chiS, N, true, dataR, dataL ) ) return false;
 		_dataR.clear(); _dataL.clear(); 
 		if(dataR.type!=Undefined) _dataR.push_back( std::move(dataR) );
 		if(dataL.type!=Undefined) _dataL.push_back( std::move(dataL) );
+		return true;
 	}
 
 	// call the relevant chiSquare method based on the _usewaveform value
