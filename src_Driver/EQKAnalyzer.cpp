@@ -1,5 +1,6 @@
 #include "EQKAnalyzer.h"
 #include "SynGenerator.h"
+#include "Curve.h"
 //#include "VectorOperations.h"
 //#include "DataTypes.h"
 #include <sstream>
@@ -332,25 +333,50 @@ void EQKAnalyzer::LoadData() {
 		// period band
 		if( f2<0. || f3<0. || f2>=f3 )
 			throw ErrorSC::BadParam(FuncName, "invalid freq range: "+std::to_string(f2)+" - "+std::to_string(f3));
+
+		// lambda function that loads a single sac file into both sac3V and synG
+		auto LoadSac = [&]( const std::string& sacname, SynGenerator& synG, std::vector<SacRec3>& sac3V ) {
+			SacRec sac(sacname); sac.Load();
+			if( sac.shd.depmax!=sac.shd.depmax ) return;
+			// SNR
+			float dist = sac.shd.dist;
+			sac.shd.user1 = sac.SNR(dist*0.2, dist*0.5, dist*0.5+500., dist*0.5+1000.);
+			if( sac.shd.user1 < 18. ) return;
+			// filter
+			//sac.Resample();	// sample grid alignment
+			if( sacRtype == 1 ) sac.Integrate();
+			sac.Filter(f1,f2,f3,f4);
+			// zoom in to the surface wave window
+			float dis = sac.Dis(), tb, te;
+			if( dis < 300. ) {
+				tb = std::max(dis*0.35-45., 0.);
+				te = tb + 90.;
+			} else {
+				tb = dis*0.2; te = dis*0.5;
+			}
+			sac.cut(tb, te);
+			sac.shd.user2 = tb; sac.shd.user3 = te;
+			// FFT
+			SacRec sac_am, sac_ph;
+			sac.ToAmPh(sac_am, sac_ph);
+			// take the amplitude from IFFT for envelope
+			SacRec sacEnv; sacEnv.shd = sac.shd;
+			sacEnv.FromAmPh(sac_am, sac_ph, 2); 
+			sac.shd.user4 = Tpeak(sacEnv);
+			// save sac files and put a station record into synGR
+			synG.PushbackSta( sac );
+			sac3V.push_back( SacRec3{ std::move(sac), std::move(sac_am), std::move(sac_ph) } );
+		};
+
 		// Rayleigh
 		_synGR.Initialize(fmodelR, fRphvname, fReigname, 'R', 0);
 		std::ifstream fin( fsaclistR );
 		if( ! fin )
 	      throw ErrorSC::BadFile(FuncName, fsaclistR);
-		_sacVR.clear(); _synGR.ClearSta();
+		_sac3VR.clear(); _synGR.ClearSta();
 		for( std::string line; std::getline(fin, line); ) {
 			std::stringstream ss(line); ss >> line;
-			SacRec sac(line); sac.Load();
-			// SNR
-			float dist = sac.shd.dist;
-			sac.shd.user1 = sac.SNR(dist*0.2, dist*0.5, dist*0.5+500., dist*0.5+1000.);
-			if( sac.shd.user1 < 18. ) continue;
-			// filter
-			sac.Resample();	// sample grid alignment
-			if( sacRtype == 1 ) sac.Integrate();
-			sac.Filter(f1,f2,f3,f4);
-			_synGR.PushbackSta( sac );
-			_sacVR.push_back( std::move(sac) );
+			LoadSac( line, _synGR, _sac3VR );
 		}
 		fin.close(); fin.clear();
 
@@ -358,24 +384,14 @@ void EQKAnalyzer::LoadData() {
 		_synGL.Initialize(fmodelL, fLphvname, fLeigname, 'L', 0);
 		fin.open( fsaclistL );
 		if( ! fin )
-	      throw ErrorSC::BadFile(FuncName, fsaclistL);
-		_sacVL.clear(); _synGL.ClearSta();
+			throw ErrorSC::BadFile(FuncName, fsaclistL);
+		_sac3VL.clear(); _synGL.ClearSta();
 		for( std::string line; std::getline(fin, line); ) {
 			std::stringstream ss(line); ss >> line;
-			SacRec sac(line); sac.Load();
-			// SNR
-			float dist = sac.shd.dist;
-			sac.shd.user1 = sac.SNR(dist*0.2, dist*0.5, dist*0.5+500., dist*0.5+1000.);
-			if( sac.shd.user1 < 18. ) continue;
-			// filter
-			sac.Resample();	// sample grid alignment
-			if( sacLtype == 1 ) sac.Integrate();
-			sac.Filter(f1,f2,f3,f4);
-			_synGL.PushbackSta( sac );
-			_sacVL.push_back( std::move(sac) );
+			LoadSac( line, _synGL, _sac3VL );
 		}
 
-		std::cout<<"### "<<_sacVR.size()<<"(Rayl) + "<<_sacVL.size()<<"(Love) sac file(s) loaded. ###"<<std::endl;
+		std::cout<<"### "<<_sac3VR.size()<<"(Rayl) + "<<_sac3VL.size()<<"(Love) sac file(s) loaded. ###"<<std::endl;
 	} else {	// read DISP measurements
 		// Rayleigh
 		_dataR.clear();
@@ -576,6 +592,23 @@ bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) cons
 	return isvalid;
 }
 
+float EQKAnalyzer::Tpeak( const SacRec& sac ) const {
+	//float tmin, tmax, min, max;
+	//sac.MinMax(tb, te, tmin, min, tmax, max);
+	//return fabs(min)>fabs(max) ? tmin : tmax;	// for signal
+	// for envelope
+	int imin, imax;
+	sac.MinMax(imin, imax);
+	if( imax==0 || imax==sac.shd.npts-1 ) {
+		return sac.Time(imax);
+	} else {
+		float* sigsac = sac.sig.get();
+		PointC p1(sac.Time(imax-1), sigsac[imax-1]);
+		PointC p2(sac.Time(imax),   sigsac[imax]  );
+		PointC p3(sac.Time(imax+1), sigsac[imax+1]);
+		return Parabola( p1, p2, p3 ).Vertex().x;
+	}
+}
 
 static inline int nint( float val ) { return (int)floor(val + 0.5); }
 bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataRout, SDContainer& dataLout ) const {
@@ -599,20 +632,25 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 	float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
 	SDContainer dataR( pseudo_per, R );
 	//float amp_sum = 0., pha_sum = 0.;
-	for( auto sacM : _sacVR ) {
+	for( const auto& sac3 : _sac3VR ) {
+		// references to data sacs
+		const SacRec &sacM = sac3[0], &sac_am1 = sac3[1], &sac_ph1 = sac3[2];
+		auto& shdM = sacM.shd;
 		// produce synthetic
 		SacRec sacS, sacSN, sacSE;
-		float lon=sacM.shd.stlo, lat=sacM.shd.stla;
-		if( ! synGR.ComputeSyn( sacM.stname(), lon, lat, sacM.shd.npts, sacM.shd.delta, 
+		float lon=shdM.stlo, lat=shdM.stla;
+		int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
+		if( ! synGR.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
 									  f1,f2,f3,f4, sacS, sacSN, sacSE ) ) 
 			throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
 		sacSN.clear(); sacSE.clear();	// ignore N and E channels for now
-		//std::cout<<sacM.shd.kstnm<<" "<<sacM.shd.stlo<<" "<<sacM.shd.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
+		//std::cout<<shdM.kstnm<<" "<<shdM.stlo<<" "<<shdM.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
 		// check for bad sac 
-		if( sacM.shd.depmax!=sacM.shd.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
-		sacS.Resample();	// shift to regular sampling grids
+		if( sacS.shd.depmax!=sacS.shd.depmax ) continue;
+		//sacS.Resample();	// shift to regular sampling grids
 
 		// zoom in to the surface wave window
+		/*
 		float dis = sacS.Dis(), tb, te;
 		if( dis < 300. ) {
 			tb = std::max(dis*0.35-45., 0.);
@@ -621,53 +659,33 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 			tb = dis*0.2; te = dis*0.5;
 		}
 		sacM.cut(tb, te); sacS.cut(tb, te);
+		*/
+		float tb = shdM.user2, te = shdM.user3;
+		sacS.cut( tb, te );
+
+		// FFT into freq-domain
+		SacRec sac_am2, sac_ph2;
+		sacS.ToAmPh(sac_am2, sac_ph2);
+		// take the amplitude from IFFT for envelope
+		sacS.FromAmPh(sac_am2, sac_ph2, 2); 
 
 		// group time shift
-		auto Tpeak = [&]( const SacRec& sac ) -> float {
-			float tmin, tmax, min, max;
-			sac.MinMax(tb, te, tmin, min, tmax, max);
-			return fabs(min)>fabs(max) ? tmin : tmax;
-		};
-		float grTShift = Tpeak(sacM) - Tpeak(sacS);
+		float grTShift = shdM.user4 - Tpeak(sacS);
 
 		// time-domain correlation
 		//std::cout<<lon<<" "<<lat<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";
 
-		// FFT into freq-domain
-		SacRec sac_am1, sac_ph1, sac_am2, sac_ph2;
-		sacM.ToAmPh(sac_am1, sac_ph1);
-		sacS.ToAmPh(sac_am2, sac_ph2);
-
-/*
-SacRec sac_sratio; 
-sac_am1.Smooth(0.002, sac_sratio);
-sac_sratio.cut(f2,f3); sac_am2.cut(f2,f3);
-float dataamp; sac_sratio.Mean( f2, f3, dataamp );
-float synamp; sac_am2.Mean( f2, f3, synamp );
-//sac_sratio.Divf(sac_am2);
-//float sratio; if( ! sac_sratio.Mean( sratio ) ) continue;
-std::cerr<<sacS.stname()<<" "<<sacS.shd.stlo<<" "<<sacS.shd.stla<<" "<<sacS.Azi()<<" "<<dis<<"   "<<dataamp/synamp<<" "<<dataamp<<" "<<synamp<<"   "<<1./f3<<" "<<1./f2<<std::endl;
-continue;
-*/
-
-//sac_ph1.Write("debug1.sac"); sac_ph2.Write("debug2.sac");
-		//std::cout<<"CC_amp = "<<sac_am1.Correlation(sac_am2, f2, f3)<<"   CC_pha = "<<sac_ph1.Correlation(sac_ph2, f2, f3)<<std::endl;
 		// freq-domain rms
-		/*
-		float Amean1, Amean2;
-		if( !sac_am1.Mean(f2,f3,Amean1) || !sac_am2.Mean(f2,f3,Amean2) ) continue;
-		sac_am1.Mul( Amean2 / Amean1 );
-		*/
 		float AmpTheory; sac_am2.Mean(f2, f3, AmpTheory);
-		sac_am1.Subf(sac_am2); sac_ph1.Subf(sac_ph2);
+		sac_am2.Subf(sac_am1); sac_ph2.Subf(sac_ph1);
 		// correct for 2pi
 		const float TWO_PI = M_PI * 2.;
 		auto correct2PI = [&](float& val) {
 			if( val >= M_PI ) val -= TWO_PI;
 			else if( val < -M_PI ) val += TWO_PI;
 		};
-		sac_ph1.Transform( correct2PI );
-		float rms_am = sac_am1.RMSAvg(f2, f3), rms_ph = sac_ph1.RMSAvg(f2, f3);
+		sac_ph2.Transform( correct2PI );
+		float rms_am = sac_am2.RMSAvg(f2, f3), rms_ph = sac_ph2.RMSAvg(f2, f3);
 		//amp_sum += rms_am; pha_sum += rms_ph; N++;
 		// store rms misfits as StaData. Put amp of synthetic in .Asource for computing variance later
 		StaData sd(sacS.Azi(), lon, lat, grTShift, rms_ph, rms_am+AmpTheory, 0.); sd.Asource = AmpTheory;
@@ -724,28 +742,23 @@ void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& ou
 	synGR.SetEvent( minfo );
 
    MKDirs( outdir );
-	for( auto& sacM : _sacVR ) {
+	for( auto& sac3 : _sac3VR ) {
+		auto &sacM = sac3[0]; auto &shdM = sacM.shd;
 		// produce synthetic
 		SacRec sacS, sacSN, sacSE;
-		float lon=sacM.shd.stlo, lat=sacM.shd.stla;
-		if( ! synGR.ComputeSyn( sacM.stname(), lon, lat, sacM.shd.npts, sacM.shd.delta, 
+		float lon=shdM.stlo, lat=shdM.stla;
+		int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
+		if( ! synGR.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
 									  f1,f2,f3,f4, sacS, sacSN, sacSE ) ) 
 			throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
 		sacSN.clear(); sacSE.clear();	// ignore N and E channels for now
-		//std::cout<<sacM.shd.kstnm<<" "<<sacM.shd.stlo<<" "<<sacM.shd.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
+		//std::cout<<shdM.kstnm<<" "<<shdM.stlo<<" "<<shdM.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
 		// check for bad sac 
-		if( sacM.shd.depmax!=sacM.shd.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
+		if( shdM.depmax!=shdM.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
 		sacS.Resample();	// shift to regular sampling grids
 
 		std::string sacname = outdir + "/" + sacS.stname() + "." + sacS.chname();
 		sacM.Write( sacname + "_real.SAC" ); sacS.Write( sacname + "_syn.SAC" );
-/*
-std::stringstream ss(sacM.fname);
-std::string sacname;
-while( std::getline(ss, sacname, '/') );
-sacM.Write( "./debug/" + sacname + "_real" );
-sacS.Write( "./debug/" + sacname + "_syn" );
-*/
 	}
 }
 

@@ -165,7 +165,7 @@ public:
 
    /* ------------------------------ header/signal information ------------------------------ */
 	inline size_t Index( const float time ) const;
-	inline float Time( const size_t index ) const;
+	inline float Time( const size_t index ) const { return shd.b + index*shd.delta; }
    /* compute the absolute time in sec relative to 1900.01.00 */
    double AbsTime ();
    /* update/reformat header time if shd.nzmsec is modified and is out of the range [0,1000) */

@@ -9,6 +9,7 @@
 #include "FileName.h"
 #include "SacRec.h"
 #include <vector>
+#include <array>
 #include <map>
 
 //class ModelInfo;class SDContainer;
@@ -236,9 +237,9 @@ private:
 	std::vector<SDContainer> _dataR, _dataL;
 
 	// option 2. waveform fitting data
-	std::vector<SacRec> _sacVR, _sacVL;
+	typedef std::array<SacRec, 3> SacRec3;
+	std::vector<SacRec3> _sac3VR, _sac3VL;
 	SynGenerator _synGR, _synGL;
-	
 
 	/* ---------- input parameters ---------- */
 	// search area of epicenter
@@ -282,6 +283,7 @@ private:
 	void MKDirs( const std::string& path ) const { MKDirFor(path, true); }
 	void MKDirFor( const std::string& path, const bool isdir = false ) const;
 
+	float Tpeak( const SacRec& sac ) const;
 };
 
 #endif

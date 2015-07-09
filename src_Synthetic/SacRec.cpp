@@ -887,9 +887,6 @@ inline size_t SacRec::Index( const float time ) const {
 		throw ErrorSR::BadParam(FuncName, "index out of range");
 	return index; 
 }
-inline float SacRec::Time( const size_t index ) const {
-	return shd.b + index*shd.delta;
-}
 
 /* search for min&max signal positions and amplitudes */
 /*

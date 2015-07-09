@@ -34,7 +34,7 @@ struct FocalInfo {
    T stk, dip, rak, dep, M0;
 
    //FocalInfo( T stkin = 180, T dipin = 45, T rakin = 0, T depin = 10 )
-   FocalInfo( T stkin = NaN, T dipin = NaN, T rakin = NaN, T depin = NaN, T M0in = 1 )
+   FocalInfo( T stkin = NaN, T dipin = NaN, T rakin = NaN, T depin = NaN, T M0in = NaN )
       : stk(stkin), dip(dipin), rak(rakin), dep(depin), M0(M0in) {}
 
 	/* check validation */
