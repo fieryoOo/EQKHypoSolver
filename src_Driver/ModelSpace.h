@@ -102,14 +102,14 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 
 		void FixEpic() {
 			Plon = Plat = Ptim = 0.;
-			PM0 = pertfactor * RM0 * M0;
+			PM0 = pow(RM0, pertfactor);
 			Pstk = pertfactor * Rstk; Pdip = pertfactor * Rdip;
 			Prak = pertfactor * Rrak; Pdep = pertfactor * Rdep;
 		}
 		void FixFocal() {
 			Ptim = pertfactor * Rtim;
 			Plon = pertfactor * Rlon; Plat = pertfactor * Rlat;
-			Pstk = Pdip = Prak = Pdep = PM0 = 0.;
+			Pstk = Pdip = Prak = Pdep = 0.; PM0 = 1.;
 		}
 		void unFix() {	resetPerturb(); }
 
@@ -119,7 +119,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			Cdip = 45.; Rdip = 45.; //Pdip = 18.;
 			Crak = 0.; Rrak = 180.; //Prak = 72.;
 			Cdep = 30.; Rdep = 30.; //Pdep = 12.;
-			CM0 = M0==NaN ? 5.0e23 : M0; RM0 = 50.;
+			CM0 = M0==NaN ? 5.0e23 : M0; RM0 = 100.;
 			// 1.0e20 = 2.6; 1.0e21 = 3.3; 1.0e22 = 3.9; 1.0e23 = 4.6; 1.0e24 = 5.3; 1.0e25 = 5.9; 
 			// 1.0e26 = 6.6; 1.0e27 = 7.3; 1.0e28 = 7.9; 1.0e29 = 8.6; 1.0e30 = 9.3; 1.0e31 = 9.9;
 			resetPerturb();
@@ -207,7 +207,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 					float lb_old = M0 / RM0, ub_old = M0 * RM0;
 					float lb_M0 = SearchBound( eka, minfo, minfo.M0, lb_old, Pthreshold, Emin, 10 );
 					float ub_M0 = SearchBound( eka, minfo, minfo.M0, ub_old, Pthreshold, Emin, 10 );
-					PM0 = (ub_M0-lb_M0) * sfactor;
+					PM0 = exp( (log(ub_M0)-log(lb_M0)) * sfactor );
 					} // section 5
 					#pragma omp section
                {
@@ -273,7 +273,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			lb = CM0 / RM0; ub = CM0 * RM0;
 			if( lb < 1.0e19 ) lb = 1.0e19;
 			if( ub > 1.0e31 ) lb = 1.0e31;
-			minew.M0 = Neighbour_Reflect(this->M0, PM0, lb, ub);
+			minew.M0 = Neighbour_ReflectM(this->M0, PM0, lb, ub);
 
 			// longitude
 			minew.lon = Neighbour_Reflect(this->lon, Plon, Clon-Rlon, Clon+Rlon);
@@ -298,7 +298,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			<<"  dip ("<<ms.Cdip-ms.Rdip<<"~"<<ms.Cdip+ms.Rdip<<", "<<ms.Pdip<<")"
 			<<"  rak ("<<ms.Crak-ms.Rrak<<"~"<<ms.Crak+ms.Rrak<<", "<<ms.Prak<<")\n"
 			<<"  dep ("<<ms.Cdep-ms.Rdep<<"~"<<ms.Cdep+ms.Rdep<<", "<<ms.Pdep<<")"
-			<<"  M0  ("<<ms.CM0/ms.RM0<<"~"<<ms.CM0*ms.RM0<<", "<<ms.PM0<<")";
+			<<"  M0  ("<<std::scientific<<ms.CM0/ms.RM0<<"~"<<ms.CM0*ms.RM0<<", "<<ms.PM0<<")";
 			return o;
 		}
 
@@ -311,7 +311,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 	private: // variables
 		//bool validS{false}, validP{false};
 		float Clon{NaN}, Clat{NaN}, Ctim{NaN}, Cstk{NaN}, Cdip{NaN}, Crak{NaN}, Cdep{NaN}, CM0{NaN}; // model center
-		float Rlon{0.15}, Rlat{0.15}, Rtim{2.}, Rstk{30.}, Rdip{20.}, Rrak{30.}, Rdep{5.}, RM0{5.}; // model param radius
+		float Rlon{0.15}, Rlat{0.15}, Rtim{2.}, Rstk{30.}, Rdip{20.}, Rrak{30.}, Rdep{5.}, RM0{10.}; // model param radius
 		float Plon{NaN}, Plat{NaN}, Ptim{NaN}, Pstk{NaN}, Pdip{NaN}, Prak{NaN}, Pdep{NaN}, PM0{NaN}; // perturb length ( gaussian half length )
 		float pertfactor{0.1};
 		mutable std::vector<Rand> randO;
@@ -320,7 +320,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		// initialize perturbation length and random number generators
 		void resetPerturb() {
 			// re-compute perturbation ranges
-			Ptim = pertfactor * Rtim; PM0 = pertfactor * M0 * RM0;
+			Ptim = pertfactor * Rtim; PM0 = pow(RM0, pertfactor);
 			Plon = pertfactor * Rlon; Plat = pertfactor * Rlat;
 			Pstk = pertfactor * Rstk; Pdip = pertfactor * Rdip;
 			Prak = pertfactor * Rrak; Pdep = pertfactor * Rdep;
@@ -349,6 +349,8 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			return valnew;
 		}
 		inline float Neighbour_Reflect( float valold, float hlen, float lb, float ub ) const {
+			if( hlen < 0. )
+				throw std::runtime_error("perturb hlen cannot be negative!");
 			if( hlen == 0. ) return valold;
 			if( valold<lb || valold>ub ) throw std::runtime_error("old val out of boundary");
 			float range = ub - lb;
@@ -359,6 +361,9 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			if( valnew >= ub ) { valnew = 2.*ub-valnew; }
 			else if( valnew < lb ) { valnew = 2.*lb-valnew; }
 			return valnew;
+		}
+		inline float Neighbour_ReflectM( float valold, float hlen, float lb, float ub ) const {
+			return exp( Neighbour_Reflect( log(valold), log(hlen), log(lb), log(ub) ) );
 		}
 
 		// shift by T multiples according to lower and upper bound. Results not guranteed to be in the range

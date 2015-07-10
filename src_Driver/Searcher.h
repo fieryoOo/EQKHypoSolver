@@ -101,7 +101,8 @@ namespace Searcher {
 
 		// search starts
 		if( ! (alpha==1 && Tinit==2.0) )	// not MonteCarlo
-			sout<<"### Starting simulated annealing search (#search="<<nsearch<<" alpha="<<alpha<<" Tinit="<<Tinit<<") ###"<<std::endl;
+			sout<<"### Starting simulated annealing search (#search="<<nsearch<<" alpha="<<alpha<<" Tinit="<<Tinit<<") "<<std::endl;
+			sout<<"### with model state =\n"<<ms<<std::endl;
 
 		// initial energy (force MS to be assignable to MI at compile time)
 		int Ndata0, Ndata;

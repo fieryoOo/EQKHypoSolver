@@ -660,8 +660,8 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 		}
 		sacM.cut(tb, te); sacS.cut(tb, te);
 		*/
-		float tb = shdM.user2, te = shdM.user3;
-		sacS.cut( tb, te );
+		//float tb = shdM.user2, te = shdM.user3;
+		sacS.cut( shdM.user2, shdM.user3 );
 
 		// FFT into freq-domain
 		SacRec sac_am2, sac_ph2;
@@ -756,6 +756,7 @@ void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& ou
 		// check for bad sac 
 		if( shdM.depmax!=shdM.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
 		sacS.Resample();	// shift to regular sampling grids
+		sacS.cut( shdM.user2, shdM.user3 );
 
 		std::string sacname = outdir + "/" + sacS.stname() + "." + sacS.chname();
 		sacM.Write( sacname + "_real.SAC" ); sacS.Write( sacname + "_syn.SAC" );
