@@ -108,7 +108,7 @@ int main( int argc, char* argv[] ) {
 		// ********** Initial simulated annealing to approach global optimum ********** //
 		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
 		if( singleSA ) {
-			int nsearch = 9000, Tfactor = 8;
+			int nsearch = 7200, Tfactor = 8;
 			float alpha = Alpha(nsearch, Tfactor); 
 			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
 			VO::Output( SIV, eka.outname_misL, true );	// append to file
@@ -120,7 +120,7 @@ int main( int argc, char* argv[] ) {
 			// ********** iterative simulated annealing ********** //
 			// search for epicenter and focal mechanism separately
 			//int niterSA = 3, nsearch = 8192, Tfactor = 16;
-			int niterSA = 3, nsearch = 4096, Tfactor = 8;
+			int niterSA = 2, nsearch = 4096, Tfactor = 8;
 			for( int iter=0; iter<niterSA; iter++ ) {
 				// search for epicenter
 				ms.FixFocal();				// have focal mechanism fixed
@@ -157,6 +157,8 @@ int main( int argc, char* argv[] ) {
 		Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
 		eka.OutputFits( ms );
 		eka.OutputMisfits( ms );
+		eka.OutputSourcePatterns( ms );
+		eka.OutputWaveforms( ms );
 
 		// ********** monte carlo for posterior distributions ********** //
 		// constrain model to perturb near the current Mstate ( Rparam = ? * (0.15, 0.15, 2, 30, 20, 30, 5) )
@@ -172,10 +174,10 @@ int main( int argc, char* argv[] ) {
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 
 		// final output
-		eka.OutputFits( ms );
-		eka.OutputMisfits( ms );
-		eka.OutputSourcePatterns( ms );
-		eka.OutputWaveforms( ms );
+		eka.OutputFits( ms );				// appended
+		eka.OutputMisfits( ms );			// appended
+		eka.OutputSourcePatterns( ms );	// overwritten
+		eka.OutputWaveforms( ms );			// overwritten
 
 	} catch(std::exception& e) {
       std::cerr<<e.what()<<std::endl;

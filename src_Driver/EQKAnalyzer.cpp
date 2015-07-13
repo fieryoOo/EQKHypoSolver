@@ -343,7 +343,7 @@ void EQKAnalyzer::LoadData() {
 			sac.shd.user1 = sac.SNR(dist*0.2, dist*0.5, dist*0.5+500., dist*0.5+1000.);
 			if( sac.shd.user1 < 18. ) return;
 			// filter
-			//sac.Resample();	// sample grid alignment
+			sac.Resample();	// sample grid alignment
 			if( sacRtype == 1 ) sac.Integrate();
 			sac.Filter(f1,f2,f3,f4);
 			// zoom in to the surface wave window
@@ -647,7 +647,7 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 		//std::cout<<shdM.kstnm<<" "<<shdM.stlo<<" "<<shdM.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
 		// check for bad sac 
 		if( sacS.shd.depmax!=sacS.shd.depmax ) continue;
-		//sacS.Resample();	// shift to regular sampling grids
+		sacS.Resample();	// important! shift to regular sampling grids
 
 		// zoom in to the surface wave window
 		/*
