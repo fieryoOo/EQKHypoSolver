@@ -1,6 +1,6 @@
 #include "EQKAnalyzer.h"
 #include "SynGenerator.h"
-#include "Curve.h"
+#include "Parabola.h"
 //#include "VectorOperations.h"
 //#include "DataTypes.h"
 #include <sstream>
@@ -362,7 +362,7 @@ void EQKAnalyzer::LoadData() {
 			// take the amplitude from IFFT for envelope
 			SacRec sacEnv; sacEnv.shd = sac.shd;
 			sacEnv.FromAmPh(sac_am, sac_ph, 2); 
-			sac.shd.user4 = Tpeak(sacEnv);
+			sac.shd.user4 = sacEnv.Tpeak();
 			// save sac files and put a station record into synGR
 			synG.PushbackSta( sac );
 			sac3V.push_back( SacRec3{ std::move(sac), std::move(sac_am), std::move(sac_ph) } );
@@ -592,6 +592,7 @@ bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) cons
 	return isvalid;
 }
 
+/* use SacRec::Tpeak instead
 float EQKAnalyzer::Tpeak( const SacRec& sac ) const {
 	//float tmin, tmax, min, max;
 	//sac.MinMax(tb, te, tmin, min, tmax, max);
@@ -609,6 +610,7 @@ float EQKAnalyzer::Tpeak( const SacRec& sac ) const {
 		return Parabola( p1, p2, p3 ).Vertex().x;
 	}
 }
+*/
 
 static inline int nint( float val ) { return (int)floor(val + 0.5); }
 bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataRout, SDContainer& dataLout ) const {
@@ -670,7 +672,7 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 		sacS.FromAmPh(sac_am2, sac_ph2, 2); 
 
 		// group time shift
-		float grTShift = shdM.user4 - Tpeak(sacS);
+		float grTShift = shdM.user4 - sacS.Tpeak();
 
 		// time-domain correlation
 		//std::cout<<lon<<" "<<lat<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";

@@ -183,6 +183,8 @@ public:
 	bool MeanStd ( float& mean, float& std ) const { return MeanStd(shd.b, shd.e, mean, std); }
 	bool MeanStd ( float tbegin, float tend, float& mean, float& std ) const { return MeanStd(tbegin, tend, 1, mean, std); }
 	bool MeanStd ( float tbegin, float tend, int step, float& mean, float& std ) const;
+	float Tpeak() const;	// compute accurate time of the peak (fit with a parabola)
+	float Sig( float time ) const;	// compute accurate sig value at a given time (fit with a parabola)
 
    /* ------------------------------ single-sac operations ------------------------------ */
 	template<class Functor>	void Transform(const Functor& func, const size_t ib=0, int ie=NaN) {
@@ -251,8 +253,8 @@ public:
 	}
    void RmRESP( const std::string& fresp, float perl, float perh, const std::string& evrexe );
    /* resample (with anti-aliasing filter) the signal to given sps */
-   void Resample() { Resample( floor(1.0/shd.delta+0.5) ); }
-   void Resample( float sps );
+   void Resample( bool fitParabola = true ) { Resample( floor(1.0/shd.delta+0.5), fitParabola ); }
+   void Resample( float sps, bool fitParabola = true );
 	/* smoothing ( running average ) */
 	void Smooth( float timehlen, SacRec& sacout ) const;
 	void Hilbert() { Hilbert(*this); }
