@@ -110,7 +110,7 @@ int main( int argc, char* argv[] ) {
 		if( singleSA ) {
 			int nsearch = 7200, Tfactor = 8;
 			float alpha = Alpha(nsearch, Tfactor); 
-			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
+			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info for accepted searches
 			VO::Output( SIV, eka.outname_misL, true );	// append to file
 			//ms.Centralize(); being called later in Bound()
 			// output
@@ -133,7 +133,7 @@ int main( int argc, char* argv[] ) {
 				ms.FixEpic();		// have epicenter fixed
 				eka.PredictAll( ms );	// not necessary, but following search runs faster since Epic is fixed
 				float alpha = Alpha(nsearch, Tfactor);
-				SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info fo accepted searches
+				SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info for accepted searches
 				VO::Output( SIV, eka.outname_misF, true );	// append to file
 				// centralize the model space around the current MState
 				ms.Centralize();
@@ -150,7 +150,7 @@ int main( int argc, char* argv[] ) {
 		// with a small pertfactor to approach the optimum solution faster
 		ms.Bound( 2.5, 0.03 );
 		// initial MC search around the SA result to stablize
-		int nsearch = 5000, Tfactor = 2;
+		int nsearch = 3000, Tfactor = 1;
 		//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
 		//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 		float alpha = Alpha(nsearch, Tfactor);

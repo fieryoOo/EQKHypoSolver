@@ -1,13 +1,19 @@
 c group velocity tracer for cross-correlation paths
 c ---
       module mmodel
-
+      integer*4 Cnper, Cnlat, Cnlon
+      parameter (Cnper=225)
+      parameter (Cnlat=97)
+      parameter (Cnlon=201)
       type tmdl
+C         integer, parameter :: Cnper = 225
+C         integer, parameter :: Cnlat = 97
+C         integer, parameter :: Cnlon = 201
          integer*4 ic,jc,n,nper,nfi,nla
          real*8 fi,sfi,la,sla,per,sper,bf,ef,bl,el,bp,ep,
-     +          hfi(97),hla(201),hper(225),chfi(97)
-         real*8 uw(97,201),cw(97,201)
-         real*8 gw(97,201),aw(97,201)
+     +          hfi(Cnlat),hla(Cnlon),hper(Cnper),chfi(Cnlat)
+         real*8 uw(Cnlat,Cnlon),cw(Cnlat,Cnlon)
+         real*8 gw(Cnlat,Cnlon),aw(Cnlat,Cnlon)
       end type
 
       type tmodel
@@ -38,9 +44,9 @@ c ---
 C      common /trk/ cor
 c ---
       logical*1 applyQ
-      real*4    fsol,lsol
-      real*8     afi,del,per
-      real *8    GEO,rad,pi2,sol(3),dst(3),trres(4),sine,cosi
+      real*4 fsol,lsol
+      real*8 afi,del,per
+      real *8 GEO,rad,pi2,sol(3),dst(3),trres(4),sine,cosi
       integer*4 ierr,k,ntr,n,m,lnblnk
 c     real*8     cor(500,2,2000)
       character *256 fmodel
@@ -49,10 +55,10 @@ C      data GEO/1.0/
 
       type (tmdl) mdl
       type (tmodel) model
-      allocate (model%uw(255,97,201))
-      allocate (model%cw(255,97,201))
-      allocate (model%gw(255,97,201))
-      allocate (model%aw(255,97,201))
+      allocate (model%uw(Cnper,Cnlat,Cnlon))
+      allocate (model%cw(Cnper,Cnlat,Cnlon))
+      allocate (model%gw(Cnper,Cnlat,Cnlon))
+      allocate (model%aw(Cnper,Cnlat,Cnlon))
 c ---
       rad = datan(1.0d0)/45.0d0
       pi2 = datan(1.0d0)*8.0d0
@@ -72,7 +78,7 @@ c --- MAIN LOOP ------------
 
       call read_rect_model(model,0,per,ierr, mdl)
 C      n = 0
-      do k = 1,225
+      do k = 1,Cnper
         call read_rect_model(model,1,per,ierr, mdl)
         do m = 1,nstai
 c     write(*,*) per,ierr
