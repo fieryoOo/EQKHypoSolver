@@ -30,6 +30,9 @@ int main( int argc, char* argv[] ) {
 		//sac1_am.Smooth(0.003, sacout);
 		//sacout.Write( argv[3] );
 
+	} catch( std::exception& e ) {
+		std::cerr<<e.what()<<std::endl;
+		return -2;
 	} catch(...) {
 		std::cerr<<"Error(main): exception detected!"<<std::endl;
 		return -3;

@@ -20,8 +20,8 @@ DBG =
 
 FOBJS = surfsyn.o source.o surfread.o intpol.o pha.o  \
 	syn.o FFT.o calspecr.o calspecl.o new_tapwin1.o namer.o \
-	force.o angles2tensor.o azd.o \
-	atracer.o rbimod.o read_rect_model.o tracer.o vect.o \
+	force.o angles2tensor.o azd.o atracer.o rbimod.o \
+	read_model_file.o read_rect_model.o tracer.o vect.o \
 	cal_synsac.o read_param.o SynGenerator.o SacRec.o
 
 $(BIN) : $(FOBJS)

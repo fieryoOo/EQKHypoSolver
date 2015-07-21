@@ -1,9 +1,9 @@
       subroutine cal_synsac( ista, its, sigR, sigL, cor, f1, f2, f3, f4, vmax, fix_vel, iq,
      +                       npoints, fr, dt, nt, key_compr, elatc, elonc, qR, qL,
      +                       im, aM, tm, ampl, cr, ul, ur, wvl, wvr, v, dvdz, ratio, I0,
-     +                       sfici, slami, seismz, seismn, seisme )
+     +                       sfici, slami, seismz, seismn, seisme, rotate )
          implicit none
-         logical*1 key_compr
+         logical*1 key_compr, rotate
          integer*4 j, ista, nsize, nt, nf, npoints, iq
          parameter (nsize=8192)
          integer*4 im, ierr, k_spec, kl, l, ll, lq, m, mmm, nk7, ndist, n2pow
@@ -199,26 +199,34 @@ C            fnam12='w/'//codi(ista)(1:lnblnk(codi(ista)))//'.'//outseism(lq+2)(
 C            open(12,file=fnam12)
 C            fnam13='w/'//codi(ista)(1:lnblnk(codi(ista)))//'.'//outseism(lq+3)(1:nk7)
 C            open(13,file=fnam13)
-            do ll=1,npoints
-               seismn(ll)=0.0
-               seisme(ll)=0.0
-               if (sigR.eq.'+') then
+            if (rotate) then
+               do ll=1,npoints
+                  seismn(ll)=0.0
+                  seisme(ll)=0.0
+                  if (sigR.eq.'+') then
 C-----------Positive 'Z' direction is 'Down'-----!!!!!!!!!!!!!!!!!!!!!!
 C-----------horizontal components----S
 C                 seismz(ll)=-seismz(ll)
-                  seismn(ll)=seismr(ll)*cs_b
-                  seisme(ll)=seismr(ll)*sc_b
-               elseif (sigL.eq.'+') then
-                  seismn(ll)=seismn(ll) -seismt(ll)*sc_b
-                  seisme(ll)=seisme(ll) +seismt(ll)*cs_b
-               endif
+                     seismn(ll)=seismr(ll)*cs_b
+                     seisme(ll)=seismr(ll)*sc_b
+                  elseif (sigL.eq.'+') then
+                     seismn(ll)=seismn(ll) -seismt(ll)*sc_b
+                     seisme(ll)=seisme(ll) +seismt(ll)*cs_b
+                  endif
 C-----------horizontal components----E
 C-----------vertical   component-----S
 C               if (sigR.eq.'+')write(11,*)tstart+dt*(ll-1),seismz(ll)
 C               write(12,*)tstart+dt*(ll-1),seismn(ll)
 C               write(13,*)tstart+dt*(ll-1),seisme(ll)
 C-----------vertical   component-----E
-            enddo
+               enddo
+            else
+               do ll=1,npoints
+                  seismn(ll)=seismr(ll)
+                  seisme(ll)=seismt(ll)
+         if(sigL.eq.'+') write(*,*) seismr(ll)," ",seismt(ll),"   ",seismn(ll)," ",seisme(ll)
+               enddo
+            endif
 C--------------writing seismograms----E
 C            close(11)
 C            close(12)
