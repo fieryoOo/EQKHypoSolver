@@ -30,7 +30,7 @@ extern"C" {
 							bool* key_compr, float* elatc, float* elonc, float qR[2000], float qL[2000], int* im, float* aM, float tm[6],
 							float ampl[2000], float cr[2000], float ul[2000], float ur[2000], float wvl[2000], float wvr[2000],
 							float v[2000][3], float dvdz[2000][3], float ratio[2000], float I0[2000], float* slatc, float* slon,
-							float* sigz, float* sign, float* sige );
+							float* sigz, float* sign, float* sige, bool* rotate );
 
 #ifdef __cplusplus
 }
@@ -40,10 +40,11 @@ extern"C" {
 void SynGenerator::Initialize( const fstring& name_fmodel_in, const fstring& name_fphvel, const fstring& name_feigen_in, const char wavetype, int mode ) {
 	name_fmodel = name_fmodel_in;
 	name_feigen = name_feigen_in;
+	type = wavetype;
 	// input params
 	// wave type
 	//const char wavetype = 'R';
-	switch( wavetype ) {
+	switch( type ) {
 		case 'R': sigR = '+'; break;
 		case 'L': sigL = '+'; break;
 		default: throw std::runtime_error("Error(SynGenerator::SynGenerator): invalid wave type input!");
@@ -188,7 +189,7 @@ void SynGenerator::TraceAll() {
 }
 
 bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, const float slat, int npts, float delta,
-										 float f1, float f2, float f3, float f4, SacRec& sacz, SacRec& sacn, SacRec& sace ) {
+										 float f1, float f2, float f3, float f4, SacRec& sacz, SacRec& sac1, SacRec& sac2, bool rotate ) {
 	// trace all GCPs
 	if( ! traced ) TraceAll();
 
@@ -217,24 +218,26 @@ bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, con
 	std::string netname = net[ista];// staname = sta[ista];
 	//std::cerr<<ista<<" STA = "<<staname<<" NET = "<<netname<<" STLAT = "<<lat[ista]<<" STLON = "<<lon[ista]<<"\n";
 	// prepare sac headers
-	//SacRec sacz, sacn, sace;
+	//SacRec sacz, sac1, sac2;
 	std::string chnprefix = delta>=1 ? "LH" : "BH";
 	auto init_sac = [&]( const char comp, SacRec& sac ) {
 		std::string chn = chnprefix + comp;
 		WriteSACHeader( sac.shd, npts, delta, elat, elon, staname, lat[ista], lon[ista], chn, netname );
 		sac.ResizeSig();
 	};
-	init_sac( 'Z', sacz ); init_sac( 'N', sacn ); init_sac( 'E', sace );
-	//sacz.MutateAs(sacz); sacn.MutateAs(sacz); sace.MutateAs(sacz);
+	init_sac( 'Z', sacz ); 
+	if(rotate) { init_sac( 'N', sac1 ); init_sac( 'E', sac2 ); }
+	else { init_sac( 'R', sac1 ); init_sac( 'T', sac2 ); }
+	//sacz.MutateAs(sacz); sac1.MutateAs(sacz); sac2.MutateAs(sacz);
 	int ista_f = ista+1;
 	cal_synsac_( &ista_f, &its, &sigR, &sigL, pcor.get(), &f1, &f2, &f3, &f4, &vmax, &fix_vel, &iq,
 			&npts, freq, &delta, &nper, &key_compr, &elatc, &elonc, qR, qL,
 			&im, &aM, tm, ampl, cr, ul, ur, wvl, wvr, v, dvdz, ratio, I0,
-			&(latc[ista]), &(lon[ista]), sacz.sig.get(), sacn.sig.get(), sace.sig.get() );
+			&(latc[ista]), &(lon[ista]), sacz.sig.get(), sac1.sig.get(), sac2.sig.get(), &rotate );
 	// flip (misha's coordinate is upside down)
-	sacz.Mul(-1.); sacn.Mul(-1.); sace.Mul(-1.);
+	sacz.Mul(-1.); sac1.Mul(-1.); sac2.Mul(-1.);
 	// shift b times to match the data (origin-time = b-time-of-real-data + t0)
-	sacz.shd.b += minfo.t0;	sacn.shd.b += minfo.t0;	sace.shd.b += minfo.t0;
+	sacz.shd.b += minfo.t0;	sac1.shd.b += minfo.t0;	sac2.shd.b += minfo.t0;
 
 	return true;
 }

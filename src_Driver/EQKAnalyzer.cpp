@@ -626,79 +626,6 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);
 
-	// prepare SynGenerator
-	auto synGR = _synGR;
-	synGR.SetEvent( minfo );
-
-	// compute chi square
-	float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
-	SDContainer dataR( pseudo_per, R );
-	//float amp_sum = 0., pha_sum = 0.;
-	for( const auto& sac3 : _sac3VR ) {
-		// references to data sacs
-		const SacRec &sacM = sac3[0], &sac_am1 = sac3[1], &sac_ph1 = sac3[2];
-		auto& shdM = sacM.shd;
-		// produce synthetic
-		SacRec sacS, sacSN, sacSE;
-		float lon=shdM.stlo, lat=shdM.stla;
-		int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
-		if( ! synGR.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
-									  f1,f2,f3,f4, sacS, sacSN, sacSE ) ) 
-			throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
-		sacSN.clear(); sacSE.clear();	// ignore N and E channels for now
-		//std::cout<<shdM.kstnm<<" "<<shdM.stlo<<" "<<shdM.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
-		// check for bad sac 
-		if( sacS.shd.depmax!=sacS.shd.depmax ) continue;
-		sacS.Resample();	// important! shift to regular sampling grids
-
-		// zoom in to the surface wave window
-		/*
-		float dis = sacS.Dis(), tb, te;
-		if( dis < 300. ) {
-			tb = std::max(dis*0.35-45., 0.);
-			te = tb + 90.;
-		} else {
-			tb = dis*0.2; te = dis*0.5;
-		}
-		sacM.cut(tb, te); sacS.cut(tb, te);
-		*/
-		//float tb = shdM.user2, te = shdM.user3;
-		sacS.cut( shdM.user2, shdM.user3 );
-
-		// FFT into freq-domain
-		SacRec sac_am2, sac_ph2;
-		sacS.ToAmPh(sac_am2, sac_ph2);
-		// take the amplitude from IFFT for envelope
-		sacS.FromAmPh(sac_am2, sac_ph2, 2); 
-
-		// group time shift
-		float grTShift = shdM.user4 - sacS.Tpeak();
-
-		// time-domain correlation
-		//std::cout<<lon<<" "<<lat<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";
-
-		// freq-domain rms
-		float AmpTheory; sac_am2.Mean(f2, f3, AmpTheory);
-		sac_am2.Subf(sac_am1); sac_ph2.Subf(sac_ph1);
-		// correct for 2pi
-		const float TWO_PI = M_PI * 2.;
-		auto correct2PI = [&](float& val) {
-			if( val >= M_PI ) val -= TWO_PI;
-			else if( val < -M_PI ) val += TWO_PI;
-		};
-		sac_ph2.Transform( correct2PI );
-		float rms_am = sac_am2.RMSAvg(f2, f3), rms_ph = sac_ph2.RMSAvg(f2, f3);
-		//amp_sum += rms_am; pha_sum += rms_ph; N++;
-		// store rms misfits as StaData. Put amp of synthetic in .Asource for computing variance later
-		StaData sd(sacS.Azi(), lon, lat, grTShift, rms_ph, rms_am+AmpTheory, 0.); sd.Asource = AmpTheory;
-		dataR.push_back( sd );
-		//std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
-		//std::cerr<<lon<<" "<<lat<<" "<<rms_ph<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_pha "<<sacM.fname<<"\n";
-		//std::cerr<<lon<<" "<<lat<<" "<<100.*rms_am/AmpTheory<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_amp "<<sacM.fname<<"\n";
-	}
-	//std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
-	dataR.Sort();
-
 	// initialize ADAdder
 	bool useG = _useG, useP = _useP, useA = _useA;
 	if( _isInit ) {
@@ -708,25 +635,102 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 	ADAdder adder( useG, useP, useA );
 	const int Nadd = useG + useP + useA;
 
-	// compute chi square
-	chiS = 0.; N = 0;
-	std::vector<AziData> adVmean, adVvar;
-	dataR.BinAverage( adVmean, adVvar, false, false );	// do not correct for 2 pi, data taken as waveform rms misfits
-	for( int i=0; i<adVmean.size(); i++ ) {
-		const auto& admean = adVmean[i];
-		const auto& advar = adVvar[i];
-		//std::cerr<<"admean = "<<admean<<"   advar = "<<advar<<"   adder = "<<(admean*admean)/advar<<std::endl;
-		// (mis * mis / variance)
-		chiS += adder( (admean * admean)/advar );
-		N += Nadd;
-	}
 
-	// feed dataRout and dataLout if requested
-	if( filldata ) {
-		dataR.UpdateAziDis(minfo.lon, minfo.lat);
-		dataRout = std::move(dataR);
-		//dataLout = std::move(dataL);
-	}
+	// lambda: computes chi square for a single wavetype
+	auto chiSW = [&]( SynGenerator synG, const std::vector<SacRec3>& sac3V, SDContainer& dataout ) {
+		// prepare SynGenerator
+		//auto synGR = _synGR;
+		synG.SetEvent( minfo );
+		Dtype type = synG.type=='R' ? R : L;
+		float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
+		SDContainer data( pseudo_per, type );
+
+		//float amp_sum = 0., pha_sum = 0.;
+		for( const auto& sac3 : sac3V ) {
+			// references to data sacs
+			const SacRec &sacM = sac3[0], &sac_am1 = sac3[1], &sac_ph1 = sac3[2];
+			auto& shdM = sacM.shd;
+
+			// produce synthetic
+			SacRec sacSZ, sacSR, sacST;
+			float lon=shdM.stlo, lat=shdM.stla;
+			int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
+			if( ! synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
+										  f1,f2,f3,f4, sacSZ, sacSR, sacST, false ) ) 
+				throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
+			if( type == R ) {
+				sacSR.clear(); sacST.clear();	// ignore unnecessory channel
+			} else {
+				sacSZ.clear(); sacSR.clear();
+			}
+			SacRec& sacS = type==R ? sacSZ : sacST;
+
+			// check for bad sac 
+			if( sacS.shd.depmax!=sacS.shd.depmax ) continue;
+			sacS.Resample();	// important! shift to regular sampling grids
+
+			// zoom in to the surface wave window
+			//float tb = shdM.user2, te = shdM.user3;
+			sacS.cut( shdM.user2, shdM.user3 );
+
+			// FFT into freq-domain
+			SacRec sac_am2, sac_ph2;
+			sacS.ToAmPh(sac_am2, sac_ph2);
+			// take the amplitude from IFFT for envelope
+			sacS.FromAmPh(sac_am2, sac_ph2, 2); 
+
+			// group time shift
+			float grTShift = shdM.user4 - sacS.Tpeak();
+
+			// time-domain correlation
+			//std::cout<<lon<<" "<<lat<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";
+
+			// freq-domain rms
+			float AmpTheory; sac_am2.Mean(f2, f3, AmpTheory);
+			sac_am2.Subf(sac_am1); sac_ph2.Subf(sac_ph1);
+			// correct for 2pi
+			const float TWO_PI = M_PI * 2.;
+			auto correct2PI = [&](float& val) {
+				if( val >= M_PI ) val -= TWO_PI;
+				else if( val < -M_PI ) val += TWO_PI;
+			};
+			sac_ph2.Transform( correct2PI );
+			float rms_am = sac_am2.RMSAvg(f2, f3), rms_ph = sac_ph2.RMSAvg(f2, f3);
+			//amp_sum += rms_am; pha_sum += rms_ph; N++;
+			// store rms misfits as StaData. Put amp of synthetic in .Asource for computing variance later
+			StaData sd(sacS.Azi(), lon, lat, grTShift, rms_ph, rms_am+AmpTheory, 0.); sd.Asource = AmpTheory;
+			data.push_back( sd );
+			//std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
+			//std::cerr<<lon<<" "<<lat<<" "<<rms_ph<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_pha "<<sacM.fname<<"\n";
+			//std::cerr<<lon<<" "<<lat<<" "<<100.*rms_am/AmpTheory<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_amp "<<sacM.fname<<"\n";
+		}
+		//std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
+		data.Sort();
+
+		// compute chi square
+		std::vector<AziData> adVmean, adVvar;
+		data.BinAverage( adVmean, adVvar, false, false );	// do not correct for 2 pi, data taken as waveform rms misfits
+		for( int i=0; i<adVmean.size(); i++ ) {
+			const auto& admean = adVmean[i];
+			const auto& advar = adVvar[i];
+			//std::cerr<<"admean = "<<admean<<"   advar = "<<advar<<"   adder = "<<(admean*admean)/advar<<std::endl;
+			// (mis * mis / variance)
+			chiS += adder( (admean * admean)/advar );
+			N += Nadd;
+		}
+
+		// feed dataout/dataout if requested
+		if( filldata ) {
+			data.UpdateAziDis(minfo.lon, minfo.lat);
+			dataout = std::move(data);
+		}
+
+	};
+
+	// compute Rayleigh and Love
+	chiS = 0.; N = 0;
+	if( RFlag ) chiSW( _synGR, _sac3VR, dataRout );
+	if( LFlag ) chiSW( _synGL, _sac3VL, dataLout );
 
 	return isvalid;
 }
@@ -739,30 +743,44 @@ void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& ou
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);
 
-	// prepare SynGenerator
-	auto& synGR = _synGR;
-	synGR.SetEvent( minfo );
-
    MKDirs( outdir );
-	for( auto& sac3 : _sac3VR ) {
-		auto &sacM = sac3[0]; auto &shdM = sacM.shd;
-		// produce synthetic
-		SacRec sacS, sacSN, sacSE;
-		float lon=shdM.stlo, lat=shdM.stla;
-		int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
-		if( ! synGR.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
-									  f1,f2,f3,f4, sacS, sacSN, sacSE ) ) 
-			throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
-		sacSN.clear(); sacSE.clear();	// ignore N and E channels for now
-		//std::cout<<shdM.kstnm<<" "<<shdM.stlo<<" "<<shdM.stla<<"   "<<sacS.shd.kstnm<<" "<<sacS.chname()<<std::endl;
-		// check for bad sac 
-		if( shdM.depmax!=shdM.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
-		sacS.Resample();	// shift to regular sampling grids
-		sacS.cut( shdM.user2, shdM.user3 );
 
-		std::string sacname = outdir + "/" + sacS.stname() + "." + sacS.chname();
-		sacM.Write( sacname + "_real.SAC" ); sacS.Write( sacname + "_syn.SAC" );
-	}
+	// lambda: output all waveforms for a single wavetype
+	auto OutputW = [&]( SynGenerator& synG, std::vector<SacRec3>& sac3V ) {
+		// prepare SynGenerator
+		//auto& synGR = _synGR;
+		Dtype type = synG.type=='R' ? R : L;
+		synG.SetEvent( minfo );
+
+		for( auto& sac3 : sac3V ) {
+			auto &sacM = sac3[0]; auto &shdM = sacM.shd;
+			// produce synthetic
+			SacRec sacSZ, sacSR, sacST;
+			float lon=shdM.stlo, lat=shdM.stla;
+			int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
+			if( ! synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
+										  f1,f2,f3,f4, sacSZ, sacSR, sacST, false ) )
+				throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
+			if( type == R ) {
+				sacSR.clear(); sacST.clear();	// ignore unnecessory channel
+			} else {
+				sacSZ.clear(); sacSR.clear();
+			}
+			SacRec& sacS = type==R ? sacSZ : sacST;
+			// check for bad sac 
+			if( shdM.depmax!=shdM.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
+			sacS.Resample();	// shift to regular sampling grids
+			sacS.cut( shdM.user2, shdM.user3 );
+
+			std::string sacname = outdir + "/" + sacS.stname() + "." + sacS.chname();
+			sacM.Write( sacname + "_real.SAC" ); sacS.Write( sacname + "_syn.SAC" );
+		}
+	};
+
+	// call lambda for Rayleigh and Love
+	if( RFlag ) OutputW( _synGR, _sac3VR );
+	if( LFlag ) OutputW( _synGL, _sac3VL );
+
 }
 
 

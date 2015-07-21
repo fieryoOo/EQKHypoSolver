@@ -6,8 +6,8 @@
 
 int main( int argc, char* argv[] ) {
 	// input params
-	if( argc != 5 && argc != 6 ) {
-		std::cerr<<"Usage: "<<argv[0]<<" [fmodel] [feigen] [wavetype] [mode# (0=fundamental)] [fix_vel (optional)]"<<std::endl;
+	if( argc != 6 && argc != 7 ) {
+		std::cerr<<"Usage: "<<argv[0]<<" [fmodel] [feigen] [wavetype] [mode# (0=fundamental)] [real sac list] [fix_vel (optional)]"<<std::endl;
 		return -1;
 	}
 	// mode #
@@ -19,8 +19,8 @@ int main( int argc, char* argv[] ) {
 	if( depth<0 || depth>100 )
 		throw std::runtime_error("invalid depth input (expecting 0.0-100.0)");
 	*/
-	if( argc==6 ) {
-		float vel = atof(argv[5]);
+	if( argc==7 ) {
+		float vel = atof(argv[6]);
 		if( vel<0.3 || vel>10. ) 
 			throw std::runtime_error(std::string("invalid fix_vel input: ")+argv[5]);
 	}
@@ -33,7 +33,10 @@ int main( int argc, char* argv[] ) {
 	//std::string name_fsta("../data/Station.list");
 	//synG.LoadSta( name_fsta );
 	synG.ClearSta();
-	std::ifstream fin("sac_real.list");
+	//std::ifstream fin("sac_real.list");
+	std::ifstream fin(argv[5]);
+	if( ! fin )
+		throw std::runtime_error( std::string("IO failed on ")+argv[5] );
 	for( std::string line; std::getline(fin, line); ) {
 		SacRec sac(line); sac.LoadHD();
 		synG.PushbackSta( sac );

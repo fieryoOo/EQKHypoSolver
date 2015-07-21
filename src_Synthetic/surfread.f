@@ -193,22 +193,22 @@ C         nt=k-1
       END
 
 
-C      subroutine readline80( fbuff, pos1, pos2, linetmp )
-C      integer*4 pos1, pos2
-C      character*20000000 fbuff
-C      character*80 linetmp
-C      pos2 = pos1+80
-C      read(fbuff(pos1:pos2),'(a)') linetmp
-C      pos2 = INDEX(fbuff(pos1:),NEW_LINE('a'))
-C      pos1 = pos1+pos2
-C      end
-C
-C      subroutine readline300( fbuff, pos1, pos2, linetmp )
-C      integer*4 pos1, pos2
-C      character*20000000 fbuff
-C      character*300 linetmp
-C      pos2 = pos1+300
-C      read(fbuff(pos1:pos2),'(a)') linetmp
-C      pos2 = INDEX(fbuff(pos1:),NEW_LINE('a'))
-C      pos1 = pos1+pos2
-C      end
+      subroutine readline80( fbuff, pos1, pos2, linetmp )
+      integer*4 pos1, pos2
+      character*20000000 fbuff
+      character*80 linetmp
+      pos2 = pos1+80
+      read(fbuff(pos1:pos2),'(a)') linetmp
+      pos2 = INDEX(fbuff(pos1:),NEW_LINE('a'))
+      pos1 = pos1+pos2
+      end
+
+      subroutine readline300( fbuff, pos1, pos2, linetmp )
+      integer*4 pos1, pos2
+      character*20000000 fbuff
+      character*300 linetmp
+      pos2 = pos1+300
+      read(fbuff(pos1:pos2),'(a)') linetmp
+      pos2 = INDEX(fbuff(pos1:),NEW_LINE('a'))
+      pos1 = pos1+pos2
+      end

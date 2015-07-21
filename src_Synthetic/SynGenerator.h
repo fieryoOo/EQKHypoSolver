@@ -38,6 +38,8 @@ private:
 
 
 class SynGeneratorData {
+public:
+	char type;
 protected:
 	// internal data (used by fortran subroutines)
 	// initial info
@@ -66,7 +68,7 @@ protected:
 	int feig_len = 0;
 };
 
-class SynGenerator : SynGeneratorData {
+class SynGenerator : public SynGeneratorData {
 public:
 	SynGenerator() {}
 	SynGenerator( const fstring& name_fmodel, const fstring& name_fphvel, const fstring& name_feigen, const char wavetype, const int mode ) {
@@ -104,7 +106,7 @@ public:
 
 	// produce synthetic as sac file
 	bool ComputeSyn( const std::string& staname, const float slon, const float slat, int npts, float delta, 
-						  float f1, float f2, float f3, float f4, SacRec& sacZ, SacRec& sacN, SacRec& sacE );
+						  float f1, float f2, float f3, float f4, SacRec& sacZ, SacRec& sacN, SacRec& sacE, bool rotate = true);
 
 	//bool Synthetic( const float lon, const float lat, const std::string& chname,
 	//					 const float f1, const float f2, const float f3, const float f4, SacRec& sac );
