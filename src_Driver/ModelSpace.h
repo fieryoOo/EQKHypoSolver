@@ -145,11 +145,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			// create default model space
 			ModelSpace ms;
 			// reset perturb factor
-			if( pertf > 0. ) {
-				pertfactor = pertf;
-			} else {
-				pertfactor = ms.pertfactor;
-			}
+			pertfactor = pertf>0. ? pertf : ms.pertfactor;
 			// reset perturb half lengths
 			Rlon = ms.Rlon*Rfactor; Rlat = ms.Rlat*Rfactor;
 			Rtim = ms.Rtim*Rfactor; RM0 = ms.RM0*Rfactor;

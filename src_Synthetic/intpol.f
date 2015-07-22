@@ -11,7 +11,7 @@ c-  du   - output increment
 c-  ierr - error message: 0-no errors,>0 -error in arguments
 c-  am   - working field
 c----------------------------------------------------------------------
-        real*4 x(1),y(1),v(1)
+        real*4 x(2000),y(2000),v(8192)
         real*4 am1(2000)
         logical iord
 c--------------initialization-----------------------------------------
@@ -23,6 +23,8 @@ c--------------initialization-----------------------------------------
       iord=.true.
       if(x(1).gt.x(ninp)) iord=.false.
       q=u0
+C      y(1) = 0.0
+C      y(ninp) = 0.0
 c------------------- beginning of interpolation----------------------
       call SPLINE (ninp,x,y,am1,2,0.,2,0.)
 c----------------- interpolation starts-------------------------------
@@ -34,6 +36,12 @@ c----------------- interpolation starts-------------------------------
       if (q.gt.x(1).or.q.lt.x(ninp)) go to 150
           end if
       call SPLDER (1,ninp,x,y,am1,q,v(i),dum,dum1,*994)       
+C      if(i.eq.66) then
+C         write(*,*) i," ",1," ",ninp," ",q," ",dum," ",dum1," ",v(i)
+C         do j=1,ninp
+C            write(*,*) j," ",x(j)," ",y(j)," ",am1(j)
+C         enddo
+C      endif
       q=q+du
 150   continue
       return
@@ -49,6 +57,9 @@ c-----------------------------------------------------------------------
 c-----------------------------------------------------------------------
       ibit(i)=iabs((i-1)*(i-2))
       fsig(x1,x2,r)=(x1-r)*(x2-r)
+C         do j=1,n
+C            write(*,*) "before SPLINE ",j," ",x(j)," ",y(j)
+C         enddo
       if(ibit(ind1)+ibit(ind2).eq.0) go to 60
 C      write(2,2)ind1,ind2
     2 format(/' !!!!!***stop-spline:ind1=',i5,' ind2=',i5)
@@ -84,6 +95,9 @@ C      write(2, 62)n
       do 4 i=1,n1
       j=n-i
     4 m(j)=q(j)*m(j+1)+m(j)
+C         do j=1,n
+C            write(*,*) "after SPLINE ",j," ",x(j)," ",y(j)," ",m(j)
+C         enddo
       return
 c----------inter-------diff-------diff=diff--------------------------
 c-----------------------------------------------------------------------

@@ -10,11 +10,11 @@ C------------OUTPUT: seism------------------------------------
          real*4 sre(2048),sim(2048),seism(8192),wv(2048),q_int(2048),u_int(2048)
          real*4 asre(8192),asim(8192),amp(2048),T_curr(2048)
          logical*1 key_compr
-             data pi2/6.2831854/
-             nbase=2**n2pow
-             n=nbase/2
-             tstart=dist/vmax
-             do i=2,n
+         data pi2/6.2831854/
+         nbase=2**n2pow
+         n=nbase/2
+         tstart=dist/vmax
+         do i=2,n
              f_curr=f0+df*(i-1)
              om_curr=pi2*f_curr
              arg=wv(i)*dist
@@ -36,37 +36,39 @@ C-----full spectrum=source spectrum*propagation factor----S
              sc=sin(-aq)/dnom*att
              sr=2.*sre(i)/dt
              si=2.*sim(i)/dt
+C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",sre(i)," ",dt," ",sr," ",si
 C            sr=sre(i)/dt
 C            si=sim(i)/dt
              asre(i)=sr*cs-si*sc
              asim(i)=sr*sc+si*cs
+C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",asre(i)*1.0e10," ",asim(i)*1.0e10," ",sr*1.0e10," ",si*1.0e10," ",sc," ",cs
 C            k=nbase-i+2
 C            asre(k)=asre(i)
 C            asim(k)=-asim(i)
              k=n+i
              asre(k)=0.0    
              asim(k)=0.0     
-             enddo
-             asre(1)=0.0
-             asim(1)=0.0
-             asre(n+1)=0.0
-             asim(n+1)=0.0
+         enddo
+         asre(1)=0.0
+         asim(1)=0.0
+         asre(n+1)=0.0
+         asim(n+1)=0.0
 C-----full spectrum=source spectrum*propagation factor----S
 C----------seismogram outputting----------S
-           k_spec=0
-           do kkk=2, n
-           T_c=1./(f0+df*(kkk-1))
-           if(T_c.lt.(1.0/f3).or.T_c.gt.(1.0/f2))go to 2222 
-           k_spec=k_spec+1
-           T_curr(k_spec)=T_c
-           amp(k_spec)=sqrt(asre(k_spec)**2+asim(k_spec)**2)
+         k_spec=0
+         do kkk=2, n
+            T_c=1./(f0+df*(kkk-1))
+            if(T_c.lt.(1.0/f3).or.T_c.gt.(1.0/f2))go to 2222 
+            k_spec=k_spec+1
+            T_curr(k_spec)=T_c
+            amp(k_spec)=sqrt(asre(k_spec)**2+asim(k_spec)**2)
 C      write(*,*) "debug3: amp=",amp(k_spec)," asre=",asre(k_spec)," asim=",asim(k_spec)
-2222       continue
-           enddo
-              call FFT(n2pow,asre,asim,1)
-              do i=1,npoints
-              seism(i)=asre(i)
-              end do
+2222        continue
+         enddo
+         call FFT(n2pow,asre,asim,1)
+         do i=1,npoints
+            seism(i)=asre(i)
+         end do
 C----------seismogram outputting----------E
-              return
-              end
+         return
+      end

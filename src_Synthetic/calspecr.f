@@ -33,13 +33,16 @@ C------------------INTERPOLATION ------------------------------
         ar(i)=real(rc)
         ai(i)=aimag(rc)
         end do
+C      write(*,*) "before intpol for sre1"
         call intpol(fr,ar,nt+2,f0,df,nf,sre1,ierr)
+C      write(*,*) "after intpol for sre1"
         call intpol(fr,ai,nt+2,f0,df,nf,sim1,ierr)
         do i=1,nf
         sre1(i)=sre1(i)*s(i)
         sre2(i)=sre2(i)*s(i)
         sim1(i)=sim1(i)*s(i)
         sim2(i)=sim2(i)*s(i)
+C      if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",sre1(i)," ",sre2(i)," ",sim1(i)," ",sim2(i)," ",s(i)
         end do
         return 
         end

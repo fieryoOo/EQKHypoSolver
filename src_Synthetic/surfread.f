@@ -18,14 +18,15 @@ C------amp -ampitude factor; ratio is ellipticity------
       character*1 sigR,sigL
       character*2 symb
       real*4 depold, vaold, vdold, dfactor
-      real*4 v(3,2000),dvdz(3,2000),ratio(2000)
-      real*4 t(2000),fr(2000),ur(2000),cr(2000),wvr(2000),ampr(2000),qR(2000)
-      real*4 ul(2000),cl(2000),wvl(2000),ampl(2000),qL(2000),I0(2000)
+      real*4 v(3,nt+10),dvdz(3,nt+10),ratio(nt+10)
+      real*4 t(nt+10),fr(nt+10),ur(nt+10),cr(nt+10),wvr(nt+10),ampr(nt+10),qR(nt+10)
+      real*4 ul(nt+10),cl(nt+10),wvl(nt+10),ampl(nt+10),qL(nt+10),I0(nt+10)
       data pi2/6.28318/,tlim/10000.0/,eps/1.0/
 C-----------------------------------------------------------------
       lsy=lnblnk(symb)
       wvl(1)=0.0
-      wvr(1)=0.0
+      qL(1)=0.0
+      ul(1)=0.0
       t(1)=0.0
       t(nt+2)=10000.
       ires=0
@@ -97,12 +98,16 @@ c         close(1)
          wvl(1)=pi2/cl(2)/tlim
          wvl(nt+2)=0.0
          ampl(nt+2)=0.0
-
+         qL(nt+2)=0.0
+         ul(nt+2)=0.0
       END if
 C----------Reading Love stuff----------------------E
 c      if(ires.eq.0) print *,'NO LOVE'
 11    continue
 C----------Reading Rayleigh stuff----------------------S
+      wvr(1)=0.0
+      qR(1)=0.0
+      ur(1)=0.0
       if (sigR.eq.'+') Then
 c         open(1,file=infile,STATUS='OLD')
 C----------------------Search for Rayleigh--------S
@@ -181,6 +186,8 @@ C----------Rayl. Vertical   component------E
             wvr(1)=pi2/cr(2)/tlim
             wvr(nt+2)=0.0
             ampr(nt+2)=0.0
+            qR(nt+2)=0.0
+            ur(nt+2)=0.0
          end DO
 C----------------------------------PERIOD LOOP------E
 C----------Reading Rayleigh stuff----------------------E
@@ -191,7 +198,6 @@ C         nt=k-1
 99    if(ires.gt.0)  return
       STOP 'NO RAYLEIGH OR LOVE'
       END
-
 
       subroutine readline80( fbuff, pos1, pos2, linetmp )
       integer*4 pos1, pos2

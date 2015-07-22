@@ -38,6 +38,11 @@ C         common /stn/ nstai,codi,figi,fici,lami,neti
 
          drad = pi/180.
 
+C      write(*,*) cor(1,1,1)," ",cor(2,1,2)," ",cor(3,2,3)," ",cor(300,1,999)
+C      write(*,*) ista," ",its," ",sigR," ",sigL," ",f1," ",f2," ",f3," ",f4
+C      write(*,*) vmax," ",fix_vel," ",npoints," ",dt," ",nt," ",key_compr
+C      write(*,*) elatc," ",elonc," ",qR(180)," ",qL(222)," ",sfici," ",slami
+
 C ------------------ calc base size -------------------
       nf = 2 
       n2pow = 1;
@@ -65,6 +70,7 @@ c ---
          cs_b=cos(AZI_BACK+pi)
          sc_b=sin(AZI_BACK+pi)
 C-----------Reading of spectral data from SURF_DEEP output-----S
+C         write(*,*) "in cal_synsac: nt = ",nt
          do j=2,nt+1
 C            fr(j)=1./t(j)
             wvar(j) = pi*2.0/cor(j-1,1,ista)*fr(j)
@@ -119,6 +125,9 @@ cMB         az(j)=sumr*ampr(j)*aM*const1
 cxx         WRite(33,*)t(j),cabs(az(j))*spread
             ah(j)=az(j)*ratio(j)
          end do
+         al(1) = 0.0; al(nt+2) = 0.0
+         az(1) = 0.0; az(nt+2) = 0.0
+         ah(1) = 0.0; ah(nt+2) = 0.0
 
 C----------INTERPOLATION OF WAVENUMBERS AND Q-factors--S        
          f0=0.0 
@@ -224,7 +233,7 @@ C-----------vertical   component-----E
                do ll=1,npoints
                   seismn(ll)=seismr(ll)
                   seisme(ll)=seismt(ll)
-         if(sigL.eq.'+') write(*,*) seismr(ll)," ",seismt(ll),"   ",seismn(ll)," ",seisme(ll)
+C         if(sigL.eq.'+') write(*,*) seismr(ll)," ",seismt(ll),"   ",seismn(ll)," ",seisme(ll)
                enddo
             endif
 C--------------writing seismograms----E

@@ -50,7 +50,7 @@ $(foreach bin,$(BINall),$(eval $(call make-bin,$(bin))))
 #	$(FC) $^ $(LIBS) -o $@
 
 define make-module-obj
-$(1).o : $(patsubst %.cpp,%.o,$(filter-out $(1)/Test.cpp,$(wildcard $(1)/*.cpp))) $(patsubst %.f,%.o,$(wildcard $(1)/*.f))
+$(1).o : $(patsubst %.cpp,%.o,$(filter-out $(1)/surfsyn.cpp,$(filter-out $(1)/Test.cpp,$(wildcard $(1)/*.cpp)))) $(patsubst %.f,%.o,$(wildcard $(1)/*.f))
 	ld -r $$^ -o $$@
 endef
 $(foreach moddir,$(MOD_DIRS),$(eval $(call make-module-obj,$(moddir))))

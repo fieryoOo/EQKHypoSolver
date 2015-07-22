@@ -190,6 +190,9 @@ void SynGenerator::TraceAll() {
 
 bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, const float slat, int npts, float delta,
 										 float f1, float f2, float f3, float f4, SacRec& sacz, SacRec& sac1, SacRec& sac2, bool rotate ) {
+//std::cerr<<staname<<" "<<slon<<" "<<slat<<" "<<npts<<" "<<delta<<" "<<f1<<" "<<f2<<" "<<f3<<" "<<f4<<" "<<rotate<<std::endl;
+//std::cerr<<minfo<<std::endl;
+//std::cerr<<name_fmodel<<" "<<name_feigen<<" "<<type<<" "<<modestr<<" "<<permin<<" "<<permax<<" "<<traced<<std::endl;
 	// trace all GCPs
 	if( ! traced ) TraceAll();
 
@@ -238,6 +241,8 @@ bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, con
 	sacz.Mul(-1.); sac1.Mul(-1.); sac2.Mul(-1.);
 	// shift b times to match the data (origin-time = b-time-of-real-data + t0)
 	sacz.shd.b += minfo.t0;	sac1.shd.b += minfo.t0;	sac2.shd.b += minfo.t0;
+
+//sacz.Write("debug.sac"); exit(-3);
 
 	return true;
 }

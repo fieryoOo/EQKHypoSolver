@@ -113,4 +113,5 @@ C      n = 225
       deallocate (model%cw)
       deallocate (model%gw)
       deallocate (model%aw)
+C      write(*,*) "atracer done: ",cor(1,1,1)," ",cor(2,1,2)," ",cor(3,2,3)," ",cor(300,1,999)
       end
