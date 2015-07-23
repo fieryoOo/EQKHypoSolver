@@ -201,6 +201,15 @@ public:
 		for(int i=ib; i<ie; i++)	func(sigsac[i]);
 	}
 
+	template<class Functor>	void Transform2(const Functor& func, const size_t ib=0, int ie=NaN) {
+		if( !sig )
+			throw ErrorSR::EmptySig(FuncName);
+
+		if( ie == NaN ) ie = shd.npts;
+		float* sigsac = sig.get();
+		for(int i=ib; i<ie; i++)	func(Time(i), sigsac[i]);
+	}
+
    void Mul( const float mul );
 	void Addf( const SacRec& sac2 );
 	void Subf( const SacRec& sac2 );

@@ -75,6 +75,18 @@ SNR2Size() {
 	echo $_size
 }
 
+GetCC() {
+	local _sta=$1
+	local _fsac1=`ls ${wdir}/${_sta}.?HZ_real.SAC 2> /dev/null`
+	local _fsac2=`ls ${wdir}/${_sta}.?HZ_syn.SAC 2> /dev/null`
+	succ=true
+	if [ ! -e $_fsac1 ] || [ ! -e $_fsac2 ]; then
+		echo "sac file "$_fsac1" or "$_fsac2" not found for CC"
+		succ=false; return
+	fi
+	CC=`$exeCC $_fsac1 $_fsac2`
+}
+
 PlotHisto() {
 	local _fin=$1
 	local _REG=$2
@@ -91,8 +103,8 @@ PlotHisto() {
 
 
 ### main ###
-if [ $# != 1 ]; then
-	echo "Usage: "$0" [result_file]"
+if [ $# != 1 ] && [ $# != 2 ] && [ $# != 3 ]; then
+	echo "Usage: "$0" [result_file] [waveform dir (optional)] [plot type (default=0=group, 1=CorrC)]"
 	exit
 fi
 
@@ -132,10 +144,19 @@ if [ ! -e $Hdir ]; then
 	if [ ! -e $Hdir ]; then echo "Hdir not found"; exit; fi
 fi
 
+exeCC=`which SAC_Correlation`
+if [ ! -e $exeCC ]; then
+	echo "Cannot find SAC_Correlation"
+	exit
+fi
+
 fsta=${Sdir}/station.lst
 
 ### check existence of dir ./waveforms
-if [ -e ./waveforms ]; then
+if [ $# -ge 2 ]; then
+	useW=true
+	wdir=$2
+elif [ -e ./waveforms ]; then
 	useW=true
 	wdir=./waveforms
 	echo "results recognized as Waveform fitting"
@@ -149,6 +170,11 @@ else
 fi
 
 ### compute
+if [ $# == 3 ] && [ $3 == 1 ]; then
+	cc=true
+else
+	cc=false
+fi
 Ntmp=`grep -n '#' $fin | awk -F: '{print $1}' | tail -n1`
 #awk -v N=$Ntmp '{if(NR>N){print $1,$2,$8-$9-$10}}' $fin | awk 'NF==3' | psxy -R -J -Sc0.5 -W1,black -C$fcpt -O -K >> $psout
 fdata=${fin}.tmp; rm -f $fdata
@@ -158,6 +184,11 @@ awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,($11
 	GetSNR $sta
 	if [ $succ == false ]; then exit; fi
 	size=`SNR2Size $SNR`
+	if [ $cc == true ]; then
+		GetCC $sta
+		if [ $succ == false ]; then exit; fi
+		grTmis=$CC
+	fi
 	echo $lon $lat $grTmis $phTmis $ampPerc $size $SNR >> $fdata
 done
 
@@ -166,8 +197,13 @@ psout=${fin}.ps
 REG=-R-123/-109/34/48
 
 ### group T
-fcpt=${Sdir}/GMisfit.cpt
-psbasemap $REG -Jn-116/0.55 -Ba5f1/a5f1:."Group Time Misfit ($label)":WeSn -X4.5 -Y6 -K > $psout
+if [ $cc == true ]; then
+	fcpt=${Sdir}/CC.cpt
+	psbasemap $REG -Jn-116/0.55 -Ba5f1/a5f1:."Correlation Coef ($label)":WeSn -X4.5 -Y6 -K > $psout
+else
+	fcpt=${Sdir}/GMisfit.cpt
+	psbasemap $REG -Jn-116/0.55 -Ba5f1/a5f1:."Group Time Misfit ($label)":WeSn -X4.5 -Y6 -K > $psout
+fi
 pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
 psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
 psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout

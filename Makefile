@@ -55,18 +55,36 @@ $(1).o : $(patsubst %.cpp,%.o,$(filter-out $(1)/surfsyn.cpp,$(filter-out $(1)/Te
 endef
 $(foreach moddir,$(MOD_DIRS),$(eval $(call make-module-obj,$(moddir))))
 
+# --- .cpp rules with dependencies assembled by gcc --- #
+define make-cpp
+$(eval $(shell $(CC) $(cflags) -MM -MT $(patsubst %.cpp,%.o,$(1)) $(1) | tr -d '\\\n'))
+	$(CC) $(cflags) -c $$< -o $$@
+endef
+FSRC = $(foreach moddir,$(MOD_DIRS),$(wildcard $(moddir)/*.cpp))
+$(foreach fcpp,$(FSRC),$(eval $(call make-cpp,$(fcpp))))
 %.o : %.cpp
 	$(CC) $(cflags) -c $< -o $@
 
+
+# --- .f rules --- #
 %.o : %.f
 	$(FC) $(fflags) -c $< -o $@
 
 
+# --- .PHONYs --- #
 .PHONY : clean
 clean :
 	rm -f $(BINall) $(addsuffix .o,$(BINall)) $(OBJS)
 
 .PHONY : clean-mod
+ifdef moddir
+clean-mod :
+	rm -f $(wildcard $(moddir)/*.o)
+else
 clean-mod :
 	rm -f $(foreach moddir,$(MOD_DIRS),$(wildcard $(moddir)/*.o))
+endif
 
+.PHONY : print
+print :
+	@echo $(FSRC)

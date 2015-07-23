@@ -1,0 +1,3 @@
+Map.o: src_SDContainer/Map.cpp src_SDContainer/Map.h \
+ src_SDContainer/Point.h src_SDContainer/Array2D.h \
+ src_SDContainer/DisAzi.h

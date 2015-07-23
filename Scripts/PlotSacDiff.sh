@@ -46,9 +46,9 @@ fi
 #sta=$1
 
 # external programs
-dircode=/home/tianye/code
-if [ ! -e $dircode ]; then dircode=/projects/yeti4009/code; fi
-if [ ! -e $dircode ]; then echo "code dir not found!"; exit; fi
+#dircode=/home/tianye/code
+#if [ ! -e $dircode ]; then dircode=/projects/yeti4009/code; fi
+#if [ ! -e $dircode ]; then echo "code dir not found!"; exit; fi
 dirscript=/home/tianye/EQKHypoSolver/Scripts
 if [ ! -e $dirscript ]; then dirscript=/projects/yeti4009/eqkhyposolver/Scripts; fi
 if [ ! -e $dirscript ]; then echo "script dir not found!"; exit; fi
@@ -56,7 +56,8 @@ exeFilter=`which SAC_filter`
 exeSacdump=`which SAC_dump`
 exeSacnorm=`which SAC_norm`
 exeSacARatio=${dirscript}/SAC_ampratio
-exePShift=${dircode}/Programs/WaveformFromPhaseDispersion/ComputePhaseShift
+exePShift=${dirscript}/PhaseShift
+#exePShift=${dircode}/Programs/WaveformFromPhaseDispersion/ComputePhaseShift
 #exePssac=`which pssac`
 
 # find sac files
@@ -79,7 +80,7 @@ gmtset ANNOT_FONT_SIZE 10
 gmtset ANNOT_OFFSET 0.1
 
 # line types
-ltype_all=( '' -W8,100/100/100 -W5,steelblue,- -W5,lightbrown,- -W5,lightred,- -W3,red )
+ltype_all=( '' -W8,100/100/100 -W5,lightred,- -W5,steelblue,- -W5,lightbrown,- -W3,red )
 ltype=( '' ${ltype_all[1]} )
 for (( isac=2; isac<=$#; isac++ )); do
 	itype=`echo $# ${#ltype_all[@]} $isac | awk '{print $2-$1+$3-1}'`
@@ -120,9 +121,9 @@ SCA=-JX10/3.
 
 # set up ps file
 psout=${fsac1}.ps
-pwd | psxy $REG $SCA -X6 -Y16.5 -K > $psout
+pwd | psxy $REG $SCA -X6 -Y13.5 -K > $psout
 
-psbasemap -R -J -Ba100f20/a${mak}f${tic}:."RealData(gray) - Synthectic(red)":Wesn -Y${YS} -O -K >> $psout
+psbasemap -R -J -Ba100f20/a${mak}f${tic}:."RealData(gray) - Synthectic(red)":Wesn -O -K >> $psout
 for (( isac=1; isac<=$#; isac++ )); do
 	PlotSac ${fsacs[isac]} ${ltype[isac]}
 done
@@ -170,7 +171,7 @@ echo ${fsacs[@]} | xargs -n1 | xargs -I file rm -f file'_tmp'
 #psbasemap $REG -JX8/5 -Ba0.05f0.01g0.05:"Frequency (Hz)":/a1f0.2g1:"Ratio"::."Spectral Ratio (Data/Syn)":WeSn -X11.8 -Y7. -O -K >> $psout
 #PlotSac $fratio1D -W5,lightred,-
 #PlotSac $fratio2 -W5,red
-REG=-R6/20/0/2
+REG=-R8/18/0/2
 psbasemap $REG -JX8/5 -Ba5f1g5:"Period (sec)":/a1f0.2g1:"Ratio"::."Spectral Ratio (Data/Syn)":WeSn -X11.8 -Y7. -O -K >> $psout
 for (( isac=1; isac<=$#; isac++ )); do
 	fsac=${fsacs[isac]}
@@ -183,15 +184,13 @@ sta=`echo $fsac1 | awk -F'/' '{print $NF}' | sed s/'.LH'/' '/ | sed s/'.BH'/' '/
 PlotText $REG $sta 0.
 
 # plot phase shift
-REG=-R6/20/-5/5
+REG=-R8/18/-5/5
 psbasemap $REG -JX8/5 -Ba5f1g5:"Period (sec)":/a2f0.5g1:"Time (sec)"::."Phase Shift":WeSn -X0. -Y-7. -O -K >> $psout
 # compute diff (file)
-#fdiffs=('')
 for (( isac=1; isac<=$#; isac++ )); do
 	fsac=${fsacs[isac]}
-	fdiff=${fsac}.diff
-	$exePShift $fsac1 $fsac $fdiff
-	psxy $fdiff -R -J -A ${ltype[isac]} -O -K >> $psout
+	#fdiff=${fsac}.diff
+	$exePShift $fsac1 $fsac | awk '$1>0.{print 1./$1,$2}' | psxy -R -J -A ${ltype[isac]} -O -K >> $psout
 done
 PlotText $REG $sta 0.
 
