@@ -33,38 +33,33 @@ fflags = -e -O2 -ffixed-line-length-132 $(OMPflag)	#-O2
 LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -lfftw3 -O3
 
 # --- objects --- #
-#OBJS_C	:= $(patsubst %.cpp,%.o,$(SRCS_C))
-#OBJS_F	:= $(patsubst %.f,%.o,$(SRCS_F))
 OBJS_M	:= $(addsuffix .o,$(MOD_DIRS))
 OBJS	:= $(OBJS_M)
 #OBJS	+= $(patsubst %.cpp,%.o,$(wildcard ./*.cpp))
 
-# --- rules --- #
+# --- main rules --- #
 define make-bin
 $(1) : $(OBJS) $(1).o
 	$(FC) $$^ -o $$@ $(LIBS)
 endef
 $(foreach bin,$(BINall),$(eval $(call make-bin,$(bin))))
 
-#$(BIN1) : $(OBJS) $(BIN1).o
-#	$(FC) $^ $(LIBS) -o $@
-
+# --- module object rules --- #
 define make-module-obj
-$(1).o : $(patsubst %.cpp,%.o,$(filter-out $(1)/surfsyn.cpp,$(filter-out $(1)/Test.cpp,$(wildcard $(1)/*.cpp)))) $(patsubst %.f,%.o,$(wildcard $(1)/*.f))
+$(1).o : $(patsubst %.cpp,%.o,$(filter-out $(wildcard $(1)/*submain.cpp),$(wildcard $(1)/*.cpp))) $(patsubst %.f,%.o,$(wildcard $(1)/*.f))
 	ld -r $$^ -o $$@
 endef
 $(foreach moddir,$(MOD_DIRS),$(eval $(call make-module-obj,$(moddir))))
 
 # --- .cpp rules with dependencies assembled by gcc --- #
 define make-cpp
-$(eval $(shell $(CC) $(cflags) -MM -MT $(patsubst %.cpp,%.o,$(1)) $(1) | tr -d '\\\n'))
+$(shell $(CC) $(cflags) -MM -MT $(patsubst %.cpp,%.o,$(1)) $(1) | tr -d '\\\n' | awk '{print}' )
 	$(CC) $(cflags) -c $$< -o $$@
 endef
-FSRC = $(foreach moddir,$(MOD_DIRS),$(wildcard $(moddir)/*.cpp))
+FSRC = $(foreach moddir,$(MOD_DIRS) .,$(wildcard $(moddir)/*.cpp))
 $(foreach fcpp,$(FSRC),$(eval $(call make-cpp,$(fcpp))))
-%.o : %.cpp
-	$(CC) $(cflags) -c $< -o $@
-
+#%.o : %.cpp
+#	$(CC) $(cflags) -c $< -o $@
 
 # --- .f rules --- #
 %.o : %.f
@@ -85,6 +80,3 @@ clean-mod :
 	rm -f $(foreach moddir,$(MOD_DIRS),$(wildcard $(moddir)/*.o))
 endif
 
-.PHONY : print
-print :
-	@echo $(FSRC)

@@ -68,9 +68,9 @@ SNR2Size() {
 	local _SNR=$1
 	local _size=2
 	if [ $useW == true ]; then
-		_size=`echo $_SNR | awk '{size=0.01*$1; if(size>0.5){size=0.5;} print size}'`
+		_size=`echo $_SNR | awk '{size=0.008*$1; if(size>0.4){size=0.4;} print size}'`
 	else
-		_size=`echo $_SNR | awk '{size=0.03*$1; if(size>0.5){size=0.5;} print size}'`
+		_size=`echo $_SNR | awk '{size=0.025*$1; if(size>0.4){size=0.4;} print size}'`
 	fi
 	echo $_size
 }
@@ -101,6 +101,64 @@ PlotHisto() {
 	PlotText $_REG "$_label" 0.1 ${_YS}
 }
 
+### compute/plot surface
+PlotMap() {
+	# input params
+	local _fin=$1;	
+	local _icol=$2
+	local _label=$3
+	# trash bin
+	local ftobedeleted=( '' ); local idel=0
+	# grab data
+	local _fdata=${_fin}.tmp
+	awk -v ic=${_icol} '{print $1,$2,$ic,$6}' ${_fin} > ${_fdata}
+	ftobedeleted[idel]=$_fdata; let idel++
+	# surface params
+	local res=0.1; local ts=0.2; local bdis=30
+	local fbmtmp1=${_fdata}.bm1
+	ftobedeleted[idel]=$fbmtmp1; let idel++
+	local fbmtmp2=${_fdata}.bm2
+	ftobedeleted[idel]=$fbmtmp2; let idel++
+	# redistribute data point locations
+	blockmean ${_fdata} $REG -I$bdis'km' > $fbmtmp1
+	blockmean $fbmtmp1 $REG -F -I$bdis'km' > $fbmtmp2
+	# compute surface
+	local fgrd=${_fdata}.grd
+	ftobedeleted[idel]=$fgrd; let idel++
+	surface $fbmtmp2 -T$ts -G$fgrd -I$res $REG
+	# resample and plot
+	local sms=`echo $res | awk '{print $1/5.0}'`
+	local fgrds=${_fdata}.grds
+	ftobedeleted[idel]=$fgrds; let idel++
+	grdsample $fgrd -Q -G$fgrds $REG -I$sms
+	grdimage -R -J $fgrds -C$fcpt -O -K >> $psout
+	psbasemap -R -J -Bwesn -O -K >> $psout
+	# boundaries
+	pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
+	psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+	psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+	# station location and color bar
+	#psxy ${_fdata} -R -J -Sc -W2,black -C$fcpt -O -K >> $psout
+	sort -g -k3 ${_fdata} | psxy -R -J -Sc -W2,black -C$fcpt -O -K >> $psout
+	#psscale  -C$fcpt -B4.5:"Misfit (sec)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
+	psscale  -C$fcpt -B:"${_label}": -P -D3.6/-1./7.2/0.3h -O -K >> $psout
+	# centre (earthquake) location
+	clon=-114.9; clat=41.14
+	echo $clon $clat | psxy -R -J -Sa0.6 -W2,blue -Gred -O -K >> $psout
+	# SNR-size legend
+	pslegend -R -D-123.3/32.2/2.4/2.2/BL -J -F -G220 -O -K <<- EOF >> $psout
+	G 0.05i
+	S 0.1i c ${sizes[0]} white 0p 0.3i SNR=${SNRs[0]}
+	G 0.1i
+	S 0.1i c ${sizes[1]} white 0p 0.3i SNR=${SNRs[1]}
+	G 0.1i
+	S 0.1i c ${sizes[2]} white 0p 0.3i SNR=${SNRs[2]}
+	G 0.05i
+	EOF
+	# clean-up
+	echo ${ftobedeleted[@]} | xargs rm -f
+}
+
 
 ### main ###
 if [ $# != 1 ] && [ $# != 2 ] && [ $# != 3 ]; then
@@ -118,11 +176,11 @@ fi
 event=`pwd | awk -F/ '{print $(NF-1)}'`
 
 # period
-per=`echo $fin | sed s/'_'/' '/g | sed s/'\.'/' '/g | awk '{for(i=1;i<10;i++)print $i}' | grep sec | sed s/'sec'/''/`
+#per=`echo $fin | sed s/'_'/' '/g | sed s/'\.'/' '/g | awk '{for(i=1;i<10;i++)print $i}' | grep sec | sed s/'sec'/''/`
 
 # file label
 #label=`readlink -f $fin | awk -F/ '{print $(NF-1)"_"$(NF)}' | cut -d. -f1 | awk -F_ '{print "data-used="$3" Map="$5" data-plot="$6" "$10}'`
-label=`readlink -f $fin | awk -F/ '{print $(NF-1)"_"$(NF)}' | cut -d. -f1 | awk -F_ '{print $3" "$5" "$10}'`
+label=`echo $fin | cut -d. -f1 | awk -F_ '{print $1,$(NF)}'`
 echo "label = "$label
 
 ### set up gmt
@@ -178,7 +236,7 @@ fi
 Ntmp=`grep -n '#' $fin | awk -F: '{print $1}' | tail -n1`
 #awk -v N=$Ntmp '{if(NR>N){print $1,$2,$8-$9-$10}}' $fin | awk 'NF==3' | psxy -R -J -Sc0.5 -W1,black -C$fcpt -O -K >> $psout
 fdata=${fin}.tmp; rm -f $fdata
-awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,($11-$12)/$12}}' $fin | awk 'NF==5' | while read lon lat grTmis phTmis ampPerc; do
+awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,($11-$12)/$12,$3,$4}}' $fin | awk 'NF==7' | while read lon lat grTmis phTmis ampPerc dis azi; do
 #awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6,$7}}' $fin | awk 'NF==4' | while read lon lat Tmis Tsrc; do
 	sta=`awk -v lon=$lon -v lat=$lat 'BEGIN{if(lon<0){lon+=360.}}{lonsta=$2; if(lonsta<0.){lonsta+=360.} latsta=$3; if( (lon-lonsta)**2+(lat-latsta)**2 < 0.0001 ){print $1} }' $fsta`
 	GetSNR $sta
@@ -189,29 +247,10 @@ awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,($11
 		if [ $succ == false ]; then exit; fi
 		grTmis=$CC
 	fi
-	echo $lon $lat $grTmis $phTmis $ampPerc $size $SNR >> $fdata
+	echo $lon $lat $grTmis $phTmis $ampPerc $size $SNR $sta $dis $azi >> $fdata
 done
 
-### plot
-psout=${fin}.ps
-REG=-R-123/-109/34/48
-
-### group T
-if [ $cc == true ]; then
-	fcpt=${Sdir}/CC.cpt
-	psbasemap $REG -Jn-116/0.55 -Ba5f1/a5f1:."Correlation Coef ($label)":WeSn -X4.5 -Y6 -K > $psout
-else
-	fcpt=${Sdir}/GMisfit.cpt
-	psbasemap $REG -Jn-116/0.55 -Ba5f1/a5f1:."Group Time Misfit ($label)":WeSn -X4.5 -Y6 -K > $psout
-fi
-pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-awk '{print $1,$2,$3,$6}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
-psscale  -C$fcpt -B4.5:"Misfit (sec)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
-#psscale  -C$fcpt -B:"Misfit (sec)": -P -D3.95/-1./7.9/0.4h -O -K >> $psout
-
-# legend (SNR - size)
+# station sizes (SNR - size)
 SNRs=( 0 0 0 )
 if [ $useW == true ]; then
 	SNRs=( 15 30 50 )
@@ -225,55 +264,52 @@ for ((i=0;i<3;i++)); do
 done
 echo "snrs: "${SNRs[@]}
 echo "size: "${sizes[@]} 
-pslegend -R -D-123.5/33.5/2.4/2.2/BL -J -F -G220 -O -K <<- EOF >> $psout
-	G 0.05i
-	S 0.1i c ${sizes[0]} white 0p 0.3i SNR=${SNRs[0]}
-	G 0.1i
-	S 0.1i c ${sizes[1]} white 0p 0.3i SNR=${SNRs[1]}
-	G 0.1i
-	S 0.1i c ${sizes[2]} white 0p 0.3i SNR=${SNRs[2]}
-	G 0.05i
-EOF
+
+### plot
+psout=${fin}.ps
+REG=-R-123/-108/32.5/46.5
+SCA=-Jn-115.5/0.5
+
+### group T
+if [ $cc == true ]; then
+	fcpt=${Sdir}/CC.cpt
+	psbasemap $REG $SCA -Ba5f1/a5f1:."Correlation Coef ($label)":WeSn -X4.5 -Y6 -K > $psout
+	cptlabel="Correlation"
+else
+	psbasemap $REG $SCA -Ba5f1/a5f1:."Group Time Misfit ($label)":WeSn -X4.5 -Y6 -K > $psout
+	cptlabel="Misfit (sec)"
+	if [ $useW == true ]; then
+		fcpt=${Sdir}/GMisfit.cpt
+	else
+		fcpt=${Sdir}/GMisfit.cpt
+	fi
+fi
+PlotMap $fdata 3 ${cptlabel}
 
 
 ### phase T
-fcpt=${Sdir}/PMisfit.cpt
-psbasemap -R -J -Ba5f1/a5f1:."Phase Time Misfit ($label)":WeSn -X8 -K -O >> $psout
-pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-awk '{print $1,$2,$4,$6}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
-psscale  -C$fcpt -B1.5:"Misfit (sec)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
-
-pslegend -R -D-123.5/33.5/2.4/2.2/BL -J -F -G220 -O -K <<- EOF >> $psout
-	G 0.05i
-	S 0.1i c ${sizes[0]} white 0p 0.3i SNR=${SNRs[0]}
-	G 0.1i
-	S 0.1i c ${sizes[1]} white 0p 0.3i SNR=${SNRs[1]}
-	G 0.1i
-	S 0.1i c ${sizes[2]} white 0p 0.3i SNR=${SNRs[2]}
-	G 0.05i
-EOF
+if [ $useW == true ]; then
+	fcpt=${Sdir}/PMisfitW.cpt
+	psbasemap -R -J -Ba5f1/a5f1:."Phase Misfit ($label)":WeSn -X8 -K -O >> $psout
+	unit=radian
+else
+	fcpt=${Sdir}/PMisfit.cpt
+	psbasemap -R -J -Ba5f1/a5f1:."Phase Time Misfit ($label)":WeSn -X8 -K -O >> $psout
+	unit=sec
+fi
+PlotMap $fdata 4 "Misfit ("${unit}")"
+#psscale  -C$fcpt -B1.0:"Misfit (${unit})": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
 
 
 ### amplitude misfits in percentage
-fcpt=${Sdir}/AMisfit.cpt
+if [ $useW == true ]; then
+	fcpt=${Sdir}/AMisfitW.cpt
+else
+	fcpt=${Sdir}/AMisfit.cpt
+fi
 psbasemap -R -J -Ba5f1/a5f1:."Amplitude Misfit Percentage ($label)":WeSn -X8 -K -O >> $psout
-pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy ${Hdir}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy ${Hdir}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-awk '{print $1,$2,$5,$6}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
-psscale  -C$fcpt -B0.5:"Misfit (%)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
-
-pslegend -R -D-123.5/33.5/2.4/2.2/BL -J -F -G220 -O -K <<- EOF >> $psout
-	G 0.05i
-	S 0.1i c ${sizes[0]} white 0p 0.3i SNR=${SNRs[0]}
-	G 0.1i
-	S 0.1i c ${sizes[1]} white 0p 0.3i SNR=${SNRs[1]}
-	G 0.1i
-	S 0.1i c ${sizes[2]} white 0p 0.3i SNR=${SNRs[2]}
-	G 0.05i
-EOF
+PlotMap $fdata 5 "Misfit (%)"
+#psscale  -C$fcpt -B0.5:"Misfit (%)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
 
 
 # plot histogram
@@ -287,7 +323,8 @@ EOF
 
 ##awk '{if($6>10)print $3-$4}' $fdata | pshistogram -R-8/8/0/40 -JX6/8 -W0.4 -Gsteelblue -L3,steelblue3 -Z1 -X9 -O -K >> $psout
 #awk '{if($6>10)print $3}' $fdata | pshistogram -R -J -W0.5 -Ba1.f0.2/a10f2:."Phase Time Shift (sec)":WeSn -L3,lightred -Z1 -O -K >> $psout
-rm -f $fdata
+#rm -f $fdata
+echo $fdata
 
 ### finalize
 pwd | psxy -R -J -O >> $psout

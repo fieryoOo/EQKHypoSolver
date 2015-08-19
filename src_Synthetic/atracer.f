@@ -94,6 +94,7 @@ cMB     trres(2) = trres(2)*pi2/per
 cMB     cor(k) = dcmplx(dcos(trres(2)),dsin(trres(2)))*dexp(-trres(3))*trres(4)
 cMB     write(*,*) 'A ', per,6371.0*del,trres(2)
             cor(k,1,m) = 6371.0*del/trres(2)
+C         write(*,*) k," ",1," ",m,"   ",del,"   ",trres(2)
             if( applyQ ) then
                cor(k,2,m) = dexp(-trres(3))*trres(4)
             else

@@ -10,7 +10,7 @@ cflags = -std=c++11 -O3
 
 FFLAGS = $(DBG) $(fflags)
 
-LIBS = -lstdc++ -lfftw3
+LIBS = -lstdc++ -lfftw3 -fopenmp
 
 FC = gfortran
 
@@ -18,7 +18,7 @@ CC = gcc
 
 DBG = 
 
-FOBJS = surfsyn.o source.o surfread.o intpol.o pha.o  \
+FOBJS = surfsyn_submain.o source.o surfread.o intpol.o pha.o  \
 	syn.o FFT.o calspecr.o calspecl.o new_tapwin1.o namer.o \
 	force.o angles2tensor.o azd.o atracer.o rbimod.o \
 	read_model_file.o read_rect_model.o tracer.o vect.o \

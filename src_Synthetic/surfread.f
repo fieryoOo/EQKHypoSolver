@@ -64,6 +64,7 @@ c               pos2 = pos1+80
 c            read(1, '(6(E14.7,2X))') t(k),cl(k),ul(k),wvl(k),ampl(k),qL(k)
             call readline300(feig_buff, pos1, pos2, linetmp)
             read(linetmp, '(6(E14.7,2X))') t(k),cl(k),ul(k),wvl(k),ampl(k),qL(k)
+            fr(k) = 1./t(k)
 c            read(1,'(a)') ,vzdor
             call readline80(feig_buff, pos1, pos2, vzdor)
 c           Love component---S

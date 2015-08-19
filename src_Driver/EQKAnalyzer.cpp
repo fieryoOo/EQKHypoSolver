@@ -400,6 +400,7 @@ void EQKAnalyzer::LoadData() {
 			const auto& farray = fR.second;
 			// farray[0]: measurement file
 			// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
+			// farray[3]: list of stations to be used
 			float velG, velP;
 			if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
 				_dataR.push_back( SDContainer(per, R, farray[0], velG, velP, farray[3]) );

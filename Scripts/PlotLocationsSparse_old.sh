@@ -130,18 +130,17 @@ PlotBeachball() {
    local _dip=$3
    local _rak=$4
    local _dep=`echo $5 | awk '{printf "%.1f",$1}'`  # rounded depth
-	local _M0=$6
-	local _lon=`echo $7 | awk '{lon=$1; if(lon<0.){lon+=360.} print lon}'`
-   local _lat=$8
-   local _colorFill=$9
-   local _colorPen=${10}
-	local _text=${11}
+	local _lon=`echo $6 | awk '{lon=$1; if(lon<0.){lon+=360.} print lon}'`
+   local _lat=$7
+   local _colorFill=$8
+   local _colorPen=$9
+	local _text=${10}
 
 	local _size1=0.2 #0.6
 	local _size2=0.3 #0.65
 	if [ `echo $_stk $_dip $_rak | awk '{if($1==0&&$2==0&&$3==0){print 0}else{print 1}}'` == 1 ]; then
 		echo $_lon $_lat $_dep $_stk $_dip $_rak 5. 0 0 | psmeca -R -J -Sa${_size1} -G$_colorFill -W1,$_colorPen -O -K >> $_psout
-		if [ $# -gt 9 ] && [ $_colorFill != $_colorPen ]; then
+		if [ $# -gt 8 ] && [ $_colorFill != $_colorPen ]; then
 			echo $_lon $_lat | psxy -R -J -Sc${_size2} -W5,$_colorPen -O -K >> $_psout
 		fi
 	else
@@ -158,9 +157,9 @@ PlotBeachballs() {
 	local _ilab=$2
 #for (( idir=0; idir<$ndir; idir++ )); do
 	while read line; do
-		model_best=`echo $line | awk '{print $1,$2,$3,$4,$5,$6,$7}'`
+		model_best=`echo $line | awk '{print $1,$2,$3,$4,$5,$6}'`
 		rtype=`echo $line | awk '{print $NF}'`
-		clocS=`echo ${model_best} | awk '{print $6,$7}'`
+		clocS=`echo ${model_best} | awk '{print $5,$6}'`
 		label=`echo ${rtype} | cut -d_ -f1,2,3`
 		trlno=`echo ${rtype} | cut -d_ -f4 | sed s/'Sparse'/''/`
 		# search for label name
@@ -216,7 +215,7 @@ for rdir in `ls -d results_SAMC_L_${dis}_Ei_Sparse* results_SAMC_R_${dis}_Ei_Spa
 		continue
 	fi
 
-if [ 0 == 1 ]; then
+if [ 1 == 1 ]; then
 	# extract data: discard the initial search and then the first 999 points
 	# output format: nsearch reduced-chiS Ndata stk dip rak dep lon lat t0
 	is=999; ie=999999
@@ -255,7 +254,7 @@ fi
 
 
 	# extend region to plot
-	ExtendRegion `echo ${model_best} | awk '{print $6,$7}'`
+	ExtendRegion `echo ${model_best} | awk '{print $5,$6}'`
 
 	echo -e $rdir":\t"${model_best}
 	#echo "   "${meanlon[idir]} ${meanlat[idir]}"   -   "${model_best}
@@ -266,7 +265,7 @@ done
 predir=previous_studies
 if [ ! -e $predir ]; then predir=../${predir}; fi
 for file in `ls ${predir}/results_*.txt`; do
-	ExtendRegion `awk 'NR==1{print $6,$7}' $file`
+	ExtendRegion `awk 'NR==1{print $5,$6}' $file`
 done
 
 ### input region? ###
@@ -292,9 +291,9 @@ PlotText $REG "Resulting Locations"
 
 # plot the results (posterior as ellipses and best-fitting as stars)
 ndir=$idir
-#labels=('R_'${dis} 'L_'${dis} 'B_'${dis} 'R_500' 'L_500' 'B_500')
+#labels=('R_${dis}' 'L_${dis}' 'B_${dis}' 'R_500' 'L_500' 'B_500')
 #lnames=('Rayl' 'Love' 'Both' 'Both-Love' 'R_500' 'L_500' 'B_500' 'C_500')
-labels=('B_'${dis}'_Ei' 'R_'${dis}'_Ei' 'L_'${dis}'_Ei' 'L_'${dis}'G_Ei' 'B_'${dis}'_1D' 'R_'${dis}'_1D' 'L_'${dis}'_1D' 'L_'${dis}G'_1D')
+labels=('B_${dis}_Ei' 'R_${dis}_Ei' 'L_${dis}_Ei' 'L_${dis}G_Ei' 'B_${dis}_1D' 'R_${dis}_1D' 'L_${dis}_1D' 'L_${dis}G_1D')
 lnames=('3D_Both' '3D_Rayl' '3D_Love' '3D_LovG' '1D_Both' '1D_Rayl' '1D_Love' '1D_LovG')
 colors=('black' 'brown' 'blue' 'forestgreen' 'darkgray' 'lightpink' 'lightblue' 'lightgreen')
 Nlab=${#labels[@]}
@@ -304,13 +303,12 @@ Nlab=${#labels[@]}
 textloc=(0.05_0.145 0.05_0.11 0.05_0.075 0.05_0.04 0.55_0.145 0.55_0.11 0.55_0.075 0.55_0.04)
 fSdata=SingleLabel.tmp
 fEdata=EllipseData.tmp
-echo ${labels[@]} ${#labels[@]}
 for ((ilab=0;ilab<${#labels[@]};ilab++)); do
 	_label=${labels[ilab]}
 	if [ `grep $_label $fres | wc -l` == 0 ]; then continue; fi
 	grep $_label $fres > $fSdata
 	PlotBeachballs $fSdata $ilab
-	awk '{print $6,$7,$9}' $fSdata > $fEdata
+	awk '{print $5,$6,$8}' $fSdata > $fEdata
 	ComputePlotEllipse $fEdata `echo ${textloc[ilab]} | awk -F_ '{print $1,$2}'` ${colors[ilab]}
 done
 rm -f $fSdata $fEdata
@@ -319,7 +317,7 @@ rm -f $fSdata $fEdata
 for file in `ls ${predir}/results_*.txt`; do
 	study_name=`echo $file | awk -F/ '{print $NF}' | cut -d_ -f2 | cut -d. -f1`
 	#PlotPoint $psout `awk 'NR==1{print $5,$6}' $file` black black
-	PlotBeachball $psout `awk 'NR==1{print $1,$2,$3,$4,$5,$6,$7}' $file` orange orange $study_name
+	PlotBeachball $psout `awk 'NR==1{print $1,$2,$3,$4,$5,$6}' $file` orange orange $study_name
 done
 
 

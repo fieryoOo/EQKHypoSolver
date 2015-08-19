@@ -5,34 +5,46 @@ Alpha() {
 	local wtype=$2
 	local alpha=-12345.
 	if [ $wtype == 'R' ]; then
-	   if [ $per_v -eq 8 ]; then
+		if [ $per_v -ge 7 ] && [ $per_v -lt 9 ]; then
 			v=2.6; Q=80	
-	   elif [ $per_v -eq 10 ]; then
+		elif [ $per_v -ge 9 ] && [ $per_v -lt 11 ]; then
 		   v=2.8; Q=80 # 102 (need to be decreased?)
-	   elif [ $per_v -eq 16 ]; then
+		elif [ $per_v -ge 11 ] && [ $per_v -lt 13 ]; then
+		   v=2.83; Q=81 
+		elif [ $per_v -ge 13 ] && [ $per_v -lt 15 ]; then
+		   v=2.86; Q=83
+		elif [ $per_v -ge 15 ] && [ $per_v -lt 17 ]; then
 		   v=2.9; Q=85
-	   elif [ $per_v -eq 22 ]; then
+		elif [ $per_v -ge 17 ] && [ $per_v -lt 20 ]; then
+		   v=2.95; Q=87
+		elif [ $per_v -ge 20 ] && [ $per_v -lt 25 ]; then
 		   v=3.0; Q=90
-	   elif [ $per_v -eq 30 ]; then
+		elif [ $per_v -ge 25 ] && [ $per_v -lt 35 ]; then
 		   v=3.25; Q=100
-	   elif [ $per_v -eq 40 ]; then
+		elif [ $per_v -ge 35 ] && [ $per_v -lt 45 ]; then
 		   v=3.5; Q=120	# 112 (need to be increased?)
 	   else
 		   echo "Error(AlphaR): alpha undefined for per = "$per_v"!"
 			exit
 	   fi
 	elif [ $wtype == 'L' ]; then
-		if [ $per_v -eq 8 ]; then
+		if [ $per_v -ge 7 ] && [ $per_v -lt 9 ]; then
 			v=2.8; Q=80
-	   elif [ $per_v -eq 10 ]; then
+		elif [ $per_v -ge 9 ] && [ $per_v -lt 11 ]; then
 		   v=3.1; Q=80
-	   elif [ $per_v -eq 16 ]; then
+		elif [ $per_v -ge 11 ] && [ $per_v -lt 13 ]; then
+		   v=3.15; Q=81
+		elif [ $per_v -ge 13 ] && [ $per_v -lt 15 ]; then
+		   v=3.21; Q=83
+		elif [ $per_v -ge 15 ] && [ $per_v -lt 17 ]; then
 		   v=3.27; Q=85
-	   elif [ $per_v -eq 22 ]; then
+		elif [ $per_v -ge 17 ] && [ $per_v -lt 20 ]; then
+		   v=3.32; Q=87
+		elif [ $per_v -ge 20 ] && [ $per_v -lt 25 ]; then
 		   v=3.38; Q=90
-	   elif [ $per_v -eq 30 ]; then
+		elif [ $per_v -ge 25 ] && [ $per_v -lt 35 ]; then
 		   v=3.53; Q=100
-	   elif [ $per_v -eq 40 ]; then
+		elif [ $per_v -ge 35 ] && [ $per_v -lt 45 ]; then
 		   v=3.73; Q=120
 	   else
 		   echo "Error(AlphaR): alpha undefined for per = "$per_v"!"

@@ -142,7 +142,7 @@ void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 //void SDContainer::ToAziVector( std::vector<AziData>& adV ) {
 void SDContainer::ToMisfitV( std::vector<AziData>& adV, const float Tmin ) const {
 	adV.clear();
-	//const float Tmin = 3. * per;	// three wavelength criterion
+	//const float Tmin = nwavelength * per;	// three wavelength criterion
 	for( const auto& sdcur : dataV ) {
 		if( sdcur.azi!=NaN ) {
 			if( sdcur.Pdata < Tmin ) continue;
@@ -158,7 +158,7 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 	// dump into AziData vector
 	if( c2pi ) Correct2PI();
 	std::vector<AziData> adVori;
-	const float Tmin = 3. * per;	// three wavelength criterion
+	const float Tmin = nwavelength * per;	// three wavelength criterion
 	ToMisfitV( adVori, Tmin );
 
 	// periodic extension
@@ -183,7 +183,7 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	if( c2pi ) Correct2PI();
 	// dump into AziData vector
 	float Tmin;
-	if( isFTAN ) Tmin = 3. * per;	// three wavelength criterion
+	if( isFTAN ) Tmin = nwavelength * per;	// three wavelength criterion
 	else Tmin = -99999.;
 	std::vector<AziData> adVori;
 	ToMisfitV( adVori, Tmin );

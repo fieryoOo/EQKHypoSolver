@@ -10,6 +10,7 @@ c ==========================================================
       type (tmodel) model
 
 c --- read unformated file for period per--
+C      write(*,*) fname
       open(30,file=fname,form='unformatted')
       read(30) model%n,model%fi,model%nfi,model%sfi,model%la,model%nla,model%sla,model%per,model%nper,model%sper
       if( model%nfi.ne.Cnlat.OR.model%nla.ne.Cnlon.OR.model%nper.ne.Cnper ) then

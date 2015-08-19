@@ -1,12 +1,19 @@
 #!/bin/bash
 
-if [ $# != 3 ]; then
-	echo "Usage: "$0" [clon] [clat] [#sta to pick]"
+if [ $# != 4 ] && [ $# != 6 ]; then
+	echo "Usage: "$0" [clon] [clat] [#sta to pick] [picktype (0=even-azi, 1=even-space)] [max-dis (optional)] and [min-dis (optional)]"
 	exit
 fi
 
 ### main ###
-dis=1000
+clon=$1
+clat=$2
+Nsta=$3
+picktype=$4
+dis=1000; dismin=0
+if [ $# == 6 ]; then
+	dis=$5; dismin=$6
+fi
 # list of fmeasurements to check
 fcheck_list=()
 fparam=param_base.txt
@@ -43,9 +50,15 @@ done
 # create list of valid stations
 fstanew=./goodsta.lst
 for file in ${fcheck_list[@]}; do
-	#echo $file
-	$exePick $file $floc $floctmp Y 1> /dev/null
-	paste $floc $floctmp | awk '{N=$4; if(NF>6){N+=1} print $1,$2,$3,N}' > tempp
+	awk -v dismin=$dismin '$6>dismin' $file > ${file}.tmp
+	if [ `more ${file}.tmp | wc -l` == 0 ]; then
+		echo "Warning: 0 valid station found in "$file
+		echo "   Is distance info stored in column 6?   "
+		continue
+	fi
+	$exePick ${file}.tmp $floc $floctmp Y 1> /dev/null
+	rm -f ${file}.tmp
+	paste $floc $floctmp | awk '{N=$4; if(NF>10){N+=1} print $1,$2,$3,N}' > tempp
 	mv tempp $floc
 done
 
@@ -53,39 +66,62 @@ awk -v Nfile=${#fcheck_list[@]} '$4>=Nfile-1' $floc > tempp
 mv tempp $floc
 rm -f $floctmp
 
-# compute azimuths
-clon=$1
-clat=$2
-rm -f tempp
-while read lon lat sta N; do
-	#azi=`/home/tianye/usr/bin/get_dist $clat $clon $lat $lon a1`
-	azi=`/home/yeti4009/bin/get_dist $clat $clon $lat $lon a1`
-	echo $lon $lat $sta $azi >> tempp
-done < $floc
-sort -g -k4 tempp > temppp
-tail -n5 temppp | awk '{print $1,$2,$3,$4-360.}' > $floc
-cat temppp >> $floc
-head -n5 temppp | awk '{print $1,$2,$3,$4+360.}' >> $floc
-rm -f tempp temppp
-
-# now randomly pick stations
-#exeRand=/home/tianye/usr/bin/Rand
+# randomly pick stations from $floc
 exeRand=/home/yeti4009/bin/Rand
-Nsta=$3
-binsize=`echo $Nsta | awk '{print 360./$1}'`
-azil=`$exeRand 0 | awk -v binsize=$binsize '{print $1*binsize}'`
-fresult=station_${clon}_${clat}_${Nsta}.txt
-rm -f $fresult
-for cazi in `echo $Nsta | awk -v azil=$azil -v Nsta=$Nsta '{for(i=0;i<Nsta;i++){cazi=azil+i*360./Nsta; while(cazi<0.){cazi+=360.} while(cazi>=360.){cazi-=360.} print cazi}}'`; do
-	rand=`$exeRand 1`
-	azi=`echo $rand $cazi $binsize | awk '{print $2+$3*0.2*$1}'`
-	line=`awk -v azi=$azi '{if($4>azi){if(($4-azi)**2<(aziold-azi)**2){print $0}else{print lineold} exit}aziold=$4;lineold=$0}' $floc`
-	echo $line | awk '{print $3,$1,$2,$4}' >> $fresult
-	awk -v line="$line" '$0!=line' $floc > tempp
-	mv tempp $floc
-	#awk -v azi=$azi '{if($4>azi){if(($4-azi)**2<(aziold-azi)**2){print $3,$1,$2,$4}else{print staold,lonold,latold,aziold} exit}aziold=$4;lonold=$1;latold=$2;staold=$3}' $floc >> $fresult
-	#echo $azi $cazi $rand
-done
-#rm -f $floc
+exeDist=/home/yeti4009/bin/get_dist
+fresult=station_${clon}_${clat}_${Nsta}.txt; rm -f $fresult
+if [ $picktype == 0 ]; then
+	# compute azimuths
+	rm -f tempp
+	while read lon lat sta N; do
+		#azi=`$exeDist $clat $clon $lat $lon a1`
+		azi=`$exeDist $clat $clon $lat $lon a1`
+		echo $lon $lat $sta $azi >> tempp
+	done < $floc
+	sort -g -k4 tempp > temppp
+	tail -n5 temppp | awk '{print $1,$2,$3,$4-360.}' > $floc
+	cat temppp >> $floc
+	head -n5 temppp | awk '{print $1,$2,$3,$4+360.}' >> $floc
+	rm -f tempp temppp
+
+	# now randomly pick stations
+	#exeRand=/home/tianye/usr/bin/Rand
+	binsize=`echo $Nsta | awk '{print 360./$1}'`
+	azil=`$exeRand 0 | awk -v binsize=$binsize '{print $1*binsize}'`
+	for cazi in `echo $Nsta | awk -v azil=$azil -v Nsta=$Nsta '{for(i=0;i<Nsta;i++){cazi=azil+i*360./Nsta; while(cazi<0.){cazi+=360.} while(cazi>=360.){cazi-=360.} print cazi}}'`; do
+		rand=`$exeRand 1`
+		azi=`echo $rand $cazi $binsize | awk '{print $2+$3*0.2*$1}'`
+		line=`awk -v azi=$azi '{if($4>azi){if(($4-azi)**2<(aziold-azi)**2){print $0}else{print lineold} exit}aziold=$4;lineold=$0}' $floc`
+		echo $line | awk '{print $3,$1,$2,$4}' >> $fresult
+		awk -v line="$line" '$0!=line' $floc > tempp
+		mv tempp $floc
+		#awk -v azi=$azi '{if($4>azi){if(($4-azi)**2<(aziold-azi)**2){print $3,$1,$2,$4}else{print staold,lonold,latold,aziold} exit}aziold=$4;lonold=$1;latold=$2;staold=$3}' $floc >> $fresult
+		#echo $azi $cazi $rand
+	done
+	#rm -f $floc
+else
+	isdis_min=70
+	for ((i=0;i<$Nsta;i++)); do
+		Nstaleft=`more $floc | wc -l`
+		if [ $Nstaleft == 0 ]; then
+			echo "Error: 0 station left!"
+			exit
+		fi
+		# randomly pick
+		ipick=`/home/yeti4009/bin/Rand 0 | awk -v N=$Nstaleft '{print int($1*N)+1}'`
+		line=`awk -v i=$ipick 'NR==i{print $3,$1,$2,$4}' $floc` # $3=sta $1=lon $2=lat $4=azi
+		echo $line >> $fresult
+		# exclude nearby stations
+		loc=`echo $line | awk '{print $3,$2}'`
+		rm -f tempp
+		while read lon lat sta azi; do
+			isdis=`$exeDist $loc $lat $lon d`
+			if [ `echo $isdis $isdis_min | awk '{if($1<$2){print 0}else{print 1}}'` == 1 ]; then
+				echo $lon $lat $sta $azi >> tempp
+			fi
+		done < $floc
+		mv tempp $floc
+	done
+fi
 
 echo $fresult

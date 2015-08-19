@@ -38,7 +38,8 @@ C         common /stn/ nstai,codi,figi,fici,lami,neti
 
          drad = pi/180.
 
-C      write(*,*) cor(1,1,1)," ",cor(2,1,2)," ",cor(3,2,3)," ",cor(300,1,999)
+C      write(*,*) "check cor in cal_synsac: ",cor(1,1,1)," ",cor(2,1,2)," ",cor(15,1,33)," ",cor(300,1,999)
+C      write(*,*) "check cor in cal_synsac: ",cor(1,2,1)," ",cor(2,2,2)," ",cor(15,2,33)," ",cor(300,2,999)
 C      write(*,*) ista," ",its," ",sigR," ",sigL," ",f1," ",f2," ",f3," ",f4
 C      write(*,*) vmax," ",fix_vel," ",npoints," ",dt," ",nt," ",key_compr
 C      write(*,*) elatc," ",elonc," ",qR(180)," ",qL(222)," ",sfici," ",slami

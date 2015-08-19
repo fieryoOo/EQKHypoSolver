@@ -173,7 +173,8 @@ protected:
    static constexpr float varRPHmin = 0.05, varLPHmin = 0.05;	/* Specturm Phase Shift (radians), */
    static constexpr float varRAmin = 0.04, varLAmin = 0.04;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
 
-
+	static constexpr float nwavelength = 2.;						/* allowed min sta distance = nwavelength * wavelength */
+	
 
    static constexpr int pio4_R = 0;									/* for initial phase test. normaly be 0. */
    static constexpr int pio4_L = 0;									/* is added to the FTAN coefficient piover4 */

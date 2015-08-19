@@ -1,5 +1,21 @@
 #!/bin/bash
 
+PickSAC() {
+	local _fsac=$1 
+	local _fsta=$2 
+	local _fsac_picked=$3
+
+	rm -f ${_fsac_picked}
+	while read sta stmp; do
+		_sacname=`grep $sta $_fsac`
+		if [ `echo $_sacname | wc -l` != 1 ]; then
+			echo "0 or more than 1 station found ("$sta" in "$_fsac")!"
+			exit
+		fi
+		echo $_sacname >> ${_fsac_picked}
+	done < $_fsta
+}
+
 ProduceSBATCH() {
 local _fparam=$1
 local _logdir=$2
@@ -51,26 +67,28 @@ dismax=$5
 dismin=$6
 
 
-for wtype in B R L; do # wave type ( B R L )
+for wtype in R; do # wave type ( B R L )
 	for dtype in $dismax; do # data type ( 1000 1000G )
-		for mtype in Ei 1D; do # model type ( Ei 3D 1D )
+		for mtype in 1D 3D; do # model type ( Ei 3D 1D )
 			#if [ $dtype == "1000G" ] && [ $wtype != 'L' ]; then continue; fi
 			for ((itrl=1; itrl<=$Ntrl; itrl++)); do
 			### label
-			_label=${wtype}_${dtype}_${mtype}_Sparse${itrl}
+			_label=${wtype}_${dtype}_${mtype}_W_Sparse${itrl}
 			### path to the vel maps
 			if [ $mtype == "Ei" ]; then
+				echo "Error: Ei requested for Waveform fitting!"
+				exit
 				_mdir=VelMaps_Eikonal
 				_msuf=txt
 				fparam=param_base.txt
 			elif [ $mtype == "3D" ]; then
 				_mdir=VelMaps_Model
 				_msuf=txt
-				fparam=param_base.txt
+				fparam=param_baseW.txt
 			elif [ $mtype == "1D" ]; then
 				_mdir=VelMaps_Eikonal
 				_msuf=txt_avg
-				fparam=param_base_1D.txt
+				fparam=param_baseW_1D.txt
 			else
 				echo "Unknown model type: "$mtype; exit
 			fi
@@ -79,7 +97,7 @@ for wtype in B R L; do # wave type ( B R L )
 			# stations are no closer than 70 km with each other
 			fsta=`/projects/yeti4009/eqkhyposolver/Scripts/PickStaSparse.sh $clon $clat $Nsta 1 $dismax $dismin`
 			### running time
-			Rtime=`echo $Nsta | awk '{nhr=2.5+$1*0.1; if(nhr>12){nhr=12} printf "%.1f\n", nhr}'`
+			Rtime=`echo $Nsta | awk '{nhr=15.+$1*0.3; if(nhr>24){nhr=24} printf "%.1f\n", nhr}'`
 			### check param file
 			if [ ! -e $fparam ]; then
 				echo "no "$fparam" found!"
@@ -112,9 +130,16 @@ for wtype in B R L; do # wave type ( B R L )
 					fi
 				done
 			fi
+			# pick sac files by station list
+			fsacR=Measurements/saclistR.txt
+			fsacL=Measurements/saclistL.txt
+			fsacR_picked=${_dir}/saclistR.txt
+			fsacL_picked=${_dir}/saclistL.txt
+			PickSAC $fsacR $fsta $fsacR_picked
+			PickSAC $fsacL $fsta $fsacL_picked
 			# produce fparam
 			more $fparam  | sed s/'dflag base'/'dflag '${wtype}/ | sed s/'VelMaps'/${_mdir}/g | sed s/'txt_base'/${_msuf}/g | sed s/'_dis500'/'_dis'${dis}/g | sed s/'results_SAMC_default'/${_dir}/g | awk -v fsta=$fsta -v ex=$exdata '{if($1=="fRm"||$1=="fLm"){print $0,fsta}else{print $0}}END{print ex}' > ${_dir}/param.txt
-			ProduceSBATCH ${_dir}/param.txt ${_dir} $Rtime ${_dir}/run.sbatch -c
+			ProduceSBATCH ${_dir}/param.txt ${_dir} $Rtime ${_dir}/run.sbatch -cs
 			# run/submit
 			echo Starting ${_dir}...
 			sbatch ${_dir}/run.sbatch

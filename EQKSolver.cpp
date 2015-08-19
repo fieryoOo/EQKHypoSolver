@@ -108,7 +108,8 @@ int main( int argc, char* argv[] ) {
 		// ********** Initial simulated annealing to approach global optimum ********** //
 		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
 		if( singleSA ) {
-			int nsearch = 7200, Tfactor = 8;
+			//int nsearch = 7200, Tfactor = 8;
+			int nsearch = 15000, Tfactor = 16;
 			float alpha = Alpha(nsearch, Tfactor); 
 			auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info for accepted searches
 			VO::Output( SIV, eka.outname_misL, true );	// append to file
@@ -119,8 +120,8 @@ int main( int argc, char* argv[] ) {
 		} else {
 			// ********** iterative simulated annealing ********** //
 			// search for epicenter and focal mechanism separately
-			//int niterSA = 3, nsearch = 8192, Tfactor = 16;
-			int niterSA = 2, nsearch = 4096, Tfactor = 8;
+			int niterSA = 3, nsearch = 8192, Tfactor = 16;
+			//int niterSA = 2, nsearch = 4096, Tfactor = 8;
 			for( int iter=0; iter<niterSA; iter++ ) {
 				// search for epicenter
 				ms.FixFocal();				// have focal mechanism fixed
@@ -170,7 +171,7 @@ int main( int argc, char* argv[] ) {
 		// from this state until the probability of acceptance <= Pthreshold
 		ms.EstimatePerturbs( eka, 0.15 );	// sfactor default= 0.1
 		// second (final) Monte Carlo Search with desired perturb sizes
-		nsearch = 50000; 
+		nsearch = 30000; 
 		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 
 		// final output

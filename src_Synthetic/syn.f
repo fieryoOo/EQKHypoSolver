@@ -24,6 +24,7 @@ c MB         dnom=sqrt(arg)
              dnom=sqrt(dist)
 C---- aq: phase delay----------------
              aq=arg+pi2/8.-tstart*om_curr
+C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",aq," ",arg," ",tstart," ",om_curr," ",wv(i)," ",dist
 cMB          aq=pi2/8.-tstart*om_curr
 C      write(*,*) "debug2: ",aq," ",arg," ",pi2," ",tstart," ",om_curr," ",wv(i)," ",dist
 C-----att: attenuation factor--------
@@ -36,12 +37,13 @@ C-----full spectrum=source spectrum*propagation factor----S
              sc=sin(-aq)/dnom*att
              sr=2.*sre(i)/dt
              si=2.*sim(i)/dt
+C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",dnom," ",att," ",dt," ",sre(i)," ",sim(i)
 C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",sre(i)," ",dt," ",sr," ",si
 C            sr=sre(i)/dt
 C            si=sim(i)/dt
              asre(i)=sr*cs-si*sc
              asim(i)=sr*sc+si*cs
-C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",asre(i)*1.0e10," ",asim(i)*1.0e10," ",sr*1.0e10," ",si*1.0e10," ",sc," ",cs
+C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",asre(i)," ",asim(i)," ",sr," ",si," ",sc," ",cs
 C            k=nbase-i+2
 C            asre(k)=asre(i)
 C            asim(k)=-asim(i)

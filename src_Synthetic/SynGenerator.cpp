@@ -242,7 +242,6 @@ bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, con
 	// shift b times to match the data (origin-time = b-time-of-real-data + t0)
 	sacz.shd.b += minfo.t0;	sac1.shd.b += minfo.t0;	sac2.shd.b += minfo.t0;
 
-//sacz.Write("debug.sac"); exit(-3);
 
 	return true;
 }

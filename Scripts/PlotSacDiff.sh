@@ -25,14 +25,14 @@ PlotText() {
 
 NormSac() {
 	local _fsac=$1
-	$exeSacnorm $_fsac $_fsac $tmin $tmax
+	$exeSacnorm $_fsac $_fsac $tl $tu
 }
 
 PlotSac() {
 	local _fsac=$1
 	local _lflag=$2
 	$exeSacdump $_fsac |	psxy -R -J $_lflag -O -K >> $psout
-	#$exeSacnorm $_fsac $_fsac $tmin $tmax
+	#$exeSacnorm $_fsac $_fsac $tl $tu
 	#rm -f ${_fsac}.txt
 }
 
@@ -123,7 +123,8 @@ SCA=-JX10/3.
 psout=${fsac1}.ps
 pwd | psxy $REG $SCA -X6 -Y13.5 -K > $psout
 
-psbasemap -R -J -Ba100f20/a${mak}f${tic}:."RealData(gray) - Synthectic(red)":Wesn -O -K >> $psout
+#psbasemap -R -J -Ba100f20/a${mak}f${tic}:."RealData(gray) - Synthetics":Wesn -O -K >> $psout
+psbasemap -R -J -Ba100f20/a${mak}f${tic}:."Waveforms (Real - Synthetics)":Wesn -O -K >> $psout
 for (( isac=1; isac<=$#; isac++ )); do
 	PlotSac ${fsacs[isac]} ${ltype[isac]}
 done
@@ -176,7 +177,7 @@ psbasemap $REG -JX8/5 -Ba5f1g5:"Period (sec)":/a1f0.2g1:"Ratio"::."Spectral Rati
 for (( isac=1; isac<=$#; isac++ )); do
 	fsac=${fsacs[isac]}
 	fratio=${fsac}_amp_ratio
-	$exeSacARatio $fsac1 $fsac ${fratio} $tmin $tmax
+	$exeSacARatio $fsac1 $fsac ${fratio} $tl $tu
 	$exeSacdump $fratio | tac | awk '{if($1>0.)print 1./$1,$2}' | psxy -R -J ${ltype[isac]} -O -K >> $psout
 	rm -f $fratio
 done
@@ -184,8 +185,8 @@ sta=`echo $fsac1 | awk -F'/' '{print $NF}' | sed s/'.LH'/' '/ | sed s/'.BH'/' '/
 PlotText $REG $sta 0.
 
 # plot phase shift
-REG=-R8/18/-5/5
-psbasemap $REG -JX8/5 -Ba5f1g5:"Period (sec)":/a2f0.5g1:"Time (sec)"::."Phase Shift":WeSn -X0. -Y-7. -O -K >> $psout
+REG=-R8/18/-6/6
+psbasemap $REG -JX8/5 -Ba5f1g5:"Period (sec)":/a2f0.5g1:"Time (sec)"::."Phase Time Shift":WeSn -X0. -Y-7. -O -K >> $psout
 # compute diff (file)
 for (( isac=1; isac<=$#; isac++ )); do
 	fsac=${fsacs[isac]}
@@ -193,6 +194,22 @@ for (( isac=1; isac<=$#; isac++ )); do
 	$exePShift $fsac1 $fsac | awk '$1>0.{print 1./$1,$2}' | psxy -R -J -A ${ltype[isac]} -O -K >> $psout
 done
 PlotText $REG $sta 0.
+
+# legends
+# wave color legend
+#S dx1 symbol size fill pen [ dx2 text ]
+#ltype_all=( '' -W8,100/100/100 -W5,lightred,- -W5,steelblue,- -W5,lightbrown,- -W3,red )
+pslegend -R -D5.5/7./2.8/2.9/BL -J -F -G220 -O -K <<- EOF >> $psout
+G 0.05i
+S 0.25i - 0.4i - 8,100/100/100 0.6i Real
+G 0.1i
+S 0.25i - 0.4i - 5,steelblue 0.6i AK135
+G 0.1i
+S 0.25i - 0.4i - 5,lightbrown 0.6i SLU
+G 0.1i
+S 0.25i - 0.4i - 3,red 0.6i CU
+G 0.05i
+EOF
 
 # finalize
 pwd | psxy -R -J -O >> $psout
