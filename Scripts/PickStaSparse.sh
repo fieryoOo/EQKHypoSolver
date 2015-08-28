@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# != 4 ] && [ $# != 6 ]; then
-	echo "Usage: "$0" [clon] [clat] [#sta to pick] [picktype (0=even-azi, 1=even-space)] [max-dis (optional)] and [min-dis (optional)]"
+	echo "Usage: "$0" [clon] [clat] [#sta to pick] [azi-coverage (360=full-cov, -1=even-space)] [max-dis (optional)] and [min-dis (optional)]"
 	exit
 fi
 
@@ -9,7 +9,7 @@ fi
 clon=$1
 clat=$2
 Nsta=$3
-picktype=$4
+azicov=$4
 dis=1000; dismin=0
 if [ $# == 6 ]; then
 	dis=$5; dismin=$6
@@ -70,7 +70,7 @@ rm -f $floctmp
 exeRand=/home/yeti4009/bin/Rand
 exeDist=/home/yeti4009/bin/get_dist
 fresult=station_${clon}_${clat}_${Nsta}.txt; rm -f $fresult
-if [ $picktype == 0 ]; then
+if [ $azicov -gt 0 ]; then
 	# compute azimuths
 	rm -f tempp
 	while read lon lat sta N; do
@@ -86,9 +86,10 @@ if [ $picktype == 0 ]; then
 
 	# now randomly pick stations
 	#exeRand=/home/tianye/usr/bin/Rand
-	binsize=`echo $Nsta | awk '{print 360./$1}'`
-	azil=`$exeRand 0 | awk -v binsize=$binsize '{print $1*binsize}'`
-	for cazi in `echo $Nsta | awk -v azil=$azil -v Nsta=$Nsta '{for(i=0;i<Nsta;i++){cazi=azil+i*360./Nsta; while(cazi<0.){cazi+=360.} while(cazi>=360.){cazi-=360.} print cazi}}'`; do
+	binsize=`echo $azicov $Nsta | awk '{print $1/$2}'`
+	azil=`$exeRand 0 | awk -v azicov=$azicov '{print $1*azicov}'`
+	#azil=`$exeRand 0 | awk -v binsize=$binsize '{print $1*binsize}'`
+	for cazi in `echo $azil $Nsta $binsize | awk '{azil=$1; Nsta=$2; binsize=$3; for(i=0;i<Nsta;i++){cazi=azil+i*binsize; while(cazi<0.){cazi+=360.} while(cazi>=360.){cazi-=360.} print cazi}}'`; do
 		rand=`$exeRand 1`
 		azi=`echo $rand $cazi $binsize | awk '{print $2+$3*0.2*$1}'`
 		line=`awk -v azi=$azi '{if($4>azi){if(($4-azi)**2<(aziold-azi)**2){print $0}else{print lineold} exit}aziold=$4;lineold=$0}' $floc`

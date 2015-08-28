@@ -31,6 +31,7 @@ public:
 template< class T >
 struct FocalInfo {
 	static constexpr float NaN = -12345.;
+	static constexpr float DEPMAX = 60.;
    T stk, dip, rak, dep, M0;
 
    //FocalInfo( T stkin = 180, T dipin = 45, T rakin = 0, T depin = 10 )
@@ -40,7 +41,7 @@ struct FocalInfo {
 	/* check validation */
 	virtual bool isValid() const {
 		return (stk>=0.&&stk<360.) && (dip>=0.&&dip<=90.) &&
-				 (rak>=-180.&&rak<180.) && (dep>=0.) ;
+				 (rak>=-180.&&rak<180.) && (dep>=0.&&dep<DEPMAX) ;
 	}
 
 	/* correct into the right range */
@@ -179,6 +180,21 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 			return ( FocalInfo<ftype>::isValid() && EpicInfo::isValid() );
 		}
 
+		virtual void Correct() {
+			stk = ShiftInto( stk, 0., 360., 360. );	
+			rak = ShiftInto( rak, -180., 180., 360. );
+			if( ! isValid() )
+				throw std::runtime_error("Error(ModelInfo::Correct): invalid model info = "+toString());
+			//	WarningEA::BadParam( FuncName, "invalid model parameter(s): " + minfo.toString() + ". Corrected!" );
+			//dip = BoundInto( dip, 0., 90. );
+			//dep = BoundInto( dep, 0., DEPMAX );
+		}
+
+		std::string toString() const {
+			std::stringstream ss; ss << *this;
+			return ss.str();
+		}
+
 		friend std::ostream& operator<< ( std::ostream& o, const ModelInfo& m ) {
 			o<< static_cast< const FocalInfo<ftype>& >(m) << "   " << static_cast< const EpicInfo& >(m);
 			return o;
@@ -187,6 +203,19 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 		friend bool operator== ( const ModelInfo& ms1, const ModelInfo& ms2 ) {
 			return ( ( static_cast< const FocalInfo<ftype>& >(ms1) == static_cast< const FocalInfo<ftype>& >(ms2) )
 					&& ( static_cast< const EpicInfo& >(ms1) == static_cast< const EpicInfo& >(ms2) ) );
+		}
+
+	private:
+		// shift by T multiples according to lower and upper bound. Results not guranteed to be in the range
+		inline float ShiftInto( float val, float lb, float ub, float T) const {
+			while(val >= ub) val -= T;
+			while(val < lb) val += T;
+			return val;
+		}
+		inline float BoundInto( float val, float lb, float ub ) const {
+			if( val < lb ) val = lb;
+			else if( val > ub ) val = ub;
+			return val;
 		}
 };
 

@@ -79,7 +79,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			Cstk = Cstkin; Cdip = Cdipin; Crak = Crakin; Cdep = Cdepin;
 			if( Clon<0. ) Clon+=360.;
 			if( Clon<0||Clon>=360. || Clat<-90.||Clat>90. || CM0<1.0e19||CM0>1.0e31 ||
-					Cstk<0||Cstk>=360. || Cdip<0.||Cdip>90. || Crak<-180.||Crak>=180. || Cdep<0. )
+					Cstk<0||Cstk>=360. || Cdip<0.||Cdip>90. || Crak<-180.||Crak>=180. || Cdep<0. || Cdep>=DEPMAX )
 				throw std::runtime_error("SetC");
 			Rlon = Rlonin; Rlat = Rlatin; Rtim = Rtimin; RM0 = RM0in;
 			Rstk = Rstkin; Rdip = Rdipin; Rrak = Rrakin; Rdep = Rdepin;
@@ -103,6 +103,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		void FixEpic() {
 			Plon = Plat = Ptim = 0.;
 			PM0 = pow(RM0, pertfactor);
+			//float curRdep = Rdep>0 ? Rdep : 50.;
 			Pstk = pertfactor * Rstk; Pdip = pertfactor * Rdip;
 			Prak = pertfactor * Rrak; Pdep = pertfactor * Rdep;
 		}
@@ -115,10 +116,10 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 
 		void SetFreeFocal( bool rand_init = false ) {
 			// searching centers and ranges
-			Cstk = 180.; Rstk = 180.; //Pstk = 72.;
-			Cdip = 45.; Rdip = 45.; //Pdip = 18.;
+			Cstk = Rstk = 180.; //Pstk = 72.;
+			Cdip = Rdip = 45.; //Pdip = 18.;
 			Crak = 0.; Rrak = 180.; //Prak = 72.;
-			Cdep = 30.; Rdep = 30.; //Pdep = 12.;
+			Cdep = Rdep = DEPMAX*0.5; //Pdep = 12.;
 			CM0 = M0==NaN ? 5.0e23 : M0; RM0 = 100.;
 			// 1.0e20 = 2.6; 1.0e21 = 3.3; 1.0e22 = 3.9; 1.0e23 = 4.6; 1.0e24 = 5.3; 1.0e25 = 5.9; 
 			// 1.0e26 = 6.6; 1.0e27 = 7.3; 1.0e28 = 7.9; 1.0e29 = 8.6; 1.0e30 = 9.3; 1.0e31 = 9.9;
@@ -129,7 +130,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 				stk = rand_t.Uniform() * 360.;
 				dip = rand_t.Uniform() * 90.;
 				rak = rand_t.Uniform() * 360. - 180.;
-				dep = rand_t.Uniform() * 60.;
+				dep = rand_t.Uniform() * DEPMAX;
 				M0 = pow(10., rand_t.Uniform()*6. + 20.6);	// magnitude 3 - 7
 			}
 		}
@@ -194,6 +195,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 					#pragma omp section
 					{
 					float lb_old = dep - Rdep, ub_old = dep + Rdep;
+					//if( Rdep < 0 ) { lb_old = 0.; ub_old = 200.; }
 					float lb_dep = SearchBound( eka, minfo, minfo.dep, lb_old, Pthreshold, Emin, 10 );
 					float ub_dep = SearchBound( eka, minfo, minfo.dep, ub_old, Pthreshold, Emin, 10 );
 					Pdep = (ub_dep-lb_dep) * sfactor;
@@ -260,8 +262,12 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			}
 
 			// dep
-			lb = Cdep-Rdep; ub = Cdep+Rdep;
-			if( lb < 0. ) lb = 0.;
+			if( Rdep < 0 ) { 
+				lb = 0.; ub = 200.; 
+			} else {
+				lb = Cdep-Rdep; ub = Cdep+Rdep;
+				if( lb < 0. ) lb = 0.;
+			}
 			minew.dep = Neighbour_Reflect(this->dep, Pdep, lb, ub);
 
 			// M0
@@ -285,6 +291,13 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		/* streaming perturbation ranges */
 		friend std::ostream& operator<< ( std::ostream& o, ModelSpace& ms ) {
       //o<<std::fixed<<std::setprecision(2) <<std::setw(6)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(7)<<f.rak<<" "<<std::setprecision(3)<<std::setw(7)<<f.dep; 
+			float deplb, depub;
+			if( ms.Rdep < 0 ) { 
+				deplb = 0.; depub = 200.; 
+			} else {
+				deplb = ms.Cdep-ms.Rdep; depub = ms.Cdep+ms.Rdep;
+				if( deplb < 0. ) deplb = 0.;
+			}
 			o<<std::setprecision(4)
 			<<"  lon ("<<ms.Clon-ms.Rlon<<"~"<<ms.Clon+ms.Rlon<<", "<<ms.Plon<<")"
 			<<"  lat ("<<ms.Clat-ms.Rlat<<"~"<<ms.Clat+ms.Rlat<<", "<<ms.Plat<<")"
@@ -293,7 +306,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			<<"  stk ("<<ms.Cstk-ms.Rstk<<"~"<<ms.Cstk+ms.Rstk<<", "<<ms.Pstk<<")"
 			<<"  dip ("<<ms.Cdip-ms.Rdip<<"~"<<ms.Cdip+ms.Rdip<<", "<<ms.Pdip<<")"
 			<<"  rak ("<<ms.Crak-ms.Rrak<<"~"<<ms.Crak+ms.Rrak<<", "<<ms.Prak<<")\n"
-			<<"  dep ("<<ms.Cdep-ms.Rdep<<"~"<<ms.Cdep+ms.Rdep<<", "<<ms.Pdep<<")"
+			<<"  dep ("<<deplb<<"~"<<depub<<", "<<ms.Pdep<<")"
 			<<"  M0  ("<<std::scientific<<ms.CM0/ms.RM0<<"~"<<ms.CM0*ms.RM0<<", "<<ms.PM0<<")";
 			return o;
 		}
@@ -316,24 +329,27 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		// initialize perturbation length and random number generators
 		void resetPerturb() {
 			// re-compute perturbation ranges
+			float curRdep = Rdep>0 ? Rdep : 50.;
 			Ptim = pertfactor * Rtim; PM0 = pow(RM0, pertfactor);
 			Plon = pertfactor * Rlon; Plat = pertfactor * Rlat;
 			Pstk = pertfactor * Rstk; Pdip = pertfactor * Rdip;
-			Prak = pertfactor * Rrak; Pdep = pertfactor * Rdep;
+			Prak = pertfactor * Rrak; Pdep = pertfactor * curRdep;
 		}
 		void Initialize() {
-			randO.clear();
-			// produce Rand object for each thread
-			for(int i=0; i<omp_get_max_threads(); i++) {
-				// apply separated seed by sleeping
-				randO.push_back( Rand() );
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
+			if( ! this->isValid() )
+				throw std::runtime_error( "invalid model info: " + ModelInfo::toString() );
 			// set model center to the current MState
 			Clon = lon; Clat = lat; Ctim = t0; CM0 = M0;
 			Cstk = stk; Cdip = dip; Crak = rak; Cdep = dep;
 			// compute perturbation ranges
 			resetPerturb();
+			// produce Rand object for each thread
+			randO.clear();
+			for(int i=0; i<omp_get_max_threads(); i++) {
+				// apply separated seed by sleeping
+				randO.push_back( Rand() );
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			}
 		}
 
 		// perturbing values

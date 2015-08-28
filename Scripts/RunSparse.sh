@@ -74,10 +74,12 @@ for wtype in B R L; do # wave type ( B R L )
 			else
 				echo "Unknown model type: "$mtype; exit
 			fi
-			# stations are (approximately) evenly distributed in azimuth
-			#fsta=`/projects/yeti4009/eqkhyposolver/Scripts/PickStaSparse.sh $clon $clat $Nsta 0 $dismax $dismin`
+			# stations are (approximately) evenly distributed in azimuth (180 deg coverage: 180 * Nsta / (Nsta-1))
+			fsta=`/projects/yeti4009/eqkhyposolver/Scripts/PickStaSparse.sh $clon $clat $Nsta 206 $dismax $dismin`
+			# stations are (approximately) evenly distributed in azimuth (full azi coverage)
+			#fsta=`/projects/yeti4009/eqkhyposolver/Scripts/PickStaSparse.sh $clon $clat $Nsta 360 $dismax $dismin`
 			# stations are no closer than 70 km with each other
-			fsta=`/projects/yeti4009/eqkhyposolver/Scripts/PickStaSparse.sh $clon $clat $Nsta 1 $dismax $dismin`
+			#fsta=`/projects/yeti4009/eqkhyposolver/Scripts/PickStaSparse.sh $clon $clat $Nsta -1 $dismax $dismin`
 			### running time
 			Rtime=`echo $Nsta | awk '{nhr=2.5+$1*0.1; if(nhr>12){nhr=12} printf "%.1f\n", nhr}'`
 			### check param file

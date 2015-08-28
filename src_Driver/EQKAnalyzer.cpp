@@ -514,14 +514,10 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 }
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
-bool EQKAnalyzer::chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) const {
-	// check input params (will be corrected in PredictAll)
-	bool isvalid = minfo.isValid();
-	if( ! isvalid ) {
-		std::stringstream ss; ss<<minfo;
-		//throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
-		WarningEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() + ". Corrected!" );
-	}
+bool EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
+	// check/correct input params 
+	minfo.Correct();
+
 	int Rsize = _dataR.size(), Lsize = _dataL.size();
 	if( Rsize==0 && Lsize==0 )
 		throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
@@ -615,13 +611,8 @@ float EQKAnalyzer::Tpeak( const SacRec& sac ) const {
 
 static inline int nint( float val ) { return (int)floor(val + 0.5); }
 bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataRout, SDContainer& dataLout ) const {
-	// check input params (will be corrected in PredictAll)
-	bool isvalid = minfo.isValid();
-	if( ! isvalid ) {
-		std::stringstream ss; ss<<minfo;
-		//throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
-		WarningEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() + ". Corrected!" );
-	}
+	// check/correct input params
+	minfo.Correct();
 
 	// data flags
 	bool RFlag = (datatype==B || datatype==R);
@@ -786,12 +777,9 @@ void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& ou
 
 
 /* -------------------- Output the data and predictions based on the input model info -------------------- */
-void EQKAnalyzer::OutputFits( const ModelInfo& minfo ) {
-	// check input params
-	if( ! minfo.isValid() ) {
-		std::stringstream ss; ss<<minfo;
-		throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
-	}
+void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
+	// check/correct input params
+	minfo.Correct();
 
 	// prepare/update data for the input minfo
 	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
@@ -858,12 +846,9 @@ void EQKAnalyzer::OutputFits( const ModelInfo& minfo ) {
 
 
 /* -------------------- compute and output misfits, separately, for group, phase, and amplitudes -------------------- */
-void EQKAnalyzer::OutputMisfits( const ModelInfo& minfo ) {
-	// check input params
-	if( ! minfo.isValid() ) {
-		std::stringstream ss; ss<<minfo;
-		throw ErrorEA::BadParam( FuncName, "invalid model parameter(s): " + ss.str() );
-	}
+void EQKAnalyzer::OutputMisfits( ModelInfo minfo ) {
+	// check/correct input params
+	minfo.Correct();
 
 	// prepare/update data for the input minfo
 	if( _usewaveform ) {	// fill data vectors for the waveform fitting method

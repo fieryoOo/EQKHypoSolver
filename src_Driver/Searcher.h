@@ -121,10 +121,10 @@ namespace Searcher {
 		// main loop
 		#pragma omp parallel for schedule(dynamic, 1) private(Ndata)
 		for( int i=0; i<nsearch; i++ ) {
-			MI minew;
-			ms.Perturb( minew );
 			float Enew; int isaccepted = 0;	// 0 for rejected
+			MI minew;
 			try {
+				ms.Perturb( minew );
 				dh.Energy( minew, Enew, Ndata );
 				Enew *= ((float)Ndata0 / Ndata);
 			} catch (const std::exception& e) {

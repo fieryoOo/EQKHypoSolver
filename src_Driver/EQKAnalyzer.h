@@ -159,11 +159,11 @@ public:
 	void SetInitSearch( bool isInit ) { _isInit = isInit; }
 
 	// chi-square misfits from measurements-predictions
-	bool chiSquareM( const ModelInfo& minfo, float& chiS, int& N ) const;
+	bool chiSquareM( ModelInfo minfo, float& chiS, int& N ) const;
 
 	// chi-square misfits from waveform data-synthetics
-	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
-	bool chiSquareW( const ModelInfo& minfo, float& chiS, int& N ) const {
+	bool chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
+	bool chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
 		SDContainer dataR, dataL;
 		return chiSquareW( minfo, chiS, N, false, dataR, dataL );
 	}
@@ -202,9 +202,9 @@ public:
    //void ComputeMisfitsAll();
 
    // output G,P,A data and predictions to separated files for each period
-	void OutputFits( const ModelInfo& minfo );
+	void OutputFits( ModelInfo minfo );
    // compute and output misfits, separately, for group, phase, and amplitudes
-	void OutputMisfits( const ModelInfo& minfo );
+	void OutputMisfits( ModelInfo minfo );
 	// output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves
 	void OutputSourcePatterns( const ModelInfo& mi );
 	// output real (processed) and synthetic waveforms when the waveform fitting method is used
@@ -212,7 +212,7 @@ public:
 	void OutputWaveforms( const ModelInfo& mi, const std::string& outdir );
 
 protected:
-	static const int NdataMin = 5;
+	static const int NdataMin = 3;
 
 public:
 	/* ---------- input parameters that needs to be externally accessible ---------- */
