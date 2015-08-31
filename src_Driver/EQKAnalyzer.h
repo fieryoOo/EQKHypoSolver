@@ -159,40 +159,39 @@ public:
 	void SetInitSearch( bool isInit ) { _isInit = isInit; }
 
 	// chi-square misfits from measurements-predictions
-	bool chiSquareM( ModelInfo minfo, float& chiS, int& N ) const;
+	void chiSquareM( ModelInfo minfo, float& chiS, int& N ) const;
 
 	// chi-square misfits from waveform data-synthetics
-	bool chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
-	bool chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
+	void chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
+	void chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
 		SDContainer dataR, dataL;
-		return chiSquareW( minfo, chiS, N, false, dataR, dataL );
+		chiSquareW( minfo, chiS, N, false, dataR, dataL );
 	}
-	bool FilldataW( const ModelInfo& minfo ) {
+	void FilldataW( const ModelInfo& minfo ) {
 		float chiS; int N;
 		SDContainer dataR, dataL;
-		if( ! chiSquareW( minfo, chiS, N, true, dataR, dataL ) ) return false;
+		chiSquareW( minfo, chiS, N, true, dataR, dataL );
 		_dataR.clear(); _dataL.clear(); 
 		if(dataR.type!=Undefined) _dataR.push_back( std::move(dataR) );
 		if(dataL.type!=Undefined) _dataL.push_back( std::move(dataL) );
-		return true;
 	}
 
 	// call the relevant chiSquare method based on the _usewaveform value
-	inline bool chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
+	inline void chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
 		if( _usewaveform ) {
-			return chiSquareW( minfo, chiS, N );
+			chiSquareW( minfo, chiS, N );
 		} else {
-			return chiSquareM( minfo, chiS, N );
+			chiSquareM( minfo, chiS, N );
 		}
 	}
 
-	bool Energy( const ModelInfo& minfo, float& E, int& Ndata ) const {
+	void Energy( const ModelInfo& minfo, float& E, int& Ndata ) const {
 		float chiS; 
-		bool isvalid = chiSquare( minfo, chiS, Ndata );
+		chiSquare( minfo, chiS, Ndata );
 		E = chiS * _indep_factor; //chiS/(Ndata-8.);
 		if( Ndata < NdataMin )
 			throw ErrorEA::InsufData( FuncName, std::to_string(Ndata) + " < " + std::to_string(NdataMin) );
-		return isvalid;
+		//return isvalid;
 	}
 
    /* output misfit-v.s.-focal_corrections

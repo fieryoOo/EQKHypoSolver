@@ -514,7 +514,7 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 }
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
-bool EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
+void EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
 	// check/correct input params 
 	minfo.Correct();
 
@@ -586,7 +586,6 @@ bool EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
 		}
 	}
 
-	return isvalid;
 }
 
 /* use SacRec::Tpeak instead
@@ -610,7 +609,7 @@ float EQKAnalyzer::Tpeak( const SacRec& sac ) const {
 */
 
 static inline int nint( float val ) { return (int)floor(val + 0.5); }
-bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool filldata, SDContainer& dataRout, SDContainer& dataLout ) const {
+void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataRout, SDContainer& dataLout ) const {
 	// check/correct input params
 	minfo.Correct();
 
@@ -724,7 +723,6 @@ bool EQKAnalyzer::chiSquareW( const ModelInfo& minfo, float& chiS, int& N, bool 
 	if( RFlag ) chiSW( _synGR, _sac3VR, dataRout );
 	if( LFlag ) chiSW( _synGL, _sac3VL, dataLout );
 
-	return isvalid;
 }
 
 

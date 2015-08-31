@@ -181,11 +181,13 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 		}
 
 		virtual void Correct() {
+			float stkold=stk, rakold=rak;
 			stk = ShiftInto( stk, 0., 360., 360. );	
 			rak = ShiftInto( rak, -180., 180., 360. );
 			if( ! isValid() )
 				throw std::runtime_error("Error(ModelInfo::Correct): invalid model info = "+toString());
-			//	WarningEA::BadParam( FuncName, "invalid model parameter(s): " + minfo.toString() + ". Corrected!" );
+			if( stk!=stkold || rak!=rakold )
+				std::cerr<<"Warning(ModelInfo::Correct): either stk or rak got corrected ("<<*this<<")!"<<std::endl;
 			//dip = BoundInto( dip, 0., 90. );
 			//dep = BoundInto( dep, 0., DEPMAX );
 		}

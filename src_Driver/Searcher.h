@@ -22,7 +22,7 @@ namespace Searcher {
 
 	template < class MI >
 	class IDataHandler {
-		virtual bool Energy( const MI&, float& E, int& Ndata ) const = 0;
+		virtual void Energy( const MI&, float& E, int& Ndata ) const = 0;
 	};
 
 

@@ -23,11 +23,8 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 
 		// construct through param file
 		ModelSpace( const std::string& fname ) {
-			LoadParams( fname );
-			//if( ! this->isValid() )
-			//	throw std::runtime_error( "invalid model info: " + ModelInfo::toString() );
-			this->Correct();
 			Initialize();
+			LoadParams( fname );
 		}
 
 		// IO
@@ -67,9 +64,6 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			std::cout<<"### ModelSpace::LoadParams: "<<nparam<<" succed loads from param file "<<fname<<". ###"<<std::endl;
 
 			// reset model center, perturbation ranges, and random number generators
-			//if( ! this->isValid() )
-			//	throw std::runtime_error( "invalid model info: " + ModelInfo::toString() );
-			this->Correct();
 			Initialize();
 		}
 
@@ -241,7 +235,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 
 		void Perturb( ModelInfo& minew ) const {
 			//if( ! (validS && validP) ) throw std::runtime_error("incomplete model space");
-			if( ! isValid() ) throw std::runtime_error("invalid/incomplete model info");
+			if( ! isValid() ) throw std::runtime_error("incomplete model info");
 
 			// stk
 			float stk_cur = ShiftInto(this->stk, Cstk-Rstk, Cstk+Rstk, 360.);
@@ -268,9 +262,12 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			}
 
 			// dep
-			lb = Cdep-Rdep; ub = Cdep+Rdep;
-			if( lb < 0. ) lb = 0.;
-			if( ub > DEPMAX ) ub = DEPMAX;
+			if( Rdep < 0 ) { 
+				lb = 0.; ub = 200.; 
+			} else {
+				lb = Cdep-Rdep; ub = Cdep+Rdep;
+				if( lb < 0. ) lb = 0.;
+			}
 			minew.dep = Neighbour_Reflect(this->dep, Pdep, lb, ub);
 
 			// M0
@@ -294,9 +291,13 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		/* streaming perturbation ranges */
 		friend std::ostream& operator<< ( std::ostream& o, ModelSpace& ms ) {
       //o<<std::fixed<<std::setprecision(2) <<std::setw(6)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(7)<<f.rak<<" "<<std::setprecision(3)<<std::setw(7)<<f.dep; 
-			float deplb = ms.Cdep-ms.Rdep, depub = ms.Cdep+ms.Rdep;
-			if( deplb < 0. ) deplb = 0.;
-			if( depub > DEPMAX ) depub = DEPMAX;
+			float deplb, depub;
+			if( ms.Rdep < 0 ) { 
+				deplb = 0.; depub = 200.; 
+			} else {
+				deplb = ms.Cdep-ms.Rdep; depub = ms.Cdep+ms.Rdep;
+				if( deplb < 0. ) deplb = 0.;
+			}
 			o<<std::setprecision(4)
 			<<"  lon ("<<ms.Clon-ms.Rlon<<"~"<<ms.Clon+ms.Rlon<<", "<<ms.Plon<<")"
 			<<"  lat ("<<ms.Clat-ms.Rlat<<"~"<<ms.Clat+ms.Rlat<<", "<<ms.Plat<<")"
@@ -328,13 +329,15 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		// initialize perturbation length and random number generators
 		void resetPerturb() {
 			// re-compute perturbation ranges
-			//float curRdep = Rdep>0 ? Rdep : 50.;
+			float curRdep = Rdep>0 ? Rdep : 50.;
 			Ptim = pertfactor * Rtim; PM0 = pow(RM0, pertfactor);
 			Plon = pertfactor * Rlon; Plat = pertfactor * Rlat;
 			Pstk = pertfactor * Rstk; Pdip = pertfactor * Rdip;
-			Prak = pertfactor * Rrak; Pdep = pertfactor * Rdep;
+			Prak = pertfactor * Rrak; Pdep = pertfactor * curRdep;
 		}
 		void Initialize() {
+			if( ! this->isValid() )
+				throw std::runtime_error( "invalid model info: " + ModelInfo::toString() );
 			// set model center to the current MState
 			Clon = lon; Clat = lat; Ctim = t0; CM0 = M0;
 			Cstk = stk; Cdip = dip; Crak = rak; Cdep = dep;
@@ -392,11 +395,13 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 				// compute E and check validity
 				int Ndata; float E, P;
 				try {
-					eka.Energy(minfo, E, Ndata);
-					P = exp(0.5*(Emin-E));
-				} catch(std::exception& e) {	// boundary hit
+				} catch(std::exception& e) {
+				}
+
+				if( ! eka.Energy(minfo, E, Ndata) ) {	// boundary hit
 					P = 0.;
-					//WarningEA::BadParam( FuncName, "invalid model parameter(s): " + minfo.toString() + ". Corrected!" );
+				} else {	// not hit
+					P = exp(0.5*(Emin-E));
 				}
 				//std::cerr<<isearch<<"   "<<minfo<<"   "<<E<<" "<<Emin<<" "<<P<<std::endl;
 				//std::cerr<<"m_direction="<<direct<<"; after_move: key="<<key<<" E="<<E<<" P="<<P<<"   Pthred="<<Pthsd<<"   bound="<<key_orig<<"->"<<bound<<"\n";
