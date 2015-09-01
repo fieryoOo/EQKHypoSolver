@@ -15,7 +15,8 @@ i: Stop after outputing the initial fits, misfits,
 c: Computes/outputs the initial chi-square
 r: Output the initial source radiation pattern
 s: do a single big SA for all params instead of the iterative SA
-m: start the Monte-Carlo search immediately (assuming a close-enough input model state)
+g: run only a fast SA to stablize, followed by the Monte-Carlo search (assuming close-enough input model info)
+m: start the Monte-Carlo search immediately (assuming highly-optimized input model info)
 e: Estimate/print perturbation steps at the initial state
 d: Debug mode. Computes the initial chi-square of 
 	multiple model states taken in from the standard input.
@@ -27,7 +28,7 @@ inline float Alpha( const int nsearch, const float Tfactor ) {
 int main( int argc, char* argv[] ) {
 	if( argc < 2 ) {
 		std::cerr<<"Usage: "<<argv[0]<<" [param file] "
-					<<"[options (-i=initial-only  -c=chiSquare-init -s=single-SA -m=Monte-Carlo-only -r=rad-patterns -e=estimate-perturb -d=debug-mode)]"<<std::endl;
+					<<"[options (-i=initial-only  -c=chiSquare-init -s=single-SA -g=good-initial -m=Monte-Carlo-only -r=rad-patterns -e=estimate-perturb -d=debug-mode)]"<<std::endl;
 		return -1;
 	}
 
@@ -106,11 +107,15 @@ int main( int argc, char* argv[] ) {
 		// option -s: do a single big SA for all params instead of the iterative SA
 		bool singleSA = std::find(options.begin(), options.end(), 's') != options.end();
 
-		// option -m: start the Monte-Carlo search immediately (assuming a close-enough input model state)
-		bool skipSA = std::find(options.begin(), options.end(), 'm') != options.end();
+		// option -g: run only a fast SA to stablize, followed by the Monte-Carlo search (assuming close-enough input model info)
+		bool doSA1 = std::find(options.begin(), options.end(), 'g') == options.end();
+
+		// option -m: start the Monte-Carlo search immediately (assuming a highly-optimized input model state)
+		bool doSA2 = std::find(options.begin(), options.end(), 'm') == options.end();
+		doSA1 &=  doSA2;
 
 		// ********** Initialize simulated annealing to approach global optimum ********** //
-		if( ! skipSA ) {
+		if( doSA1 ) {
 
 			ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
 			if( singleSA ) {
@@ -153,8 +158,10 @@ int main( int argc, char* argv[] ) {
 				}
 				//ms.unFix();	// free both to perturb // not necessary, freed in 'Bound()'
 			}
+		}
 
-			// ********** Post simulated annealing for further optimization ********** //
+		// ********** Post simulated annealing for further optimization ********** //
+		if( doSA2 ) {
 			// constrain model to perturb near the current Mstate ( Rparam = ? * (0.15, 0.15, 2, 30, 20, 30, 5) )
 			// with a small pertfactor to approach the optimum solution faster
 			ms.Bound( 2.5, 0.03 );
