@@ -5,7 +5,7 @@
 
 int main( int argc, char* argv[] ) {
 	if( argc!=4 && argc!=6 ) {
-		std::cerr<<"Usage: "<<argv[0]<<" [sac1] [sac2] [sac_outname] [tmin(optional)] [tmax(optional)]"<<std::endl;
+		std::cerr<<"Usage: "<<argv[0]<<" [sac1] [sac2] [sac_outname (cout=print to screen)] [tmin(optional)] [tmax(optional)]"<<std::endl;
 		exit(-1);
 	}
 
@@ -25,10 +25,14 @@ int main( int argc, char* argv[] ) {
 		sac1.clear(); sac2.clear();
 
 		sac1_am.Divf(sac2_am);
-		sac1_am.Write( argv[3] );
-		//SacRec sacout;
-		//sac1_am.Smooth(0.003, sacout);
-		//sacout.Write( argv[3] );
+
+		// output
+		std::string outname(argv[3]);
+		if( outname == "cout" ) {
+			sac1_am.Dump();
+		} else {
+			sac1_am.Write( outname );
+		}
 
 	} catch( std::exception& e ) {
 		std::cerr<<e.what()<<std::endl;

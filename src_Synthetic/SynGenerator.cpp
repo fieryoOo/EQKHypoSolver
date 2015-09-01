@@ -237,8 +237,13 @@ bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, con
 			&npts, freq, &delta, &nper, &key_compr, &elatc, &elonc, qR, qL,
 			&im, &aM, tm, ampl, cr, ul, ur, wvl, wvr, v, dvdz, ratio, I0,
 			&(latc[ista]), &(lon[ista]), sacz.sig.get(), sac1.sig.get(), sac2.sig.get(), &rotate );
-	// flip (misha's coordinate is upside down)
-	sacz.Mul(-1.); sac1.Mul(-1.); sac2.Mul(-1.);
+	if( sigR == '+' ) {
+		// flip (misha's coordinate is upside down)
+		sacz.Mul(-1.); sac1.Mul(-1.); sac2.Mul(-1.);
+	} else {
+		// flip and correct for unit (incorrect Love unit in Misha's code)
+		sacz.Mul(-1.0e9); sac1.Mul(-1.0e9); sac2.Mul(-1.0e9);
+	}
 	// shift b times to match the data (origin-time = b-time-of-real-data + t0)
 	sacz.shd.b += minfo.t0;	sac1.shd.b += minfo.t0;	sac2.shd.b += minfo.t0;
 
