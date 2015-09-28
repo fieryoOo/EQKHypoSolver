@@ -28,7 +28,7 @@ extern"C" {
 	void cal_synsac_( int* ista, char* its, char* sigR, char* sigL, float* cor, float* f1, float* f2, float* f3, float* f4,
 							float* vmax, float* fix_vel, int* iq, int* npoints, float freq[2000], float* dt, int* nper,
 							bool* key_compr, float* elatc, float* elonc, float qR[2000], float qL[2000], int* im, float* aM, float tm[6],
-							float ampl[2000], float cr[2000], float ul[2000], float ur[2000], float wvl[2000], float wvr[2000],
+							float ampl[2000], float cl[2000], float cr[2000], float ul[2000], float ur[2000], float wvl[2000], float wvr[2000],
 							float v[2000][3], float dvdz[2000][3], float ratio[2000], float I0[2000], float* slatc, float* slon,
 							float* sigz, float* sign, float* sige, bool* rotate );
 
@@ -190,9 +190,6 @@ void SynGenerator::TraceAll() {
 
 bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, const float slat, int npts, float delta,
 										 float f1, float f2, float f3, float f4, SacRec& sacz, SacRec& sac1, SacRec& sac2, bool rotate ) {
-//std::cerr<<staname<<" "<<slon<<" "<<slat<<" "<<npts<<" "<<delta<<" "<<f1<<" "<<f2<<" "<<f3<<" "<<f4<<" "<<rotate<<std::endl;
-//std::cerr<<minfo<<std::endl;
-//std::cerr<<name_fmodel<<" "<<name_feigen<<" "<<type<<" "<<modestr<<" "<<permin<<" "<<permax<<" "<<traced<<std::endl;
 	// trace all GCPs
 	if( ! traced ) TraceAll();
 
@@ -207,7 +204,7 @@ bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, con
    //if(TMAX.gt.(nt-1)*dper+per1)TMAX=PERMAX-2.*dper	// these are what misha had in the fortran version
    //if(TMIN.lt.per1)TMIN=PERMIN+2.*dper					// cannot understand the logic...
 	if( 1./f1>permax || 1./f4<permin )
-		throw std::runtime_error("filter corner freq out of range!");
+		throw std::runtime_error("Error(SynGenerator::ComputeSyn): corner freq out of range!");
 
 	// search for the requested station in the list
 	int ista = 0;
@@ -235,18 +232,15 @@ bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, con
 	int ista_f = ista+1;
 	cal_synsac_( &ista_f, &its, &sigR, &sigL, pcor.get(), &f1, &f2, &f3, &f4, &vmax, &fix_vel, &iq,
 			&npts, freq, &delta, &nper, &key_compr, &elatc, &elonc, qR, qL,
-			&im, &aM, tm, ampl, cr, ul, ur, wvl, wvr, v, dvdz, ratio, I0,
+			&im, &aM, tm, ampl, cl, cr, ul, ur, wvl, wvr, v, dvdz, ratio, I0,
 			&(latc[ista]), &(lon[ista]), sacz.sig.get(), sac1.sig.get(), sac2.sig.get(), &rotate );
-	if( sigR == '+' ) {
-		// flip (misha's coordinate is upside down)
-		sacz.Mul(-1.); sac1.Mul(-1.); sac2.Mul(-1.);
-	} else {
-		// flip and correct for unit (incorrect Love unit in Misha's code)
-		sacz.Mul(-1.0e9); sac1.Mul(-1.0e9); sac2.Mul(-1.0e9);
-	}
+	// check results
+	bool valid = sigR=='+' ? sacz.isValid() : sac2.isValid();
+	if( ! valid ) return false;
+	// flip (misha's coordinate is upside down)
+	sacz.Mul(-1.);	if( !rotate ) sac2.Mul(-1.); 
 	// shift b times to match the data (origin-time = b-time-of-real-data + t0)
 	sacz.shd.b += minfo.t0;	sac1.shd.b += minfo.t0;	sac2.shd.b += minfo.t0;
-
 
 	return true;
 }

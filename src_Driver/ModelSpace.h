@@ -64,7 +64,8 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			}
 			fin.close();
 
-			std::cout<<"### ModelSpace::LoadParams: "<<nparam<<" succed loads from param file "<<fname<<". ###"<<std::endl;
+			std::cout<<"### ModelSpace::LoadParams: "<<nparam<<" succed loads from param file "<<fname<<". ###\n"
+						<<"    current model state = "<<MInfo()<<std::endl;
 
 			// reset model center, perturbation ranges, and random number generators
 			//if( ! this->isValid() )
@@ -73,8 +74,9 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			Initialize();
 		}
 
+		const ModelInfo& MInfo() const { return dynamic_cast<const ModelInfo&>(*this); }
 		inline void SetMState( const ModelInfo& mi ) {
-			static_cast<ModelInfo&>(*this) = mi;
+			dynamic_cast<ModelInfo&>(*this) = mi;
 		}
 
 		void SetSpace( const float Clonin, const float Clatin, const float Ctimin, const float CM0in,
@@ -236,7 +238,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 					} // section 8
 				} // omp sections ends
 			} // parallel ends
-			std::cout<<"### Model state after estimating perturb step sizes:\n"<<*this<<std::endl;
+			std::cout<<"### State of the model space after estimating perturb step sizes:\n"<<*this<<std::endl;
 		}
 
 		void Perturb( ModelInfo& minew ) const {

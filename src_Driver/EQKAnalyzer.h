@@ -210,9 +210,6 @@ public:
 	void OutputWaveforms( const ModelInfo& mi ) { OutputWaveforms( mi, outdir_sac );	}
 	void OutputWaveforms( const ModelInfo& mi, const std::string& outdir );
 
-protected:
-	static const int NdataMin = 3;
-
 public:
 	/* ---------- input parameters that needs to be externally accessible ---------- */
 	FileName outname_misF;           // filename for output focal misfit
@@ -224,7 +221,13 @@ public:
 	FileName outdir_sac;					// dirname for output real and synthetic sacs
 
 protected:
+	static const int NdataMin = 3;
 	static constexpr float NaN = AziData::NaN;
+	static const bool rotateSyn = false;		// false=R&T; true=N&E
+   static constexpr float _SNRMIN = 18.;		/* allowed min SNR for waveform fitting */
+   static constexpr float _DISMIN = 0.;			/* allowed min */
+   static constexpr float _DISMAX = 1000.;		/* and max event-station distance for location searching */
+
 private:
 	// option 1. measurements
 	// RadPattern objects for predicting source terms
@@ -240,10 +243,16 @@ private:
 	std::vector<SacRec3> _sac3VR, _sac3VL;
 	SynGenerator _synGR, _synGL;
 
+	// initial location ( for computing dis when loading data )
+	float initlon, initlat;
+
 	/* ---------- input parameters ---------- */
 	// search area of epicenter
 	//float clon, clat, ct0 = 0.;
 	//float Rs, Rlon, Rlat, Rt = 20.;	// Rlon: Rs(km) in longitude(deg)
+	// data selection
+   float SNRMIN = _SNRMIN;	// for waveform fitting method only 
+	float DISMIN = _DISMIN, DISMAX = _DISMAX;		
 	// data type
 	char datatype_name;
 	Dtype datatype;

@@ -28,7 +28,7 @@ GetSNR() {
 
 GetSNR1() {
 	local _sta=$1
-	local _fsac=`ls ${wdir}/${_sta}.?HZ_real.SAC 2> /dev/null`
+	local _fsac=`ls ${wdir}/${_sta}.?${ch}_real.SAC 2> /dev/null`
 	succ=true
 	if [ `echo $_fsac | awk '{print NF}'` == 0 ] || [ ! -e $_fsac ]; then
 		echo "sac file "$_fsac" not found for SNR"
@@ -44,11 +44,11 @@ GetSNR1() {
 GetSNR2() {
 	succ=true
    local _sta=$1
-   local _f1=/work1/tianye/EQKLocation/SAC/Disps/${event}_disp_LHZ_10sec.txt
-   local _f2=/work1/tianye/EQKLocation/SAC/Disps/${event}_disp_LHZ_16sec.txt
+   local _f1=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_10sec.txt`
+   local _f2=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_16sec.txt`
 	if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then
-		_f1=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_LHZ_10sec.txt
-		_f2=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_LHZ_16sec.txt
+		_f1=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_${ch}_10sec.txt
+		_f2=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_${ch}_16sec.txt
 		if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then succ=false; return; fi
 	fi
 
@@ -77,8 +77,8 @@ SNR2Size() {
 
 GetCC() {
 	local _sta=$1
-	local _fsac1=`ls ${wdir}/${_sta}.?HZ_real.SAC 2> /dev/null`
-	local _fsac2=`ls ${wdir}/${_sta}.?HZ_syn.SAC 2> /dev/null`
+	local _fsac1=`ls ${wdir}/${_sta}.?${ch}_real.SAC 2> /dev/null`
+	local _fsac2=`ls ${wdir}/${_sta}.?${ch}_syn.SAC 2> /dev/null`
 	succ=true
 	if [ ! -e $_fsac1 ] || [ ! -e $_fsac2 ]; then
 		echo "sac file "$_fsac1" or "$_fsac2" not found for CC"
@@ -161,14 +161,23 @@ PlotMap() {
 
 
 ### main ###
-if [ $# != 1 ] && [ $# != 2 ] && [ $# != 3 ]; then
-	echo "Usage: "$0" [result_file] [waveform dir (optional)] [plot type (default=0=group, 1=CorrC)]"
+if [ $# != 2 ] && [ $# != 3 ] && [ $# != 4 ]; then
+	echo "Usage: "$0" [result_file] [wtype (R or L)] [waveform dir (optional)] [plot type (default=0=group, 1=CorrC)]"
 	exit
 fi
 
 fin=$1
 if [ ! -e $fin ]; then
 	echo "bad file: "$fin
+	exit
+fi
+wtype=$2
+if [ $wtype == 'R' ]; then
+	ch='HZ'
+elif [ $wtype == 'L' ]; then
+	ch='HT'
+else
+	echo "unknown wave type: "$wtype
 	exit
 fi
 
@@ -211,9 +220,9 @@ fi
 fsta=${Sdir}/station.lst
 
 ### check existence of dir ./waveforms
-if [ $# -ge 2 ]; then
+if [ $# -ge 3 ]; then
 	useW=true
-	wdir=$2
+	wdir=$3
 elif [ -e ./waveforms ]; then
 	useW=true
 	wdir=./waveforms
@@ -228,7 +237,7 @@ else
 fi
 
 ### compute
-if [ $# == 3 ] && [ $3 == 1 ]; then
+if [ $# == 4 ] && [ $4 == 1 ]; then
 	cc=true
 else
 	cc=false

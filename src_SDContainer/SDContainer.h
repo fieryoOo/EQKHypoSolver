@@ -161,8 +161,8 @@ protected:
    static constexpr float Min_Perc = 0.8;							/* allowed min fraction of path length in the vel map */
    static constexpr float Lfactor = 2.5;							/* define lamda = per * Lfactor for PathAvg */
 
-   static constexpr float DISMIN = 0.;								/* allowed min */
-   static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */
+   //static constexpr float DISMIN = 0.;								// defined in EQKAnalyzer!! /* allowed min */
+   //static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */
 
    static constexpr float stdGest = 4.5;							/* an estimation of GroupT (sec), */
    static constexpr float stdPest = 1.5;							/* PhaseT (sec), */

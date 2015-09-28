@@ -20,8 +20,8 @@ C------------OUTPUT: seism------------------------------------
              arg=wv(i)*dist
              if(key_compr)arg=om_curr*dist/fix_vel
 C-----dnom: geometrical spreading----
-c MB         dnom=sqrt(arg)
-             dnom=sqrt(dist)
+             dnom=sqrt(arg)
+C             dnom=sqrt(dist)
 C---- aq: phase delay----------------
              aq=arg+pi2/8.-tstart*om_curr
 C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",aq," ",arg," ",tstart," ",om_curr," ",wv(i)," ",dist
@@ -37,6 +37,7 @@ C-----full spectrum=source spectrum*propagation factor----S
              sc=sin(-aq)/dnom*att
              sr=2.*sre(i)/dt
              si=2.*sim(i)/dt
+C           write(*,*) i,sre(i), sim(i), dt, n2pow
 C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",dnom," ",att," ",dt," ",sre(i)," ",sim(i)
 C             if(mod(i,22).eq.0.and.i.le.100) write(*,*) i," ",sre(i)," ",dt," ",sr," ",si
 C            sr=sre(i)/dt

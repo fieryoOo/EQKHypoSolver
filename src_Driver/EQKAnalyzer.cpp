@@ -67,7 +67,9 @@ void EQKAnalyzer::LoadParams( const FileName& fname, const bool MoveF ) {
    }
    fin.close();
 
-   std::cout<<"### EQKAnalyzer::LoadParams: "<<nparam<<" succed loads from param file "<<fname<<". ###"<<std::endl;
+   std::cout<<"### EQKAnalyzer::LoadParams: "<<nparam<<" succed loads from param file "<<fname<<". ###\n"
+				<<"    disRange = "<<DISMIN<<" - "<<DISMAX<<" perRange = "<<1./f3<<" - "<<1./f2<<"\n"
+				<<"    SNRmin = "<<SNRMIN<<"(for waveform-fitting) datatype = "<<datatype_name<<" indep_factor = "<<_indep_factor<<std::endl;
 
    // check clon/clat validation and initialize einfo
    //if( ! InitEpic() ) throw ErrorEA::BadParam(FuncName, "invalid Rs | clon | clat");
@@ -103,6 +105,14 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "noG" ) { succeed = true; _useG = false; }
 	else if( stmp == "noP" ) { succeed = true; _useP = false; }
 	else if( stmp == "noA" ) { succeed = true; _useA = false; }
+	else if( stmp == "SNRMIN" ) succeed = buff >> SNRMIN;
+	else if( stmp == "DISMIN" ) succeed = buff >> DISMIN;
+	else if( stmp == "DISMAX" ) succeed = buff >> DISMAX;
+	else if( stmp == "lon" ) { 
+		succeed = buff >> initlon; 
+		if( succeed && initlon<0.) initlon += 360.; 
+	}
+	else if( stmp == "lat" ) succeed = buff >> initlat;
 	else if( stmp == "fmodelR" ) succeed = buff >> fmodelR;
 	else if( stmp == "fmodelL" ) succeed = buff >> fmodelL;
 	else if( stmp == "fsaclistR" ) {
@@ -118,12 +128,12 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "permin" ) {
 		float permin;
 		succeed = buff >> permin;
-		f3 = 1./permin; f4 = 1.2/permin;
+		f3 = 1./permin; f4 = 1.1/permin;
 	}
 	else if( stmp == "permax" ) {
 		float permax;
 		succeed = buff >> permax;
-		f1 = 0.8/permax; f2 = 1./permax;
+		f1 = 0.9/permax; f2 = 1./permax;
 	}
 	else if( stmp == "indep" ) { 
 		succeed = buff >> _indep_factor;
@@ -175,8 +185,6 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 			rename(outname.c_str(), oldname.c_str());
 		}
 		*/
-	}
-	else if( stmp == "fsaclistR" ) {
 	}
 	else if( stmp == "fmisF" ) {
 		FileName& outname = outname_misF;
@@ -337,17 +345,25 @@ void EQKAnalyzer::LoadData() {
 		// lambda function that loads a single sac file into both sac3V and synG
 		auto LoadSac = [&]( const std::string& sacname, SynGenerator& synG, std::vector<SacRec3>& sac3V ) {
 			SacRec sac(sacname); sac.Load();
-			if( sac.shd.depmax!=sac.shd.depmax ) return;
+			auto& shd = sac.shd;
+			if( shd.depmax!=shd.depmax ) return;
+			// check/define event location in sac header
+			if( shd.evlo<-180 || shd.evla<-90 ) {
+				shd.evlo = initlon;
+				shd.evla = initlat;
+			}
+			// check distance
+			float dis = sac.Dis();
+			if( dis<DISMIN || dis>DISMAX ) return;
 			// SNR
-			float dist = sac.shd.dist;
-			sac.shd.user1 = sac.SNR(dist*0.2, dist*0.5, dist*0.5+500., dist*0.5+1000.);
-			if( sac.shd.user1 < 18. ) return;
+			shd.user1 = sac.SNR(dis*0.2, dis*0.5, dis*0.5+500., dis*0.5+1000.);
+			if( shd.user1 < SNRMIN ) return;
 			// filter
 			sac.Resample();	// sample grid alignment
 			if( sacRtype == 1 ) sac.Integrate();
 			sac.Filter(f1,f2,f3,f4);
 			// zoom in to the surface wave window
-			float dis = sac.Dis(), tb, te;
+			float tb, te;
 			if( dis < 300. ) {
 				tb = std::max(dis*0.35-45., 0.);
 				te = tb + 90.;
@@ -355,14 +371,14 @@ void EQKAnalyzer::LoadData() {
 				tb = dis*0.2; te = dis*0.5;
 			}
 			sac.cut(tb, te);
-			sac.shd.user2 = tb; sac.shd.user3 = te;
+			shd.user2 = tb; shd.user3 = te;
 			// FFT
 			SacRec sac_am, sac_ph;
 			sac.ToAmPh(sac_am, sac_ph);
 			// take the amplitude from IFFT for envelope
-			SacRec sacEnv; sacEnv.shd = sac.shd;
+			SacRec sacEnv; sacEnv.shd = shd;
 			sacEnv.FromAmPh(sac_am, sac_ph, 2); 
-			sac.shd.user4 = sacEnv.Tpeak();
+			shd.user4 = sacEnv.Tpeak();
 			// save sac files and put a station record into synGR
 			synG.PushbackSta( sac );
 			sac3V.push_back( SacRec3{ std::move(sac), std::move(sac_am), std::move(sac_ph) } );
@@ -393,34 +409,28 @@ void EQKAnalyzer::LoadData() {
 
 		std::cout<<"### "<<_sac3VR.size()<<"(Rayl) + "<<_sac3VL.size()<<"(Love) sac file(s) loaded. ###"<<std::endl;
 	} else {	// read DISP measurements
+		auto LoadSDData = [&]( const std::map<float, std::array<FileName, 4> >& flist, std::vector<SDContainer>& dataV, const Dtype t ) {
+			dataV.clear();
+			for( const auto& f : flist ) {
+				const float per = f.first;
+				const auto& farray = f.second;
+				// farray[0]: measurement file
+				// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
+				// farray[3]: list of stations to be used
+				float velG, velP;
+				SDContainer sd;
+				if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
+					sd = SDContainer(per, t, farray[0], velG, velP, farray[3]);
+				} else {
+					sd = SDContainer(per, t, farray[0], farray[1], farray[2], farray[3]);
+				}
+				dataV.push_back( sd );
+			}
+		};
 		// Rayleigh
-		_dataR.clear();
-		for( const auto& fR : fRlist ) {
-			const float per = fR.first;
-			const auto& farray = fR.second;
-			// farray[0]: measurement file
-			// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
-			// farray[3]: list of stations to be used
-			float velG, velP;
-			if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-				_dataR.push_back( SDContainer(per, R, farray[0], velG, velP, farray[3]) );
-			} else {
-				_dataR.push_back( SDContainer(per, R, farray[0], farray[1], farray[2], farray[3]) );
-			}
-		}
-
+		LoadSDData( fRlist, _dataR, R );
 		// Love
-		_dataL.clear(); 
-		for( const auto& fL : fLlist ) {
-			const float per = fL.first;
-			const auto& farray = fL.second;
-			float velG, velP;
-			if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-				_dataL.push_back( SDContainer(per, L, farray[0], velG, velP, farray[3]) );
-			} else {
-				_dataL.push_back( SDContainer(per, L, farray[0], farray[1], farray[2], farray[3]) );
-			}
-		}
+		LoadSDData( fLlist, _dataL, L );
 
 		std::cout<<"### "<<_dataR.size() + _dataL.size()<<" data file(s) loaded. ###"<<std::endl;
 	}
@@ -646,9 +656,14 @@ void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldat
 			SacRec sacSZ, sacSR, sacST;
 			float lon=shdM.stlo, lat=shdM.stla;
 			int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
-			if( ! synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
-										  f1,f2,f3,f4, sacSZ, sacSR, sacST, false ) ) 
-				throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
+			bool synsuc = synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
+													 f1,f2,f3,f4, sacSZ, sacSR, sacST, rotateSyn );
+			if( ! synsuc ) {
+				WarningEA::Other(FuncName, "failed to produce/invalid synthetics for station "+sacM.stname() );
+				continue;
+			}
+
+			// clear-up/select sac
 			if( type == R ) {
 				sacSR.clear(); sacST.clear();	// ignore unnecessory channel
 			} else {
@@ -748,9 +763,12 @@ void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& ou
 			SacRec sacSZ, sacSR, sacST;
 			float lon=shdM.stlo, lat=shdM.stla;
 			int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
-			if( ! synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
-										  f1,f2,f3,f4, sacSZ, sacSR, sacST, false ) )
-				throw ErrorEA::BadParam(FuncName, "failed to produce synthetics for station "+sacM.stname());
+			bool synsuc = synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
+													 f1,f2,f3,f4, sacSZ, sacSR, sacST, rotateSyn );
+			if( ! synsuc ) {
+				WarningEA::Other(FuncName, "failed to produce/invalid synthetics for station "+sacM.stname() );
+				continue;
+			}
 			if( type == R ) {
 				sacSR.clear(); sacST.clear();	// ignore unnecessory channel
 			} else {

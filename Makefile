@@ -29,7 +29,7 @@ MOD_DIRS := $(MODULES)
 INCLUDES	:= $(addprefix -I,$(MOD_DIRS))
 OMPflag = -fopenmp
 cflags = -O3 -std=c++11 $(OMPflag) $(INCLUDES)	#-g -O3
-fflags = -e -O3 -ffixed-line-length-132 $(OMPflag)	#-O2
+fflags = -e -O2 -ffixed-line-length-132 $(OMPflag)	#-O2
 LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -lfftw3 -O3
 
 # --- objects --- #

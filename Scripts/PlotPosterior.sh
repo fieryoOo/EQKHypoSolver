@@ -107,8 +107,8 @@ PlotHisto .PlotPosterior_tmp_acc 7 -11.5 -6.2 "depth" >> results
 PlotHisto .PlotPosterior_tmp_acc 8 8 0 "M0" >> results
 
 finfo1=`more results | awk '{print $1,$4,$7,$10}'`
-finfo2=`/projects/yeti4009/eqkhyposolver/Auxiliary $finfo1`
-#finfo2=`/home/tianye/EQKHypoSolver/Auxiliary $finfo1`
+#finfo2=`/projects/yeti4009/eqkhyposolver/Auxiliary $finfo1`
+finfo2=`/home/tianye/EQKHypoSolver/Auxiliary $finfo1`
 echo -e "\nFocal: ("$finfo1") - ("$finfo2")" >> results
 
 # plot misfits

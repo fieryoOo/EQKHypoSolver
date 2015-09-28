@@ -1,6 +1,6 @@
       subroutine cal_synsac( ista, its, sigR, sigL, cor, f1, f2, f3, f4, vmax, fix_vel, iq,
      +                       npoints, fr, dt, nt, key_compr, elatc, elonc, qR, qL,
-     +                       im, aM, tm, ampl, cr, ul, ur, wvl, wvr, v, dvdz, ratio, I0,
+     +                       im, aM, tm, ampl, cl, cr, ul, ur, wvl, wvr, v, dvdz, ratio, I0,
      +                       sfici, slami, seismz, seismn, seisme, rotate )
          implicit none
          logical*1 key_compr, rotate
@@ -17,7 +17,8 @@
          real*4 vu(3),du(3),wvn(2)
          real*4 fr(2000), wvar(2000), qR(2000), qL(2000), ampl(2000)
          real*4 amp(2048), T_curr(2048)
-         real*4 cr(2000),ul(2000),ur(2000),wvr(2000),wvl(2000),ratio(2000),I0(2000)
+         real*4 cl(2000),cr(2000),ul(2000),ur(2000),wvr(2000),wvl(2000)
+         real*4 ratio(2000),I0(2000)
          real*4 v(3,2000), dvdz(3,2000), cor(500,2,2000), tm(6)
          real*4 wr(nsize),wl(nsize)
          real*4 qL_int(nsize), qR_int(nsize)
@@ -46,7 +47,8 @@ C      write(*,*) elatc," ",elonc," ",qR(180)," ",qL(222)," ",sfici," ",slami
 
 C ------------------ calc base size -------------------
       nf = 2 
-      n2pow = 1;
+      n2pow = 9;
+      nf = LSHIFT(nf, n2pow-1)
       do while ( (n2pow.lt.13).AND.(nf.lt.npoints) )
          n2pow = n2pow + 1
 C         nf = nf * 2
@@ -78,8 +80,13 @@ C            fr(j)=1./t(j)
 C           PRint*,t(j),ampr(j),ratio(j),qR(j),wvr(j)
 C      write(*,*) "check wvar: ", wvar(j), cor(j-1,1,ista), fr(j), pi
          enddo
-         wvar(1) = wvr(1)
-         wvar(nt+2) = wvr(nt+2)
+         if (sigR.eq.'+')then
+            wvar(1) = wvr(1)
+            wvar(nt+2) = wvr(nt+2)
+         else if (sigL.eq.'+')then
+            wvar(1) = wvl(1)
+            wvar(nt+2) = wvl(nt+2)
+         endif
          fr(1)=10.0
          fr(nt+2)=0.0
          qR(1)=qR(2)
@@ -113,17 +120,13 @@ C      write(*,*) "debug2: tm=",tm(m)," br=",br(m)," step=",step
                sumr= sumr+tm(m)*br(m)*step
                suml= suml+tm(m)*bl(m)*step
             enddo
-            al(j)=suml*ampl(j)*aM*const1
-cMB         spread=1./sqrt(R0*sin(DEL)*wvn(1))
+C            al(j)=suml*ampl(j)*aM*const1
+            al(j)=suml*aM*const1*cor(j-1,2,ista)/
+     *            sqrt(8.0*pi*cor(j-1,1,ista)*cl(j)*ul(j)*I0(j))
 C           spread=1./sqrt(R0*sin(DEL))
-c           if(j.eq.2)PRint*,' SPREAD=',spread*sqrt(wvn(1)), ita
-cMB         az(j)=sumr*ampr(j)*aM*const1*conjg(cor(j-1))
             az(j)=sumr*aM*const1*cor(j-1,2,ista)/
-     +            (2.0*sqrt(cr(j)*ur(j)*I0(j)))/sqrt(2.0*pi)
-C     +          (2.0*sqrt(cr(j)*ur(j)*I0(j)))/sqrt(2.0*pi)
-cMB         write(*,*)t(j),cr(j),ur(j),wvr(j),ampr(j),cor(j-1,1),cor(j-1,2)
-cMB         az(j)=sumr*ampr(j)*aM*const1
-cxx         WRite(33,*)t(j),cabs(az(j))*spread
+     *            sqrt(8.0*pi*cor(j-1,1,ista)*cr(j)*ur(j)*I0(j))
+C     +            (2.0*sqrt(cr(j)*ur(j)*I0(j)))/sqrt(2.0*pi)
             ah(j)=az(j)*ratio(j)
          end do
          al(1) = 0.0; al(nt+2) = 0.0
@@ -147,7 +150,8 @@ C      write(*,*) "check ur: ", ur(22), ur(778)
          endif
 
          if (sigL.eq.'+')then
-            call intpol(fr,wvl,nt+2,f0,df,nf,wl,ierr)
+C            call intpol(fr,wvl,nt+2,f0,df,nf,wl,ierr)
+            call intpol(fr,wvar,nt+2,f0,df,nf,wl,ierr)
             if(ierr.ne.0)STOP'WRONG INTERPOLATION: LOVE WVENUMBER'
             call intpol(fr,qL,nt+2,f0,df,nf,qL_int,ierr)
             if(ierr.ne.0)STOP'WRONG INTERPOLATION: LOVE ATTENUATION'

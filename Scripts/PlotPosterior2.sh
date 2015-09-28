@@ -68,6 +68,9 @@ if [ $# -ge 4 ]; then ie=$4; fi
 chiS_max=999999
 if [ $# -ge 5 ]; then chiS_max=$5; fi
 exeBSpline=/projects/yeti4009/code/Programs/Splines/BSpline1D
+if [ ! -e $exeBSpline ]; then
+	exeBSpline=/home/tianye/code/Programs/Splines/BSpline1D
+fi
 
 ### discard results from the first search and grab qualified data from the second
 awk 'BEGIN{flag=1;NFold=0}{if(NF==0&&NFold!=0){flag++} if(flag==1)print; NFold=NF}' $fin | awk 'NF>0' | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1,$4}' | sed s/')'/''/g | awk -v Emul=$Emul '{if(NF==17){M0=$5}else{M0=1} printf "%d %f %d ",$(NF-1),$(NF-3)*Emul,$(NF-6); print $1,$2,$3,$4,M0,$(NF-11),$(NF-10),$(NF-9),$(NF);}' | awk -v cm=$chiS_max '$2/$3<cm' > .PlotPosterior_tmp

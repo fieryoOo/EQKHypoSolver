@@ -67,6 +67,8 @@ c            read(1, '(6(E14.7,2X))') t(k),cl(k),ul(k),wvl(k),ampl(k),qL(k)
             fr(k) = 1./t(k)
 c            read(1,'(a)') ,vzdor
             call readline80(feig_buff, pos1, pos2, vzdor)
+C            read(vzdor, '(E14.7)') I0(k)
+            read(vzdor, *) I0(k)
 c           Love component---S
             depold=0.
             vaold=0.
