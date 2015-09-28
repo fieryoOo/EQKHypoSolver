@@ -80,7 +80,14 @@ gmtset ANNOT_FONT_SIZE 10
 gmtset ANNOT_OFFSET 0.1
 
 # line types
-ltype_all=( '' -W8,100/100/100 -W5,lightred,- -W5,steelblue,- -W5,lightbrown,- -W3,red )
+colors=( '' 100/100/100, lightred, steelblue, gold, red )
+colors=( '' 100/100/100, lightred, 0/84/180, 128/180/0, red ) 
+# yellow: sunglow=255/204/51 goldenrod1=218/165/32 goldenrod2=184/134/11
+# yellowgreen: bronzeYellow=115/112/0 Olive=128/128/0 OliveDrab=107/142/35
+# green: grassgreen=44/176/55 NapierGreen=42/128/0 appleGreen=141/182/0 myGreen=128/180/0
+# blue: steelblue=70/130/180 MediumTealBlue=0/84/180 FrenchBlue=0/127/255
+# purple: SpanishViolet=76/40/130 Amethyst=153/102/204
+ltype_all=( '' -W8,${colors[1]} -W5,${colors[2]},- -W5,${colors[3]},30_10:0 -W5,${colors[4]},30_10:0 -W3,${colors[5]} )
 ltype=( '' ${ltype_all[1]} )
 for (( isac=2; isac<=$#; isac++ )); do
 	itype=`echo $# ${#ltype_all[@]} $isac | awk '{print $2-$1+$3-1}'`
@@ -124,7 +131,7 @@ psout=${fsac1}.ps
 pwd | psxy $REG $SCA -X6 -Y13.5 -K > $psout
 
 #psbasemap -R -J -Ba100f20/a${mak}f${tic}:."RealData(gray) - Synthetics":Wesn -O -K >> $psout
-psbasemap -R -J -Ba100f20/a${mak}f${tic}:."Waveforms (Real - Synthetics)":Wesn -O -K >> $psout
+psbasemap -R -J -Ba100f20/a${mak}f${tic}:."Waveforms (Obs - Syn)":Wesn -O -K >> $psout
 for (( isac=1; isac<=$#; isac++ )); do
 	PlotSac ${fsacs[isac]} ${ltype[isac]}
 done
@@ -169,11 +176,11 @@ echo ${fsacs[@]} | xargs -n1 | xargs -I file rm -f file'_tmp'
 
 # plot amplitude transfer function
 #REG=-R0.05/0.16/0/2.
-#psbasemap $REG -JX8/5 -Ba0.05f0.01g0.05:"Frequency (Hz)":/a1f0.2g1:"Ratio"::."Spectral Ratio (Data/Syn)":WeSn -X11.8 -Y7. -O -K >> $psout
+#psbasemap $REG -JX8/5 -Ba0.05f0.01g0.05:"Frequency (Hz)":/a1f0.2g1:"Ratio"::."Spectral Ratio (Obs/Syn)":WeSn -X11.8 -Y7. -O -K >> $psout
 #PlotSac $fratio1D -W5,lightred,-
 #PlotSac $fratio2 -W5,red
 REG=-R8/18/0/2
-psbasemap $REG -JX8/5 -Ba5f1g5:"Period (sec)":/a1f0.2g1:"Ratio"::."Spectral Ratio (Data/Syn)":WeSn -X11.8 -Y7. -O -K >> $psout
+psbasemap $REG -JX8/5 -Ba5f1g5:"Period (sec)":/a1f0.2g1:"Ratio"::."Spectral Ratio (Obs/Syn)":WeSn -X11.8 -Y7. -O -K >> $psout
 for (( isac=1; isac<=$#; isac++ )); do
 	fsac=${fsacs[isac]}
 	fratio=${fsac}_amp_ratio
@@ -199,15 +206,15 @@ PlotText $REG $sta 0.
 # wave color legend
 #S dx1 symbol size fill pen [ dx2 text ]
 #ltype_all=( '' -W8,100/100/100 -W5,lightred,- -W5,steelblue,- -W5,lightbrown,- -W3,red )
-pslegend -R -D5.5/7./2.8/2.9/BL -J -F -G220 -O -K <<- EOF >> $psout
+pslegend -R -D5.4/7./3./2.9/BL -J -F -G220 -O -K <<- EOF >> $psout
 G 0.05i
-S 0.25i - 0.4i - 8,100/100/100 0.6i Real
+S 0.25i - 0.4i - 8,${colors[1]} 0.55i Obs
 G 0.1i
-S 0.25i - 0.4i - 5,steelblue 0.6i AK135
+S 0.25i - 0.4i - 5,${colors[3]} 0.55i AK135
 G 0.1i
-S 0.25i - 0.4i - 5,lightbrown 0.6i SLU
+S 0.25i - 0.4i - 5,${colors[4]} 0.55i SLU-1D
 G 0.1i
-S 0.25i - 0.4i - 3,red 0.6i CU
+S 0.25i - 0.4i - 3,${colors[5]} 0.55i CU-3D
 G 0.05i
 EOF
 
