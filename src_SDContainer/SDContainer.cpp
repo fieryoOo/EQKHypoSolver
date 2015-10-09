@@ -168,7 +168,7 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 
 	// bin average (L1 norm, [1] output with center azimuths and [2] store std-devs)
 	std::vector<AziData> adVmean, adVstd;
-	VO::BinAvg( adVext, adVmean, adVstd, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false, false );
+	VO::BinAvg( adVext, adVmean, adVstd, BINSTEP, BINHWIDTH, 0., MIN_BAZI_SIZE, 1, false, false );
 
 	// exclude empty bins and define undefined std-devs
    float finf = std::numeric_limits<float>::infinity();
@@ -196,7 +196,7 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 
 	// bin average (L1 norm, output with center azimuth for each bin)
 	adVmean.clear(); adVvar.clear();	// note: std-devs are stored in adVvar
-	VO::BinAvg( adVext, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 1, false, false );
+	VO::BinAvg( adVext, adVmean, adVvar, BINSTEP, BINHWIDTH, 0., MIN_BAZI_SIZE, 1, false, false );
 
 	// exclude empty bins and define undefined std-devs
    float finf = std::numeric_limits<float>::infinity();
@@ -208,7 +208,7 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	VO::SelectData( adVext, adVsel, adVmean, adVvar, exfactor );
 
 	// bin average again (L2 norm, [1] output with center azimuths and [2] store std-dev. XX not of the means)
-	VO::BinAvg( adVsel, adVmean, adVvar, BINSTEP, BINHWIDTH, MIN_BAZI_SIZE, 2, true, false );
+	VO::BinAvg( adVsel, adVmean, adVvar, BINSTEP, BINHWIDTH, 0., MIN_BAZI_SIZE, 2, true, false );
 
 	// exclude empty bins and define undefined std-devs
 	float stdest_phase = isFTAN ? stdPest : stdPHest;

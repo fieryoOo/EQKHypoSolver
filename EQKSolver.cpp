@@ -22,9 +22,11 @@ d: Debug mode. Computes the initial chi-square of
 	multiple model states taken in from the standard input.
 ******************************/
 
+/* moved to inside Searcher
 inline float Alpha( const int nsearch, const float Tfactor ) {
 	return std::pow(0.01/Tfactor,1.25/nsearch);	// emperically decided alpha
 }
+*/
 int main( int argc, char* argv[] ) {
 	if( argc < 2 ) {
 		std::cerr<<"Usage: "<<argv[0]<<" [param file] "
@@ -123,7 +125,7 @@ int main( int argc, char* argv[] ) {
 				// search for epicenter and focal mechanism simultaneously
 				//int nsearch = 7200, Tfactor = 8;
 				int nsearch = 15000, Tfactor = 16;
-				float alpha = Alpha(nsearch, Tfactor); 
+				float alpha = Searcher::Alpha(nsearch, Tfactor); 
 				auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info for accepted searches
 				VO::Output( SIV, eka.outname_misL, true );	// append to file
 				//ms.Centralize(); being called later in Bound()
@@ -146,7 +148,7 @@ int main( int argc, char* argv[] ) {
 					// search for focal info
 					ms.FixEpic();		// have epicenter fixed
 					eka.PredictAll( ms );	// not necessary, but following search runs faster since Epic is fixed
-					float alpha = Alpha(nsearch, Tfactor);
+					float alpha = Searcher::Alpha(nsearch, Tfactor);
 					SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info for accepted searches
 					VO::Output( SIV, eka.outname_misF, true );	// append to file
 					// centralize the model space around the current MState
@@ -169,7 +171,7 @@ int main( int argc, char* argv[] ) {
 			int nsearch = 3000, Tfactor = 1;
 			//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
 			//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
-			float alpha = Alpha(nsearch, Tfactor);
+			float alpha = Searcher::Alpha(nsearch, Tfactor);
 			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
 			eka.OutputFits( ms );
 			eka.OutputMisfits( ms );

@@ -3,6 +3,8 @@
 
 #include "MyOMP.h"
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 #include <chrono>
 #include <thread>
 #include <random>
@@ -25,6 +27,10 @@ namespace Searcher {
 		virtual void Energy( const MI&, float& E, int& Ndata ) const = 0;
 	};
 
+	// empirical formula for alpha
+	inline float Alpha( const int nsearch, const float Tfactor ) {
+		return std::pow(0.01/Tfactor,1.25/nsearch);	// emperically decided alpha
+	}
 
 	// to save search information
 	template < class MI >
