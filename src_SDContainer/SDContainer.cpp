@@ -15,23 +15,36 @@ void SDContainer::LoadMeasurements( const std::string& fname, const std::string 
 	dataV.clear();
 	// correct the input phase traveltime measurements for phase shift!
 	float ph_shift = pio4_R==0 ? 0 : (-pio4_R*0.125*per);
+	// load station list (if given)
+	bool checksta = !fsta.empty(); StaList stalst;
+	if( checksta ) stalst = StaList( fsta );
 	// read from file
-	if( fsta.empty() ) {
-		for(std::string line; std::getline(fin, line); ) {
-			StaData sdcur(line.c_str(), ph_shift);
-			if( ! sdcur.isComplete() ) continue;
-			dataV.push_back( sdcur );
+	int nskipC = 0, nskipR = 0;
+	for(std::string line; std::getline(fin, line); ) {
+		if( line.empty() ) continue;
+		StaData sdcur(line.c_str(), ph_shift);
+		if( ! sdcur.isComplete() ) {
+			std::cerr<<"Warning(SDContainer::LoadMeasurements): Incomplete station data = "<<sdcur<<std::endl;
+			nskipC++; continue;
 		}
-	} else {
-		StaList stalst( fsta );
-		for(std::string line; std::getline(fin, line); ) {
-			StaData sdcur(line.c_str(), ph_shift);
-			if( ! sdcur.isComplete() ) continue;
+		if( std::find_if(dataV.begin(), dataV.end(), [&]( const StaData& sd ) {
+					return sdcur.IsSameLocation(sd);
+					} ) != dataV.end() ) {
+			std::cerr<<"Warning(SDContainer::LoadMeasurements): redundant station at "<<static_cast<Point<float> &>(sdcur)<<std::endl;
+			nskipR++; continue;
+		}
+		if( checksta ) {
 			StaInfo data_find;
-			if( stalst.SearchLoc( sdcur.lon, sdcur.lat, data_find ) )
-				dataV.push_back( sdcur );
+			if( ! stalst.SearchLoc( sdcur.lon, sdcur.lat, data_find ) ) continue;
 		}
+		//std::cerr<<"fname="<<fname<<" per="<<per<<" type="<<type<<" size="<<dataV.size()<<" "<<sdcur<<"\n";
+		dataV.push_back( sdcur );
 	}
+	std::cout<<"### SDContainer::LoadMeasurements: "<<dataV.size()<<" stations loaded from file "<<fname<<".";
+	if( nskipC>0 ) std::cout<<"\n    Warning: "<<nskipC<<" lines skipped due to data incompleteness.";
+	if( nskipR>0 ) std::cout<<"\n    Warning: "<<nskipR<<" lines skipped due to station redundancy.";
+	std::cout<<" ###"<<std::endl;
+	
 }
 
 void SDContainer::LoadMaps( const std::string& fmapG, const std::string& fmapP ) {
@@ -49,7 +62,7 @@ void SDContainer::LoadMaps( const std::string& fmapG, const std::string& fmapP )
 		if( sd.lat < latmin ) latmin = sd.lat;
 		else if( sd.lat > latmax ) latmax = sd.lat;
 	}
-	std::cout<<"### Data Region: "<<lonmin<<" - "<<lonmax<<"   "<<latmin<<" - "<<latmax<<" ###\n";
+	std::cout<<"### SDContainer::LoadMaps: Data Region = "<<lonmin<<" - "<<lonmax<<"   "<<latmin<<" - "<<latmax<<" ###\n";
 	// clip maps ( for faster predictions )
 	mapG.Clip( lonmin, lonmax, latmin, latmax );
 	mapP.Clip( lonmin, lonmax, latmin, latmax );

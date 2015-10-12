@@ -1,6 +1,7 @@
 #ifndef DATATYPES_H
 #define DATATYPES_H
 
+#include "Point.h"
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -175,9 +176,9 @@ struct AziData {
 /* data structure for measurements and predictions on a single station
 	longitude, latitude, disance, azimuth, 
 	measurements, GCP traveltimes, source terms, for groupT, phaseT, and amplitude */
-struct StaData : public AziData {
+struct StaData : public AziData, public Point<float> {
    //bool valid = false;
-   float lon = NaN, lat = NaN;
+   //float lon = NaN, lat = NaN;
    float dis = NaN; //, azi = NaN;
 	//float Gdata = NaN, Pdata = NaN, Adata = NaN;
 	float Gsource = NaN, Psource = NaN, Asource = NaN;
@@ -194,7 +195,7 @@ struct StaData : public AziData {
 
 	StaData( const float azi, const float lon, const float lat, const float Gdata, const float Pdata, const float Adata,
 				const float init = NaN, const float userin = NaN )
-		: lon(lon), lat(lat), Gpath(init), Gsource(init), Ppath(init), Psource(init), Asource(init),
+		: Point(lon, lat), Gpath(init), Gsource(init), Ppath(init), Psource(init), Asource(init),
 		  AziData(azi, Gdata, Pdata, Adata, init) {
 		if( userin != NaN ) user = userin;
 	}
@@ -265,7 +266,7 @@ struct StaData : public AziData {
    }
 
 protected:
-   static constexpr float NaN = -12345.;
+   static constexpr float NaN = Point::NaN;
 
 };
 

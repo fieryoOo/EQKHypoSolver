@@ -432,7 +432,7 @@ void EQKAnalyzer::LoadData() {
 		// Love
 		LoadSDData( fLlist, _dataL, L );
 
-		std::cout<<"### "<<_dataR.size() + _dataL.size()<<" data file(s) loaded. ###"<<std::endl;
+		std::cout<<"### "<<_dataR.size()<<"(Rayl) + "<<_dataL.size()<<"(Love) data periods (measurements+maps) loaded. ###"<<std::endl;
 	}
 
 }

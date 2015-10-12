@@ -17,6 +17,7 @@ r: Output the initial source radiation pattern
 s: do a single big SA for all params instead of the iterative SA
 g: run only a fast SA to stablize, followed by the Monte-Carlo search (assuming close-enough input model info)
 m: start the Monte-Carlo search immediately (assuming highly-optimized input model info)
+n: do not run the Monte-Carlo search
 e: Estimate/print perturbation steps at the initial state
 d: Debug mode. Computes the initial chi-square of 
 	multiple model states taken in from the standard input.
@@ -28,7 +29,7 @@ inline float Alpha( const int nsearch, const float Tfactor ) {
 int main( int argc, char* argv[] ) {
 	if( argc < 2 ) {
 		std::cerr<<"Usage: "<<argv[0]<<" [param file] "
-					<<"[options (-i=initial-only  -c=chiSquare-init -s=single-SA -g=good-initial -m=Monte-Carlo-only -r=rad-patterns -e=estimate-perturb -d=debug-mode)]"<<std::endl;
+					<<"[options (-i=initial-only  -c=chiSquare-init -s=single-SA -g=good-initial -m=Monte-Carlo-only -n=No-Monte_Carlo -r=rad-patterns -e=estimate-perturb -d=debug-mode)]"<<std::endl;
 		return -1;
 	}
 
@@ -114,6 +115,9 @@ int main( int argc, char* argv[] ) {
 		bool doSA2 = std::find(options.begin(), options.end(), 'm') == options.end();
 		doSA1 &=  doSA2;
 
+		// option -n: do not run the Monte-Carlo search
+		bool doMC = std::find(options.begin(), options.end(), 'n') == options.end();
+
 		// ********** Initialize simulated annealing to approach global optimum ********** //
 		if( doSA1 ) {
 
@@ -171,6 +175,7 @@ int main( int argc, char* argv[] ) {
 			//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 			float alpha = Alpha(nsearch, Tfactor);
 			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
+			//Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 10000, alpha, 0.5f, std::cout, -1 );	// do not save Sinfo
 			eka.OutputFits( ms );
 			eka.OutputMisfits( ms );
 			eka.OutputSourcePatterns( ms );
@@ -178,25 +183,27 @@ int main( int argc, char* argv[] ) {
 
 		}
 
-		// ********** monte carlo for posterior distributions ********** //
-		// constrain model to perturb near the current Mstate ( Rparam = ? * (0.15, 0.15, 2, 30, 20, 30, 5) )
-		// perturbation steps are decided later by EstimatePerturbs
-		//ms.Bound( 2. );	// set Rfactor = 2.0 to be safe
-		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the current focal info
-		// decide perturb step length for each parameter based on the model sensitivity to them
-		// perturb steps are defined to be (ub-lb) * sfactor, where ub and lb are the boundaries decided by:
-		// assuming current model state to be the best fitting model, move away
-		// from this state until the probability of acceptance <= Pthreshold
-		ms.EstimatePerturbs( eka, 0.15 );	// sfactor default= 0.1
-		// second (final) Monte Carlo Search with desired perturb sizes
-		int nsearch = 50000; 
-		Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
+		if( doMC ) {
+			// ********** monte carlo for posterior distributions ********** //
+			// constrain model to perturb near the current Mstate ( Rparam = ? * (0.15, 0.15, 2, 30, 20, 30, 5) )
+			// perturbation steps are decided later by EstimatePerturbs
+			//ms.Bound( 2. );	// set Rfactor = 2.0 to be safe
+			ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the current focal info
+			// decide perturb step length for each parameter based on the model sensitivity to them
+			// perturb steps are defined to be (ub-lb) * sfactor, where ub and lb are the boundaries decided by:
+			// assuming current model state to be the best fitting model, move away
+			// from this state until the probability of acceptance <= Pthreshold
+			ms.EstimatePerturbs( eka, 0.15 );	// sfactor default= 0.1
+			// second (final) Monte Carlo Search with desired perturb sizes
+			int nsearch = 50000; 
+			Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 
-		// final output
-		eka.OutputFits( ms );				// appended
-		eka.OutputMisfits( ms );			// appended
-		eka.OutputSourcePatterns( ms );	// overwritten
-		eka.OutputWaveforms( ms );			// overwritten
+			// final output
+			eka.OutputFits( ms );				// appended
+			eka.OutputMisfits( ms );			// appended
+			eka.OutputSourcePatterns( ms );	// overwritten
+			eka.OutputWaveforms( ms );			// overwritten
+		}
 
 	} catch(std::exception& e) {
       std::cerr<<e.what()<<std::endl;
