@@ -743,7 +743,9 @@ void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldat
 
 // output real (processed) and synthetic waveforms when the waveform fitting method is used
 void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& outdir ) {
-	if( ! _usewaveform ) return;
+	//if( ! _usewaveform ) return;
+	if( !_usewaveform || outdir.empty() )
+		throw ErrorEA::BadParam(FuncName, "non waveform-fitting/empty outsac_dir");
 	// data flags
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);

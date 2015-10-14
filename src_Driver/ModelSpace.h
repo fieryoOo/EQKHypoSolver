@@ -129,6 +129,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			Crak = 0.; Rrak = 180.; //Prak = 72.;
 			Cdep = Rdep = DEPMAX*0.5; //Pdep = 12.;
 			CM0 = M0==NaN ? 5.0e23 : M0; RM0 = 100.;
+			// Mw = (2/3)*log_10(M0)-10.7
 			// 1.0e20 = 2.6; 1.0e21 = 3.3; 1.0e22 = 3.9; 1.0e23 = 4.6; 1.0e24 = 5.3; 1.0e25 = 5.9; 
 			// 1.0e26 = 6.6; 1.0e27 = 7.3; 1.0e28 = 7.9; 1.0e29 = 8.6; 1.0e30 = 9.3; 1.0e31 = 9.9;
 			resetPerturb();

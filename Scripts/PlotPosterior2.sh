@@ -42,11 +42,22 @@ PlotHisto() {
 	gmtset BASEMAP_FRAME_RGB +black
 	#gmtset BASEMAP_FRAME_RGB black
 	#psxy $_ftmp -R -J -A -Sc0.01 -Gred -O -K >> ${fps}
-	Nbin=200; Ntail=30
-	head -n $Ntail $_ftmp | awk 'BEGIN{min=99999}{if($2<min){x=$1;min=$2}}END{print x, min}' > ${_ftmp}_2
-	awk -v N=$Nbin 'BEGIN{min=99999}{if($2<min){x=$1;min=$2} if(NR%N==0){print x, min; min=99999}}' $_ftmp >> ${_ftmp}_2
-	tail -n $Ntail $_ftmp | awk 'BEGIN{min=99999}{if($2<min){x=$1;min=$2}}END{print x, min}' >> ${_ftmp}_2
-	$exeBSpline ${_ftmp}_2 3.
+	#local Nbin=2000; local Ntail=300
+	#local Nb=100; local Nt=15
+	#head -n $Ntail $_ftmp | awk 'BEGIN{min=99999}{if($2<min){x=$1;min=$2}}END{print x, min}' > ${_ftmp}_2
+	#awk -v N=$Nbin 'BEGIN{min=99999}{if($2<min){x=$1;min=$2} if(NR%N==0){print x, min; min=99999}}' $_ftmp >> ${_ftmp}_2
+	#tail -n $Ntail $_ftmp | awk 'BEGIN{min=99999}{if($2<min){x=$1;min=$2}}END{print x, min}' >> ${_ftmp}_2
+	local Ntotal=`more $_ftmp | wc -l`
+	local Ntail=`echo $Ntotal | awk '{print int($1/200+0.5)}'`; local Nt=`echo $Ntail | awk '{print int($1*0.05+0.5)}'`
+	local Nbin=`echo $Ntotal $Ntail | awk '{print int(($1-2.*$2)*0.02)+1}'`; local Nb=`echo $Nbin | awk '{print int($1*0.02+0.5)}'`
+	head -n $Ntail $_ftmp | sort -g -k2 | head -n $Nt > ${_ftmp}_2
+	for ((ib=$Ntail+1;ib<$Ntotal-$Ntail;ib+=$Nbin)); do
+		awk -v ib=$ib -v N=$Nbin 'NR>=ib&&NR<ib+N' $_ftmp | sort -g -k2 | head -n $Nb >> ${_ftmp}_2
+	done
+	tail -n $Ntail $_ftmp | sort -g -k2 | head -n $Nt >> ${_ftmp}_2
+	$exeBSpline ${_ftmp}_2 300.
+	#$exeCSpline ${_ftmp}_2
+	#awk -v std=$std -v mean=$mean 'BEGIN{lb=mean-std*3.;ub=mean+std*3}{if($1>lb&&$1<ub)print}' ${_ftmp}_2 | psxy -R -J -A -Sc0.05 -O -K >> ${fps}
 	awk -v std=$std -v mean=$mean 'BEGIN{lb=mean-std*3.;ub=mean+std*3}{if($1>lb&&$1<ub)print}' ${_ftmp}_2_spline | psxy -R -J -A -W6,220/0/0 -O -K >> ${fps}
 	rm -f ${_ftmp} ${_ftmp}_2 ${_ftmp}_2_spline
 
@@ -71,6 +82,10 @@ exeBSpline=/projects/yeti4009/code/Programs/Splines/BSpline1D
 if [ ! -e $exeBSpline ]; then
 	exeBSpline=/home/tianye/code/Programs/Splines/BSpline1D
 fi
+exeCSpline=/projects/yeti4009/code/Programs/Splines/CubicSpline1D
+if [ ! -e $exeCSpline ]; then
+	exeCSpline=/home/tianye/code/Programs/Splines/CubicSpline1D
+fi
 
 ### discard results from the first search and grab qualified data from the second
 awk 'BEGIN{flag=1;NFold=0}{if(NF==0&&NFold!=0){flag++} if(flag==1)print; NFold=NF}' $fin | awk 'NF>0' | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1,$4}' | sed s/')'/''/g | awk -v Emul=$Emul '{if(NF==17){M0=$5}else{M0=1} printf "%d %f %d ",$(NF-1),$(NF-3)*Emul,$(NF-6); print $1,$2,$3,$4,M0,$(NF-11),$(NF-10),$(NF-9),$(NF);}' | awk -v cm=$chiS_max '$2/$3<cm' > .PlotPosterior_tmp
@@ -91,9 +106,9 @@ Nsearch=`tail -n3 $fin | awk 'BEGIN{N=0}{if($2>N){N=$2}}END{print N}'`
 
 ### range for reduced chi-square
 rCrange=`awk '{print $2/$3}' .PlotPosterior_tmp_acc | minmax -C`
-rCl=`echo $rCrange | awk '{printf "%.2f", $1*0.99-0.005}'`
+rCl=`echo $rCrange | awk '{printf "%.2f", $1+0.015}'`
 #rCu=`echo $rCrange $rCl | awk '{a=$3*1.5; if($2>$3){a=$2} printf "%.2f", a}'`
-rCu=`echo $rCl | awk '{printf "%.2f", $1+0.4}'`
+rCu=`echo $rCl | awk '{printf "%.2f", $1+0.2}'`
 #rCu=`awk '{print $2/$3}' .PlotPosterior_tmp_rej | minmax -C | awk '{printf "%.2f", $2}'`
 
 ### plot histograms

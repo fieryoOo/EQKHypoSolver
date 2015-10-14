@@ -18,9 +18,11 @@ C------------OUTPUT: seism------------------------------------
              f_curr=f0+df*(i-1)
              om_curr=pi2*f_curr
              arg=wv(i)*dist
+C      write(*,*) "wv = ",wv(i), " dis = ", dist, " arg = ", arg
              if(key_compr)arg=om_curr*dist/fix_vel
 C-----dnom: geometrical spreading----
-             dnom=sqrt(arg)
+cYT             dnom=sqrt(arg)
+             dnom=sqrt(dist)
 C             dnom=sqrt(dist)
 C---- aq: phase delay----------------
              aq=arg+pi2/8.-tstart*om_curr

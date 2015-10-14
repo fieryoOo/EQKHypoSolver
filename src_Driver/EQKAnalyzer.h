@@ -111,6 +111,7 @@ namespace ErrorEA {
       BadPred(const std::string funcname, const std::string info = "")
          : Base("Error("+funcname+"): Invalid focal prediction ("+info+").") {}
    };
+
    class InternalException : public Base {
    public:
       InternalException(const std::string funcname, const std::string info = "")
