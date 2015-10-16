@@ -227,7 +227,7 @@ protected:
 	static const bool rotateSyn = false;		// false=R&T; true=N&E
    static constexpr float _SNRMIN = 18.;		/* allowed min SNR for waveform fitting */
    static constexpr float _DISMIN = 0.;			/* allowed min */
-   static constexpr float _DISMAX = 1000.;		/* and max event-station distance for location searching */
+   static constexpr float _DISMAX = 1500.;		/* and max event-station distance for location searching */
 
 private:
 	// option 1. measurements

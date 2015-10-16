@@ -21,7 +21,7 @@ GetRatio() {
 	local _tmin=$3
 	local _tmax=$4
 	local _per=$5
-	exeSAR=/home/tianye/EQKHypoSolver/Scripts/SAC_ampratio
+	exeSAR=${dirS}/SAC_ampratio
 
 	#Usage: ../../Scripts/SAC_ampratio [sac1] [sac2] [sac_outname (cout=print to screen)] [tmin(optional)] [tmax(optional)]
 	$exeSAR $_sac1 $_sac2 cout $_tmin $_tmax | awk -v per=$_per '{f=1./per; if($1>f){print rl+($2-rl)*(f-fl)/($1-fl); exit} fl=$1;rl=$2}'
@@ -37,7 +37,11 @@ fi
 ### parameters
 dir=$1; dir=${dir%/}
 per=$2
-fcpt=/home/tianye/EQKHypoSolver/Scripts/AmpRatio.cpt
+dirS=/home/tianye/EQKHypoSolver/Scripts
+if [ ! -e $dirS ]; then
+	dirS=/projects/yeti4009/eqkhyposolver/Scripts
+fi
+fcpt=${dirS}/AmpRatio.cpt
 if [ $# == 3 ]; then fcpt=$3; fi
 
 ### gmt settings
@@ -56,6 +60,9 @@ pwd | psxy $REG $SCA -K -X-7 -Y5 > $psout
 
 ### exe s
 exeSPH=/home/tianye/code/Programs/SACOperation/SAC_printHD
+if [ ! -e $exeSPH ]; then
+	exeSPH=/projects/yeti4009/code/Programs/SACOperation/SAC_printHD
+fi
 
 # plot, respectively, for the Z and T components
 for comp in Z T; do
@@ -71,6 +78,7 @@ for comp in Z T; do
 		trange=`$exeSPH $sacf dist e | awk '{tmin=$1/4.5-50.; if(tmin<0.){tmin=0.} tmax=$1/2.5+50.; if(tmax>$2){tmax=$2} print tmin, tmax}'`
 		ratio=`GetRatio $sacf $sacfs $trange $per`
 		sum_ratio=`echo $sum_ratio $ratio | awk '{print $1+$2}'`; let Nsac++;
+echo $loc $ratio
 		echo $loc $ratio | psxy -R -J -Sc0.5 -W1 -C$fcpt -O -K >> $psout
 	done # sacf
 	psscale  -C$fcpt -B:"${_label}": -L -D5./-1./10./0.4h -O -K >> $psout
