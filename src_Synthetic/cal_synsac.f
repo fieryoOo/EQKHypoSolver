@@ -122,10 +122,12 @@ C      write(*,*) "debug2: tm=",tm(m)," br=",br(m)," step=",step
             enddo
 C            al(j)=suml*ampl(j)*aM*const1
             al(j)=suml*aM*const1*cor(j-1,2,ista)/
-     *            sqrt(8.0*pi*cor(j-1,1,ista)*cl(j)*ul(j)*I0(j))
+     *            sqrt(8.0*pi*cl(j)*ul(j)*I0(j))
+cYT     *            sqrt(8.0*pi*cor(j-1,1,ista)*cl(j)*ul(j)*I0(j))
 C           spread=1./sqrt(R0*sin(DEL))
             az(j)=sumr*aM*const1*cor(j-1,2,ista)/
-     *            sqrt(8.0*pi*cor(j-1,1,ista)*cr(j)*ur(j)*I0(j))
+     *            sqrt(8.0*pi*cr(j)*ur(j)*I0(j))
+cYT     *            sqrt(8.0*pi*cor(j-1,1,ista)*cr(j)*ur(j)*I0(j))
 C     +            (2.0*sqrt(cr(j)*ur(j)*I0(j)))/sqrt(2.0*pi)
             ah(j)=az(j)*ratio(j)
          end do
