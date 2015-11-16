@@ -1,5 +1,7 @@
 c ===========================================================
 c ray tracer for epicor program
+c x1 = location 1 (event)
+c x2 = location 2 (station)
 c ===========================================================
       recursive subroutine tracer(x1,x2,step0,n,t,delta,dbg,ierr, mdl)
       use mmodel
@@ -15,6 +17,7 @@ c ---
 c ---
       R = 6371.0d0
       drad = datan(1.0d0)/45.0d0
+c     xn = normal vector; delta = distance
       call DEL_NORM(x1,x2,xn,delta)
       call rbimod(x1,n,vx,0,ierr, mdl)
       if(ierr.ne.0) return

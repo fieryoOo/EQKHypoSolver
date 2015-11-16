@@ -17,7 +17,7 @@ extern"C" {
 
 	void angles2tensor_(float* stk, float* dip, float* rak, float tm[6]);
 
-	void atracer_( char name_fmodel[256], float* elon, float* elat, int* ncor, bool* applyQ, int* nsta,
+	void atracer_( char name_fmodel[256], float* elat, float* elon, int* ncor, bool* applyQ, int* nsta,
 						float latc[2000], float lon[2000], float* cor );
 
 //	void surfread_( char name_feigen[255], char* sigR, char* sigL, char modestr[2], int* nper, int* nd, float* depth, float freq[2000],

@@ -26,6 +26,14 @@ C         real*8 gw(225,97,201), aw(225,97,201)
 
       end module mmodel
 
+c  ---------------------------------------------
+c  fmodel = model (vel/Q table) binary file name
+c  fsol = event latitude
+c  lsol = event longitude
+c  nstai = No. of stations
+c  fici = station latitudes
+c  lami = station longitudes
+c  ---------------------------------------------
       recursive subroutine atracer(fmodel,fsol,lsol,n,applyQ, nstai,fici,lami, cor)
       use mmodel
       use omp_lib

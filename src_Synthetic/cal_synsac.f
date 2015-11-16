@@ -25,7 +25,7 @@
          real*4 ul_int(nsize),ur_int(nsize)
          real*4 seismz(nsize),seismn(nsize),seisme(nsize)
          real*4 seismt(nsize),seismr(nsize)
-         real*4 const1,pi,drad
+         real*4 unitC,pi,drad
          complex*8 al(2000),az(2000),ah(2000)
          complex*8 br(6),bl(6),sumr,suml,step
          character*1 its, sigR, sigL, chnprefix
@@ -33,7 +33,7 @@
 C         character*80 outseism(50),outtit(50),outspec(50)
 C         character*255 current
 C         character*256 fnam11,fnam12,fnam13
-         data const1/1.E-7/, step/(1.0,0.0)/, pi/3.14159265/
+         data unitC/1.E-7/, step/(1.0,0.0)/, pi/3.14159265/
 C         common /trk/ cor
 C         common /stn/ nstai,codi,figi,fici,lami,neti
 
@@ -113,6 +113,7 @@ C      write(*,*) "debug1: j=",j," nt=",nt," vu = ",vu," du = ",du," br = ",br,"
                if(its.eq.'Q'.or.its.eq.'C') step=cmplx(0.,-1./w)
                call source(sigR,sigL,cs,sc,wvn,vu,du,br,bl)
             end if
+C           sumr|suml = M_ij * E_ij(omega,h,phi) in the source term
             suml=(0.0,0.0)
             sumr=(0.0,0.0)
             do m=1,im
@@ -120,12 +121,12 @@ C      write(*,*) "debug2: tm=",tm(m)," br=",br(m)," step=",step
                sumr= sumr+tm(m)*br(m)*step
                suml= suml+tm(m)*bl(m)*step
             enddo
-C            al(j)=suml*ampl(j)*aM*const1
-            al(j)=suml*aM*const1*cor(j-1,2,ista)/
+C            al(j)=suml*ampl(j)*aM*unitC
+            al(j)=suml*aM*unitC*cor(j-1,2,ista)/
      *            sqrt(8.0*pi*cl(j)*ul(j)*I0(j))
 cYT     *            sqrt(8.0*pi*cor(j-1,1,ista)*cl(j)*ul(j)*I0(j))
 C           spread=1./sqrt(R0*sin(DEL))
-            az(j)=sumr*aM*const1*cor(j-1,2,ista)/
+            az(j)=sumr*aM*unitC*cor(j-1,2,ista)/
      *            sqrt(8.0*pi*cr(j)*ur(j)*I0(j))
 cYT     *            sqrt(8.0*pi*cor(j-1,1,ista)*cr(j)*ur(j)*I0(j))
 C     +            (2.0*sqrt(cr(j)*ur(j)*I0(j)))/sqrt(2.0*pi)
