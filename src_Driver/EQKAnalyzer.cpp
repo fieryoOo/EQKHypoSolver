@@ -480,11 +480,11 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 										float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const {
 	// radpattern
 	bool model_updated = false;
-	float stk = minfo.stk, dip = minfo.dip, rak = minfo.rak, dep = minfo.dep;
+	float stk = minfo.stk, dip = minfo.dip, rak = minfo.rak, dep = minfo.dep, M0 = minfo.M0;
 	stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
 	rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
-	model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, perRlst() );
-	model_updated |= rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, perLlst() );
+	model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, M0, perRlst() );
+	model_updated |= rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, M0, perLlst() );
 
 	if( _usewaveform ) return;
 
@@ -506,6 +506,7 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 			const auto& rp = sdc.type==R ? rpR : rpL;
 			sdc.UpdateSourcePred( rp );
 		}
+		/*	Amplitudes are now correcly scaled by RadPattern::GetPred
 		// rescale source amplitudes to match the data
 		std::vector<float> ampratioV;	
 		ampratioV.reserve( dataV.size() * dataV.at(0).size() );
@@ -514,6 +515,7 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 		//std::cerr<<"   Afactor for Rayleigh: "<<Afactor<<" (was 50000.)\n";
 		for( auto& sdc : dataV )	// scale source amplitudes to match the observations
 			sdc.AmplifySource( Afactor );
+		*/
 	};
 
 	// SDContainer R: source terms

@@ -27,7 +27,7 @@ int main( int argc, char* argv[] ) {
 		}
 
 		RadPattern rp;
-		rp.Predict( type, feigname, fphvname, stk, dip, rak, dep, perlst );
+		rp.Predict( type, feigname, fphvname, stk, dip, rak, dep, 1.0, perlst );
 		// get source predictions and output
 		rp.OutputPreds( argv[9] );
 	} catch ( std::exception& e ) {

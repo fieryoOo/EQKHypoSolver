@@ -17,13 +17,15 @@ public:
    static const int NaN = -12345.;
 
 public:
-   Point( T init ) 
+   Point( T init = NaN ) 
 		: lon(init), lat(init) {}
-   Point(T lonin = NaN, T latin = NaN)
+   Point(T lonin, T latin)
       : lon(lonin), lat(latin) {}
    Point( const std::string& line ) {
       LoadLine(line);
    }
+
+	void correctLon() { if(lon<0.) lon+=360.; }
 
    virtual bool LoadLine( const std::string& line ) {
       //return ( sscanf(line.c_str(), "%f %f", &lon, &lat) == 2 );
@@ -42,6 +44,10 @@ public:
       float dislon = lon-p2.lon, dislat = lat-p2.lat;
       return (dislon*dislon + dislat*dislat < 1.0e-6);
    }
+
+	bool isWithin( const Point& BL, const Point& TR ) const {
+		return lon>=BL.lon&&lon<TR.lon && lat>=BL.lat&&lat<TR.lat;
+	}
 
 	const std::string toString() { return std::to_string(lon) + " " + std::to_string(lat); }
 

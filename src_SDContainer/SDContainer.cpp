@@ -148,8 +148,11 @@ void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 
 	// update source predictions
 	for( auto& sd : dataV ) {
-		float grt, pht, amp;
-		rad.GetPred( per, sd.azi, sd.Gsource, sd.Psource, sd.Asource );
+		//float grt, pht, amp;
+		const float Q = 100.;
+		const float I0 = rad.I0(per);	// use I0_source for now
+		rad.GetPred( per, sd.azi, sd.Gsource, sd.Psource, sd.Asource,
+						 sd.dis, M_PI/(per*sd.Gdata*Q), I0, sd.Gdata );
 	}
 }
 
