@@ -74,7 +74,7 @@ clean :
 .PHONY : clean-mod
 ifdef moddir
 clean-mod :
-	rm -f $(wildcard $(moddir)/*.o)
+	rm -f $(wildcard $(moddir)/*.o) $(moddir).o
 else
 clean-mod :
 	rm -f $(foreach moddir,$(MOD_DIRS),$(wildcard $(moddir)/*.o))

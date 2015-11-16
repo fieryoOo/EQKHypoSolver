@@ -2,6 +2,7 @@
 #define DATATYPES_H
 
 #include "Point.h"
+#include "DisAzi.h"
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -200,10 +201,13 @@ struct StaData : public AziData, public Point<float> {
 		if( userin != NaN ) user = userin;
 	}
 
-   StaData( const char *input, float ph_shift = 0. )
+   StaData( const char *input, float ph_shift = 0., const float clon = NaN, const float clat = NaN )
       : StaData() {
       sscanf(input, "%f %f %f %f %f", &lon, &lat, &Gdata, &Pdata, &Adata);
       Pdata += ph_shift;
+		// compute dist
+		if( clon!=NaN && clat!=NaN )
+			dis = Path<float>(clon, clat, lon, lat).Dist();
    }
 
 	// check if (all attributes are) within a given range defined by two other AziDatas

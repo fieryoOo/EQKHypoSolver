@@ -6,7 +6,8 @@
 #include <limits>
 
 /* IO */
-void SDContainer::LoadMeasurements( const std::string& fname, const std::string fsta ) {
+void SDContainer::LoadMeasurements( const std::string& fname, const float clon, const float clat, 
+												const float dismin, const float dismax, const std::string fsta ) {
 	// check input file
 	std::ifstream fin( fname );
 	if( ! fin ) 
@@ -22,7 +23,8 @@ void SDContainer::LoadMeasurements( const std::string& fname, const std::string 
 	int nskipC = 0, nskipR = 0;
 	for(std::string line; std::getline(fin, line); ) {
 		if( line.empty() ) continue;
-		StaData sdcur(line.c_str(), ph_shift);
+		StaData sdcur(line.c_str(), ph_shift, clon, clat);
+		if( sdcur.dis!=NaN && (sdcur.dis<dismin||sdcur.dis>dismax) ) continue;
 		if( ! sdcur.isComplete() ) {
 			std::cerr<<"Warning(SDContainer::LoadMeasurements): Incomplete station data = "<<sdcur<<std::endl;
 			nskipC++; continue;

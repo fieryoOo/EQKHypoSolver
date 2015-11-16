@@ -73,26 +73,28 @@ public:
 
 	// 3D model: Path velocities (and thus Tpaths) are predicted on the fly from vel maps
 	SDContainer( const float perin, const Dtype typein, const std::string fmeasure, 
-					 const std::string fmapG, const std::string fmapP, const std::string fsta="" ) 
+					 const std::string fmapG, const std::string fmapP, const std::string fsta="", 
+					 const float clon = NaN, const float clat = NaN, const float dismin = 0., const float dismax = 99999. ) 
 		: per(perin), oop(1./perin), type(typein) {
 		if( type!=R && type!=L ) {
 			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
 		}
-		LoadMeasurements( fmeasure, fsta );
+		LoadMeasurements( fmeasure, clon, clat, dismin, dismax, fsta );
 		LoadMaps( fmapG, fmapP );
 	}
 
 	// 1D model: Path velocities are fixed at the input velocities
 	SDContainer( const float perin, const Dtype typein, const std::string fmeasure, 
-					 const float velG, const float velP, const std::string fsta="" ) 
+					 const float velG, const float velP, const std::string fsta="",
+					 const float clon = NaN, const float clat = NaN, const float dismin = 0., const float dismax = 99999. ) 
 		: per(perin), oop(1./perin), type(typein), 
 		  _velG(velG), _velP(velP) {
 		if( type!=R && type!=L ) {
 			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
 		}
-		LoadMeasurements( fmeasure, fsta );
+		LoadMeasurements( fmeasure, clon, clat, dismin, dismax, fsta );
 	}
 	/*
 	SDContainer( float perin, const std::vector<StaData>& datain )
@@ -142,7 +144,8 @@ public:
 	void BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, const bool c2pi = true );
 
 	/* IO */
-	void LoadMeasurements( const std::string& fmeasure, const std::string fsta="" );
+	void LoadMeasurements( const std::string& fmeasure, const float clon, const float clat, 
+								  const float dismin, const float dismax, const std::string fsta="" );
 	void LoadMaps( const std::string& fmapG, const std::string& fmapP );
 	void PrintAll( std::ostream& sout = std::cout ) {
 		for( const auto& sd : dataV )

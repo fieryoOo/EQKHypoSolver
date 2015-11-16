@@ -420,9 +420,9 @@ void EQKAnalyzer::LoadData() {
 				float velG, velP;
 				SDContainer sd;
 				if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-					sd = SDContainer(per, t, farray[0], velG, velP, farray[3]);
+					sd = SDContainer(per, t, farray[0], velG, velP, farray[3], initlon, initlat, DISMIN, DISMAX);
 				} else {
-					sd = SDContainer(per, t, farray[0], farray[1], farray[2], farray[3]);
+					sd = SDContainer(per, t, farray[0], farray[1], farray[2], farray[3], initlon, initlat, DISMIN, DISMAX);
 				}
 				dataV.push_back( sd );
 			}
@@ -743,9 +743,10 @@ void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldat
 
 // output real (processed) and synthetic waveforms when the waveform fitting method is used
 void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& outdir ) {
-	//if( ! _usewaveform ) return;
-	if( !_usewaveform || outdir.empty() )
-		throw ErrorEA::BadParam(FuncName, "non waveform-fitting/empty outsac_dir");
+	if( ! _usewaveform ) return;
+		//throw ErrorEA::BadParam(FuncName, "non waveform-fitting");
+	if( outdir.empty() )
+		throw ErrorEA::BadParam(FuncName, "empty outsac_dir");
 	// data flags
 	bool RFlag = (datatype==B || datatype==R);
 	bool LFlag = (datatype==B || datatype==L);

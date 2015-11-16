@@ -29,7 +29,7 @@ PlotHisto() {
    u_2sig=`echo $mean $std2 | awk '{print $1+$2}'`
    echo -e $l_2sig 0"\n"$l_2sig 100 | psxy -J -R -A -W8/100/100/100 -O -K >>${fps}
    echo -e $u_2sig 0"\n"$u_2sig 100 | psxy -J -R -A -W8/100/100/100 -O -K >>${fps}
-	echo $mean $std | awk '{mean=$1; std=$2; ftmp=log(2.0/std)/log(10); ord=ftmp==int(ftmp)?ftmp:(ftmp<0?int(ftmp):int(ftmp)+1); mul=10**ord; printf "0.1 9.9 10 0.0 4 LT %g +/- 2*%g",int(mean*mul+0.5)/mul,int(std*mul+0.5)/mul}' | pstext -R0/10/0/10 -Wwhite,o2 -J -V -O -K -N >> ${fps}
+	echo $mean $std | awk '{mean=$1; std=$2; ftmp=log(2.0/std)/log(10); ord=ftmp==int(ftmp)?ftmp:(ftmp<0?int(ftmp):int(ftmp)+1); mul=10**ord; printf "0.1 9.9 10 0.0 4 LT %g (%g)",int(mean*mul+0.5)/mul,int(std*mul+0.5)/mul}' | pstext -R0/10/0/10 -Wwhite,o2 -J -V -O -K -N >> ${fps}
 	#echo $mean $std | awk '{printf "0.1 9.9 10 0.0 4 LT %.7g +/- 2*%.2g",$1,$2}' | pstext -R0/10/0/10 -Wwhite,o2 -J -V -O -K -N >> ${fps}
 	echo -n $mean" +/- "$std"  "
 
@@ -107,9 +107,8 @@ Nsearch=`tail -n3 $fin | awk 'BEGIN{N=0}{if($2>N){N=$2}}END{print N}'`
 ### range for reduced chi-square
 rCrange=`awk '{print $2/$3}' .PlotPosterior_tmp_acc | minmax -C`
 rCl=`echo $rCrange | awk '{printf "%.2f", $1+0.015}'`
-#rCu=`echo $rCrange $rCl | awk '{a=$3*1.5; if($2>$3){a=$2} printf "%.2f", a}'`
 rCu=`echo $rCl | awk '{printf "%.2f", $1+0.2}'`
-#rCu=`awk '{print $2/$3}' .PlotPosterior_tmp_rej | minmax -C | awk '{printf "%.2f", $2}'`
+rCl=2.1; rCu=2.4
 
 ### plot histograms
 gmtset HEADER_FONT_SIZE 12

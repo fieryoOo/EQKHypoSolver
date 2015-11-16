@@ -195,9 +195,9 @@ int main( int argc, char* argv[] ) {
 			// perturb steps are defined to be (ub-lb) * sfactor, where ub and lb are the boundaries decided by:
 			// assuming current model state to be the best fitting model, move away
 			// from this state until the probability of acceptance <= Pthreshold
-			ms.EstimatePerturbs( eka, 0.15 );	// sfactor default= 0.1
+			ms.EstimatePerturbs( eka, 0.12 );	// sfactor default= 0.1
 			// second (final) Monte Carlo Search with desired perturb sizes
-			int nsearch = 50000; 
+			int nsearch = 100000; 
 			Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 
 			// final output
