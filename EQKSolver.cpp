@@ -130,7 +130,7 @@ int main( int argc, char* argv[] ) {
 				//int nsearch = 7200, Tfactor = 8;
 				int nsearch = 15000, Tfactor = 16;
 				float alpha = Searcher::Alpha(nsearch, Tfactor); 
-				auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info for accepted searches
+				auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 0, true );	// save info for accepted searches
 				VO::Output( SIV, eka.outname_misL, true );	// append to file
 				//ms.Centralize(); being called later in Bound()
 				// output
@@ -146,7 +146,7 @@ int main( int argc, char* argv[] ) {
 					ms.FixFocal();				// have focal mechanism fixed
 					eka.PredictAll( ms );	// not necessary, but following search runs faster since Focal is fixed
 					if( iter==0 ) eka.SetInitSearch( true );			// use Love group data only!
-					auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 500, 0., 0, std::cout, 1 );
+					auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 500, 0., 0, std::cout, 0, true );
 					VO::Output( SIV, eka.outname_misL, true );	// append to file
 					if( iter==0 ) eka.SetInitSearch( false );	// use all data
 					// search for focal info
@@ -176,7 +176,7 @@ int main( int argc, char* argv[] ) {
 			//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
 			//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 			float alpha = Searcher::Alpha(nsearch, Tfactor);
-			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, -1 );	// do not save Sinfo
+			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 0, false );	// do not save Sinfo
 			//Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 10000, alpha, 0.5f, std::cout, -1 );	// do not save Sinfo
 			eka.OutputFits( ms );
 			eka.OutputMisfits( ms );

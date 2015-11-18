@@ -40,6 +40,12 @@ namespace ErrorSC {
          : Base("Error("+funcname+"): Bad parameters ("+info+").") {}
    };
 
+   class EmptyMap : public Base {
+   public:
+      EmptyMap(const std::string funcname, const std::string info = "")
+         : Base("Error("+funcname+"): Empty Map(s) ("+info+").") {}
+   };
+
    class InternalException : public Base {
    public:
       InternalException(const std::string funcname, const std::string info = "")
@@ -162,7 +168,9 @@ protected:
 	static constexpr float exfactor = 2.5;							/* #sigma for excluding bad data */
 
    static constexpr float Min_Perc = 0.8;							/* allowed min fraction of path length in the vel map */
-   static constexpr float Lfactor = 2.5;							/* define lamda = per * Lfactor for PathAvg */
+   static constexpr float Lfactor = 0.;							/* define lambda = per * Lfactor for PathAvg; 
+																					note, however, that the Map object runs much 
+																					faster when lambda=0 and map is regular*/
 
    //static constexpr float DISMIN = 0.;								// defined in EQKAnalyzer!! /* allowed min */
    //static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */

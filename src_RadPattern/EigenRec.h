@@ -105,7 +105,7 @@ private:
 		std::sort(perDV.begin(), perDV.end(), [&](const PerData& pd1, const PerData& pd2) {
 			return pd1.per < pd2.per;
 		} );
-		_sout<<"### EigenRec::PreLoad: "<<perDV.size()<<" periods pre-loaded for "<<type<<" at mod# "<<_imod<<" ###"<<std::endl;
+		//_sout<<"### EigenRec::PreLoad: "<<perDV.size()<<" periods pre-loaded for "<<type<<" at mod# "<<_imod<<" ###"<<std::endl;
 
 	}
 

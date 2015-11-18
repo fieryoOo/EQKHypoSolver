@@ -146,7 +146,7 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
       fin.close();
       pimplR->feignmem = feigname;
 
-		// read mod energy integrals
+		// read mod energy integrals 
 		EigenRec er(feigname);
 		I0M.clear();
 		for( const auto& pd : er.perDV) {

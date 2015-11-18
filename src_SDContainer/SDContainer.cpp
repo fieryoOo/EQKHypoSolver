@@ -39,7 +39,7 @@ void SDContainer::LoadMeasurements( const std::string& fname, const float clon, 
 			StaInfo data_find;
 			if( ! stalst.SearchLoc( sdcur.lon, sdcur.lat, data_find ) ) continue;
 		}
-		//std::cerr<<"fname="<<fname<<" per="<<per<<" type="<<type<<" size="<<dataV.size()<<" "<<sdcur<<"\n";
+		//std::cerr<<"SDContainer::LoadMeasurements: fname="<<fname<<" per="<<per<<" type="<<type<<" size="<<dataV.size()<<" "<<sdcur.Gdata<<" "<<sdcur.Pdata<<" "<<sdcur.Adata<<"\n";
 		dataV.push_back( sdcur );
 	}
 	std::cout<<"### SDContainer::LoadMeasurements: "<<dataV.size()<<" stations loaded from file "<<fname<<".";
@@ -53,8 +53,11 @@ void SDContainer::LoadMaps( const std::string& fmapG, const std::string& fmapP )
    // read in vel maps
 	mapG.Load( fmapG );
 	mapP.Load( fmapP );
-	if( dataV.empty() ) return;
+	if( mapG.size()==0 || mapP.size()==0 )
+		throw ErrorSC::EmptyMap(FuncName, fmapG + " " + fmapP);
+
 	// get data region
+	if( dataV.empty() ) return;
 	float lonmin, lonmax, latmin, latmax;
 	lonmin = lonmax = dataV.at(0).lon;
 	latmin = latmax = dataV.at(0).lat;
@@ -66,8 +69,10 @@ void SDContainer::LoadMaps( const std::string& fmapG, const std::string& fmapP )
 	}
 	std::cout<<"### SDContainer::LoadMaps: Data Region = "<<lonmin<<" - "<<lonmax<<"   "<<latmin<<" - "<<latmax<<" ###\n";
 	// clip maps ( for faster predictions )
-	mapG.Clip( lonmin, lonmax, latmin, latmax );
-	mapP.Clip( lonmin, lonmax, latmin, latmax );
+	mapG.Clip( lonmin-1., lonmax+1., latmin-1., latmax+1. );
+	mapP.Clip( lonmin-1., lonmax+1., latmin-1., latmax+1. );
+	std::cout<<"### SDContainer::LoadMaps: Group Map Region (clipped) = "<<mapG<<" ###\n";
+	std::cout<<"### SDContainer::LoadMaps: Phase Map Region (clipped) = "<<mapP<<" ###\n";
 }
 
 
@@ -109,7 +114,7 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 			float lam = dis<300. ? (lambda * (2.5-dis*0.005)) : lambda;
 			float minP = dis>15. ? (Min_Perc - 9./dis) : (Min_Perc - 0.6);
 			//float minP = Min_Perc;
-			float vel = mapG.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lam, perc ).Data();
+			float vel = mapG.PathAverage_Reci( Point<float>(sd.lon,sd.lat), perc, lam ).Data();
 			if( perc > minP ) sd.Gpath = dis / vel + srct0;
 		}
 	} else {
@@ -126,8 +131,9 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 			float lam = dis<300. ? (lambda * (2.5-dis*0.005)) : lambda;
 			float minP = dis>15. ? (Min_Perc - 9./dis) : (Min_Perc - 0.6);
 			//float minP = Min_Perc;
-			float vel = mapP.PathAverage_Reci( Point<float>(sd.lon,sd.lat), lam, perc ).Data();
+			float vel = mapP.PathAverage_Reci( Point<float>(sd.lon,sd.lat), perc, lam ).Data();
 			if( perc > minP ) sd.Ppath = dis / vel + srct0;
+//std::cerr<<vel<<" "<<dis<<" "<<srct0<<" "<<perc<<" "<<sd.lon<<" "<<sd.lat<<" "<<lam<<std::endl;
 		}
 	} else {
 		for( auto& sd : dataV ) sd.Ppath = sd.dis / _velP + srct0;
@@ -163,10 +169,10 @@ void SDContainer::ToMisfitV( std::vector<AziData>& adV, const float Tmin ) const
 	//const float Tmin = nwavelength * per;	// three wavelength criterion
 	for( const auto& sdcur : dataV ) {
 		if( sdcur.azi!=NaN ) {
+			//std::cerr<<"ToMisfitV 1: "<<sdcur.Pdata<<" "<<sdcur.Psource<<" "<<sdcur.Ppath<<" "<<Tmin<<std::endl;
 			if( sdcur.Pdata < Tmin ) continue;
 			AziData ad;
 			if( sdcur.ToMisfit( ad ) ) adV.push_back(ad);
-				//std::cerr<<"ToMisfitV:   "<<sdcur<<"   "<<ad<<std::endl;
 		}
 	}
 }

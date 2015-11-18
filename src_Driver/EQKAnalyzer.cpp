@@ -410,7 +410,7 @@ void EQKAnalyzer::LoadData() {
 		std::cout<<"### "<<_sac3VR.size()<<"(Rayl) + "<<_sac3VL.size()<<"(Love) sac file(s) loaded. ###"<<std::endl;
 	} else {	// read DISP measurements
 		auto LoadSDData = [&]( const std::map<float, std::array<FileName, 4> >& flist, std::vector<SDContainer>& dataV, const Dtype t ) {
-			dataV.clear();
+			dataV.clear(); dataV.reserve( flist.size() );
 			for( const auto& f : flist ) {
 				const float per = f.first;
 				const auto& farray = f.second;
@@ -424,7 +424,7 @@ void EQKAnalyzer::LoadData() {
 				} else {
 					sd = SDContainer(per, t, farray[0], farray[1], farray[2], farray[3], initlon, initlat, DISMIN, DISMAX);
 				}
-				dataV.push_back( sd );
+				dataV.push_back( std::move(sd) );
 			}
 		};
 		// Rayleigh
