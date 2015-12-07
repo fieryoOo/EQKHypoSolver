@@ -153,7 +153,7 @@ int main( int argc, char* argv[] ) {
 					ms.FixEpic();		// have epicenter fixed
 					eka.PredictAll( ms );	// not necessary, but following search runs faster since Epic is fixed
 					float alpha = Searcher::Alpha(nsearch, Tfactor);
-					SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 1 );	// save info for accepted searches
+					SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 0, true );	// save info for accepted searches
 					VO::Output( SIV, eka.outname_misF, true );	// append to file
 					// centralize the model space around the current MState
 					ms.Centralize();
@@ -176,6 +176,7 @@ int main( int argc, char* argv[] ) {
 			//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
 			//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 			float alpha = Searcher::Alpha(nsearch, Tfactor);
+			//ms.SetPerturb( false, false, false, true, false, false, false, false );
 			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 0, false );	// do not save Sinfo
 			//Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 10000, alpha, 0.5f, std::cout, -1 );	// do not save Sinfo
 			eka.OutputFits( ms );

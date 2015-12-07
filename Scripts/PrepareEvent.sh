@@ -82,6 +82,12 @@ mkdir -p ${dir_out}
 ### Extract R/L wave data from Z/T component ###
 fQ=${dir_out}/Qvalues.txt
 rm -f $fQ
+correctGS=false
+correctQ=false
+echo "dismax = "$dismax >> $fQ
+echo "snrmin = "$snrmin >> $fQ
+echo "correctGS? : "$correctGS >> $fQ
+echo "correctQ ? : "$correctQ  >> $fQ
 for wtype in R L; do
 	# component (file) name
 	if [ $wtype == 'R' ]; then
@@ -99,10 +105,21 @@ for wtype in R L; do
 		# get attenuation coefficient
 		alp_Q=`Alpha $per_v ${wtype}`
 		echo $wtype $per_v ${alp_Q} >> $fQ
-		alpha=`echo ${alp_Q} | awk '{print $1}'`
+		if [ $correctQ == true ]; then
+			alpha=`echo ${alp_Q} | awk '{print $1}'`
+		else
+			alpha=0
+		fi
 		fout=${dir_out}/${wtype}_Sta_grT_phT_Amp_${per}_dis${dismax}.txt
 		# get lon-lat-grv-phv-amp info (amp is corrected for both geometric spreading and attenuation)
-	   awk -v per=$per_v -v alp=$alpha -v dismax=$dismax -v snrmin=$snrmin 'NR>1&&$11>snrmin&&$12>0&&$13>0&&$14>0&&$7<dismax{print $5,$6, $13, $14, $12*sqrt($7/1000.)/exp(-alp*$7)}' $file > $fout
+	   awk -v cGS=$correctGS -v per=$per_v -v alp=$alpha -v dismax=$dismax -v snrmin=$snrmin 'NR>1&&$11>snrmin&&$12>0&&$13>0&&$14>0&&$7<dismax{
+			if( cGS=="false" ) {
+				disQ = 1000.;
+			} else {
+				disQ = $7;
+			}
+			print $5,$6, $13, $14, $12*sqrt(disQ/1000.)/exp(-alp*$7)
+		}' $file > $fout
 		echo $file $fout
 	done # file
 done # wtype

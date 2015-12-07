@@ -131,7 +131,9 @@ done
 #REG=-R0/360/500/500000
 REG=-R0/360/${ampmin}/${ampmax}
 SCA=-JX10/8l
-psbasemap -Ba60f20/a20f5:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
+psbasemap -Ba60f20/a2f3:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
+#SCA=-JX10/8
+#psbasemap -Ba60f20/a10000f5000:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
 iper=$iperbeg
 if [ $# -ge 6 ]; then
 	ampfactor=$6
@@ -143,15 +145,15 @@ for per in ${perlst[@]}; do
 	fbin=${type}_azi_data_pred_${per}sec.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
    grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$11}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
-	if [ $iter == $Niterlast ] && [ -e $fsource ]; then
+	if [ 0 == 1 ] && [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per -v ampfactor=$ampfactor '$5==per{print $1,$4*ampfactor}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	else
 		grep -v '\-12345' $fsta | awk -v iter=$iter -v ampfactor=$ampfactor 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter&&NF>0){print $4,$12*ampfactor}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	fi
-	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8+$9,$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
+	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8*(1.0+$9),$8*$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
    let iper++
 done
 
-
 pwd | psxy -R -J -O >> $psout
 echo $psout
+

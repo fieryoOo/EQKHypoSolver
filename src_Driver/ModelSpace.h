@@ -108,17 +108,25 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			//validP = true;
 		}
 
+		void SetPerturb( const bool plon, const bool plat, const bool ptim, const bool pM0,
+							  const bool pstk, const bool pdip, const bool prak, const bool pdep ) {
+			if( plon + plat + ptim + pstk + pdip + prak + pdep + pM0 == 0 )
+				throw std::runtime_error("Error(SetPerturb): model non purtable!");
+			if( plon ) Plon = pertfactor * Rlon; else Plon = 0.;
+			if( plat ) Plat = pertfactor * Rlat; else Plat = 0.;
+			if( ptim ) Ptim = pertfactor * Rtim; else Ptim = 0.;
+			if( pstk ) Pstk = pertfactor * Rstk; else Pstk = 0.;
+			if( pdip ) Pdip = pertfactor * Rdip; else Pdip = 0.;
+			if( prak ) Prak = pertfactor * Rrak; else Prak = 0.;
+			if( pdep ) Pdep = pertfactor * Rdep; else Pdep = 0.;
+			if( pM0 ) PM0 = pow(RM0, pertfactor); else PM0 = 1.;
+		}
+
 		void FixEpic() {
-			Plon = Plat = Ptim = 0.;
-			PM0 = pow(RM0, pertfactor);
-			//float curRdep = Rdep>0 ? Rdep : 50.;
-			Pstk = pertfactor * Rstk; Pdip = pertfactor * Rdip;
-			Prak = pertfactor * Rrak; Pdep = pertfactor * Rdep;
+			SetPerturb( false, false, false, true, true, true, true, true );
 		}
 		void FixFocal() {
-			Ptim = pertfactor * Rtim;
-			Plon = pertfactor * Rlon; Plat = pertfactor * Rlat;
-			Pstk = Pdip = Prak = Pdep = 0.; PM0 = 1.;
+			SetPerturb( true, true, true, false, false, false, false, false );
 		}
 		void unFix() {	resetPerturb(); }
 

@@ -1,15 +1,15 @@
       subroutine rad_pattern_r(feig_buff,eiglen, phvnper,dperin,
      +                         strike,dip,rake,depth, period,nper,
-     +                         azimuth,groupT,phaseT,amplitude)
+     +                         azimuth,groupT,phaseT,amplitude,coef_amp,wavenum)
 c To calculate group_delay as a function of azimuth and period
-      integer*4 ntmax, phvnper
+      integer*4 nper, phvnper
       real*4 dper, dperin
       parameter (ntmax=500)
       integer*4 pos1, pos2
       integer*4 eiglen
       real*4 v(3,ntmax),dvdz(3,ntmax),ampr(ntmax),ampl(ntmax)
       real*4 tm(6),du(3),vu(3),wvn(2),period(20),ampl_max(ntmax)
-      complex*8 br(6),bl(6),sumr
+      complex*8 br(6),bl(6),sumr,step
       character*20000000 feig_buff
 c(phvlen)
       character*40 bred
@@ -17,8 +17,9 @@ c(phvlen)
       character*1 sigR,sigL
       real*4 pq(181,ntmax),ph(181,ntmax),gr_time(181,ntmax),aml(181,ntmax)
       real*4 azimuth(181),groupT(181,nper),phaseT(181,nper),amplitude(181,nper)
+      real*4 coef_amp(nper), wavenum(nper)
       real*4 cr(ntmax),ur(ntmax),wvr(ntmax),t(ntmax),fr(ntmax)
-      real*4 cl(ntmax),ul(ntmax),wvl(ntmax)
+      real*4 cl(ntmax),ul(ntmax),wvl(ntmax),stepr
       real*4 temp_ph(ntmax),unph(ntmax),grt(ntmax)
       data marg/6/,pi/3.1415927/,oo2pi/0.1591549431/,r/2./,eps/0.0001/
       data const/1.E+20/,const2/5013256549262000.0/
@@ -75,6 +76,8 @@ c    period loop
          w=pi*2.0*fr(j)
          wvn(1)=wvr(j)
          wvn(2)=wvl(j)
+c         step=cmplx(0.,-1./w)
+         stepr=1./w
 c        azimuthal loop
          Do  jkl=1,181
             AZI=2.*float(jkl-1)
@@ -85,16 +88,17 @@ c           convolution with moment tensor
             call sourceRad(sigR,sigL,cs,sc,wvn,vu,du,br,bl)
             sumr=(0.0,0.0)
             do m=1,6
-               sumr= sumr+tm(m)*br(m)
+               sumr= sumr+tm(m)*br(m)*stepr
             end do
-            aq=cabs(sumr)
+            aml(jkl,j)=cabs(sumr)
             sume=real(sumr)
             sumi=aimag(sumr)
             pq(jkl,j)=phaRad(sumi,sume)
+c      if(t(j).eq.10.) write(*,*) "rad_pattern_Rayl new:",t(j),pq(jkl,j),sumi,sume,cabs(sumr)
 cYT            aml(jkl,j)=aq*ampr(j)*const
+cYT            aml(jkl,j)=aq*sqrt(ampr(j)*const2)
 cYT         source amp norm term : ampr = 1./(2.*c*ugr*sumi0)/sqrt(6.28318)*1.e-15
 cYT            aml(jkl,j)=aq* sqrt( ampr(j)*1.0e15*sqrt(8.0*pi) )
-            aml(jkl,j)=aq*sqrt(ampr(j)*const2)
          EndDo
 1     ENDDO
 
@@ -119,6 +123,8 @@ c----azimuth-dependent output for a set of requested periods------
 C---------------selection and output -----------------------S
          Do jpa=1,nt 
          if(abs(period(jop)-t(jpa)).lt.eps)then
+            coef_amp(jop)=ampr(jpa)
+            wavenum(jop)=wvr(jpa)
             do jkl=1,181
                groupT(jkl,jop)=gr_time(jkl,jpa)
                phaseT(jkl,jop)=pq(jkl,jpa)*oo2pi*t(jpa)

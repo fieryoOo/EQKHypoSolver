@@ -167,14 +167,18 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 			, FocalInfo(stkin, dipin, rakin, depin, M0in) {}
 
 		ModelInfo( const std::string& line ) {
+			Loadline(line);
+		}
+
+		ModelInfo( const EpicInfo& einfo, const FocalInfo& finfo )
+			: EpicInfo(einfo), FocalInfo(finfo) {}
+
+		void Loadline( const std::string& line ) {
 			std::stringstream ss(line);
 			if( !( ss >> lon >> lat >> t0 >> stk >> dip >> rak >> dep ) )
 				throw std::runtime_error("Error(ModelInfo::ModelInfo): format error in: " + line);
 			ss >> M0;
 		}
-
-		ModelInfo( const EpicInfo& einfo, const FocalInfo& finfo )
-			: EpicInfo(einfo), FocalInfo(finfo) {}
 
 		virtual bool isValid() const {
 			return ( FocalInfo<ftype>::isValid() && EpicInfo::isValid() );

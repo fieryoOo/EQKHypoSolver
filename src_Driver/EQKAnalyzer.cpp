@@ -361,7 +361,8 @@ void EQKAnalyzer::LoadData() {
 			// filter
 			sac.Resample();	// sample grid alignment
 			if( sacRtype == 1 ) sac.Integrate();
-			sac.Filter(f1,f2,f3,f4);
+			//sac.Filter(f1,f2,f3,f4);
+			sac.BandpassCOSFilt(f1,f2,f3,f4);
 			// zoom in to the surface wave window
 			float tb, te;
 			if( dis < 300. ) {
@@ -542,7 +543,7 @@ void EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
 	bool LFlag = (datatype==B || datatype==L);
 	if( _isInit ) {
 		useG = true; useA = useP = false;
-		if( Lsize > 0 ) {	RFlag = false; LFlag = true; }
+		if( LFlag ) { RFlag = false; }
 	}
 
 	// initialize ADAdder
@@ -821,6 +822,7 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 		// choose outlist by Dtype
 		const auto& outlist = sdc.type==R ? outlist_RF : outlist_LF;
 		const auto& rp = sdc.type==R ? _rpR : _rpL;
+		const float Afactor = sdc.type==R ? _AfactorR : _AfactorL;
 		std::string outname;
 		if( _usewaveform ) {
 			if( outlist.size() == 0 ) return;
@@ -835,7 +837,7 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 		// output data and predictions at each station (append at the end)
 		std::ofstream foutsta( outname + "_sta", std::ofstream::app );
 		foutsta<<"# [ minfo = "<<minfo<<" ]\n";
-		sdc.PrintAll( foutsta );
+		sdc.PrintAll( foutsta, true );	// normalize amplitude while printing
 		foutsta << "\n\n";
 		// output misfits and source preds at each bin azi (append at the end)
 		std::ofstream foutbin( outname + "_bin", std::ofstream::app );
@@ -848,11 +850,13 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 				Gsource = Psource = Asource = 0.;
 			} else {
 				rp.GetPred( per, admean.azi,	Gsource, Psource, Asource );
-				Asource *= _AfactorR;
+							//	1000., 0., rp.cAmp(per)[0], admean.Gdata );
+				//Asource *= Afactor;
 			}
+			// averaged-normalized amplitudes are stored in admean.user!
 			foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
 				<<"  "<<Psource<<" "<<admean.Pdata<<" "<<adstd.Pdata
-				<<"  "<<Asource<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
+				<<"  "<<admean.user<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
 		}
 		foutbin << "\n\n";
 	};

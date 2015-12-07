@@ -101,6 +101,7 @@ c ---
       if(v1.lt.0.0d0.or.v2.lt.0.0d0.or.v3.lt.0.0d0.or.v4.lt.0.0d0) goto 9
       vv(4) = v1+(v2-v1)*dhf/hf+(v3-v1)*dhl/hl+
      *    (v1+v4-v2-v3)*dhf*dhl/hf/hl
+C      write(*,*) "rbimod: ",vv(4)
       m = m+1
 c ---
       return

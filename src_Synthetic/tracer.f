@@ -53,5 +53,6 @@ c     xn = normal vector; delta = distance
       enddo
       call rbimod(x2,nn,vx,0,ierr, mdl)
       t(4) = vx(4)
+C      write(*,*) "tracer: ",t(4)
       ierr = 0
       end

@@ -94,23 +94,22 @@ public:
 					  const ftype depth, const ftype M0, const std::vector<float>& perlst );
 				//std::vector< std::vector<AziData> >& per_azi_pred );
 
-	/* get the amp norm term at per */
-	std::array<float, 2> cAmp( const float per ) const;
+	/* get I0 at per */
+	float I0( const float per ) const;
 
 	/* prediction at one single azimuth. return false if the given azimuth is invalidated due to small amplitude */
 	// M0 = scalar seismic momentum
 	// dis = distance; alpha = attenuation coeff
 	// J = mode energy integration (from eigen);
 	// U = local group velocity
-	bool GetPred( const float per, const float azi,	float& grt, float& pht, float& amp, const float mul = 1. ) const;
 	bool GetPred( const float per, const float azi,	float& grt, float& pht, float& amp,
-					  const float dis, const float alpha, const float recCAmp = NaN ) const;
+					  const float dis = NaN, const float alpha = NaN, const float J = NaN, const float U = NaN ) const;
 
 	void OutputPreds( const std::string& fname, const float Afactor = 1. );
 
 public:
 	static constexpr float NaN = -12345.;
-	//static constexpr float oofourpi = 0.25e-13 / M_PI;	// unit convertion = 1.0e-13
+	static constexpr float oofourpi = 0.25e-13 / M_PI;	// unit convertion = 1.0e-13
 	static constexpr int nazi = 181;
 	static constexpr int dazi = 2;
 	static constexpr int InvalidateHwidth = 3;	// half width in iazi of the focal pred invalidating window
@@ -123,10 +122,7 @@ private:
 	// sample azimuths
 	std::vector<float> aziV;
 	// I0 (mod energy integral) keyed by period
-	//std::map< float, float > I0M;
-	// campM[per][0]: source amp norm term : campM[per] = 1.e-15/( (phvel*grvel*I0) * sqrt(8 * pi) )
-	// campM[per][1]: angular wave number
-	std::map< float, std::array<float,2> > campM;
+	std::map< float, float > I0M;
 	// group, phase, amplitudes keyed by period
 	std::map< float, std::vector<float> > grtM, phtM, ampM;
 

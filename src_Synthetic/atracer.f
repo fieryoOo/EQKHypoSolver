@@ -105,6 +105,7 @@ cMB     write(*,*) 'A ', per,6371.0*del,trres(2)
 C         write(*,*) k," ",1," ",m,"   ",del,"   ",trres(2)
             if( applyQ ) then
                cor(k,2,m) = dexp(-trres(3))*trres(4)
+C               if(per.eq.16.) write(*,*) " applyQ: ",trres(3), trres(4)
             else
                cor(k,2,m) = trres(4)
             endif

@@ -1,5 +1,5 @@
 #include "RadPattern.h"
-//#include "EigenRec.h"
+#include "EigenRec.h"
 #include <fstream>
 #include <cstring>
 #include <algorithm>
@@ -9,12 +9,12 @@ const int nazi = RadPattern::nazi;
 extern"C" {
    void rad_pattern_r_(char *feig_buff, int *eig_len, int *phvnper, float *phvdper,
                        const float *strike, const float *dip, const float *rake, const float *depth,
-							  const float *per, int *nper, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi], 
-							  float cAmp[], float wvn[]);
+							  const float *per, int *nper,
+                       float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
    void rad_pattern_l_(char *feig_buff, int *eig_len, int *phvnper, float *phvdper,
                        const float *strike, const float *dip, const float *rake, const float *depth,
-							  const float *per, int *nper, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi], 
-							  float cAmp[], float wvn[]);
+							  const float *per, int *nper,
+                       float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
 }
 
 
@@ -34,7 +34,6 @@ struct RadPattern::Rimpl {
 
 	Rimpl( const Rimpl& r2 ) 
 		: phvnper(r2.phvnper), phvdper(r2.phvdper)
-		, feignmem(r2.feignmem), fphvnmem(r2.fphvnmem)
 		, feig_len(r2.feig_len) {
 		if( feig_len > 0) {
 			feig_buff = new char[feig_len];
@@ -61,16 +60,14 @@ RadPattern::RadPattern( const RadPattern& rp2 )
    , stk( rp2.stk ), dip( rp2.dip )
    , rak( rp2.rak ), dep( rp2.dep )
    , aziV( rp2.aziV ), grtM( rp2.grtM ) 
-   , phtM( rp2.phtM ), ampM( rp2.ampM )
-	, campM( rp2.campM ) {}
+   , phtM( rp2.phtM ), ampM( rp2.ampM ) {}
 
 RadPattern::RadPattern( RadPattern&& rp2 )
    : pimplR( std::move(rp2.pimplR) ), type( rp2.type )
 	, stk( rp2.stk ), dip( rp2.dip )
 	, rak( rp2.rak ), dep( rp2.dep )
 	, aziV( std::move(rp2.aziV) ), grtM( std::move(rp2.grtM) )
-	, phtM( std::move(rp2.phtM) ), ampM( std::move(rp2.ampM) )
-	, campM( std::move(rp2.campM) ) {}
+	, phtM( std::move(rp2.phtM) ), ampM( std::move(rp2.ampM) ) {}
 
 RadPattern& RadPattern::operator= ( const RadPattern& rp2 ) {
    pimplR.reset( new Rimpl(*(rp2.pimplR)) );
@@ -79,7 +76,6 @@ RadPattern& RadPattern::operator= ( const RadPattern& rp2 ) {
 	rak = rp2.rak; dep = rp2.dep;
 	aziV = rp2.aziV; grtM = rp2.grtM;
 	phtM = rp2.phtM; ampM = rp2.ampM;
-	campM = rp2.campM;
 }
 
 RadPattern& RadPattern::operator= ( RadPattern&& rp2 ){
@@ -89,7 +85,6 @@ RadPattern& RadPattern::operator= ( RadPattern&& rp2 ){
 	rak = rp2.rak; dep = rp2.dep;
 	aziV = std::move(rp2.aziV); grtM = std::move(rp2.grtM);
 	phtM = std::move(rp2.phtM); ampM = std::move(rp2.ampM);
-	campM = std::move(rp2.campM);
 }
 
 RadPattern::~RadPattern() {}
@@ -151,9 +146,7 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
       fin.close();
       pimplR->feignmem = feigname;
 
-		// read mod energy integrals 
-		/* not necessary: I0 is included in cAmp
-		std::cerr<<"RadPattern::Predict: reading eigen file"<<std::endl;
+		// read mod energy integrals
 		EigenRec er(feigname);
 		I0M.clear();
 		for( const auto& pd : er.perDV) {
@@ -162,7 +155,6 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
 			if( ! (ss >> I0) ) continue;
 			I0M[per] = I0;
 		}
-		*/
    }
 
    // read in nper and dper from fphv
@@ -191,15 +183,15 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
 
    // run rad_pattern
    int nper = perlst.size();
-	float azi[nazi], grT[nper][nazi], phT[nper][nazi], amp[nper][nazi], coef_amp[nper], wvn[nper];
+	float azi[nazi], grT[nper][nazi], phT[nper][nazi], amp[nper][nazi];
 
    if( type == 'R' ) {
       rad_pattern_r_( pimplR->feig_buff, &(pimplR->feig_len), &(pimplR->phvnper), &(pimplR->phvdper),
-                      &(stk), &(dip), &(rak), &(dep), &(perlst.at(0)), &nper, azi, grT, phT, amp, coef_amp, wvn );
+                      &(stk), &(dip), &(rak), &(dep), &(perlst.at(0)), &nper, azi, grT, phT, amp );
       //std::cerr<<pimplR->feignmem<<" "<<pimplR->feig_len<<" "<<pimplR->phvnper<<" "<<pimplR->phvdper<<"  "<<stk<<" "<<dip<<" "<<rak<<" "<<dep<<"   "<<nper<<std::endl;
    } else if( type == 'L' ) {
       rad_pattern_l_( pimplR->feig_buff, &(pimplR->feig_len), &(pimplR->phvnper), &(pimplR->phvdper),
-                      &(stk), &(dip), &(rak), &(dep), &(perlst.at(0)), &nper, azi, grT, phT, amp, coef_amp, wvn );
+                      &(stk), &(dip), &(rak), &(dep), &(perlst.at(0)), &nper, azi, grT, phT, amp );
    }
 
    // check if feig and fphv contents are modified
@@ -209,10 +201,11 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
       throw ErrorRP::BadBuff(FuncName, fphvname + " != " + pimplR->fphvnmem);
 
 	// copy predictions into maps
-	grtM.clear(); phtM.clear(); ampM.clear(); campM.clear(); //aziV.clear();
+	grtM.clear(); phtM.clear(); ampM.clear(); //aziV.clear();
    //float azi[nazi], grT[nper][nazi], phT[nper][nazi], amp[nper][nazi];
 	for( int iper=0; iper<perlst.size(); iper++ ) {
 		float per = perlst[iper];
+
 /*
 		// copy as is
 		auto &grV = grtM[per], &phV = phtM[per], &amV = ampM[per];
@@ -233,10 +226,10 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
 		// shift by 180 degree
 		ShiftCopy( grtM[per], grT[iper], nazi );
 		ShiftCopy( phtM[per], phT[iper], nazi );
-		//std::cerr<<"phase vector (new) at per = "<<per<<std::endl;
-		//for(const auto phv : phtM[per]) std::cerr<<phv<<std::endl;
+std::cerr<<"phase vector (old) at per = "<<per<<std::endl;
+for(const auto phv : phtM[per]) std::cerr<<phv<<std::endl;
 		ShiftCopy( ampM[per], amp[iper], nazi );
-		campM[per] = std::array<float, 2>{ coef_amp[iper], wvn[iper] };
+
    }
 	//aziV = std::vector<float>( azi, azi+nazi );
 
@@ -272,16 +265,16 @@ bool RadPattern::Predict( char typein, const std::string& feigname, const std::s
 	return true;	// updated!
 }
 
-std::array<float, 2> RadPattern::cAmp( const float per ) const {
-	auto iter = campM.find(per);
-	if( iter == campM.end() )
+float RadPattern::I0( const float per ) const {
+	auto iI0 = I0M.find(per);
+	if( iI0 == I0M.end() )
 		throw ErrorRP::BadParam(FuncName, "un-predicted period");
-	return (iter->second);
+	return (iI0->second);
 }
 
 bool RadPattern::GetPred( const float per, const float azi,
 								  float& grt, float& pht, float& amp,
-								  const float Amul ) const {
+								  const float dis, const float alpha, const float J, const float U ) const {
 	// check validities of period and azimuth
 	auto Igrt = grtM.find(per);
 	if( Igrt == grtM.end() )
@@ -307,38 +300,17 @@ bool RadPattern::GetPred( const float per, const float azi,
 	// amp
 	auto Iamp = ampM.find(per);
 	ftmp1 = (Iamp->second)[iazi], ftmp2 = (Iamp->second)[iazi+1];
-	amp = Amul * (ftmp1 + (ftmp2 - ftmp1) * azifactor);
-
-	return true;
-}
-
-bool RadPattern::GetPred( const float per, const float azi,
-								  float& grt, float& pht, float& amp,
-								  const float dis, const float alpha, const float recCAmp ) const {
-	if( ! GetPred(per, azi, grt, pht, amp, 1.) ) return false;
-
-	//if( U==NaN || J==NaN ) {	// compute amplitude at the source
-	if( recCAmp == NaN ) {	// compute amplitude at the source
+	amp = ftmp1 + (ftmp2 - ftmp1) * azifactor;
+	// correct (scale up) amp if extra info is given
+	if( U != NaN ) {
 		// M0 = scalar seismic momentum
-		// cAmp = source amp norm term: 1.0/( (phvel*grvel*I0) * sqrt(8 * pi) ) in sec^2/gram
-		auto coefs = cAmp(per);	// cAmp and wavenumber
-		//std::cerr<<"amp0 = "<<amp<<" ";
-		amp *= 100. * M0 * coefs[0] / sqrt(coefs[1]);	// amplitude at 1km distance
-		//std::cerr<<100.<<" "<<M0<<" "<<sqrt(coefs[0]*1.0e15/sqrt(8*M_PI))<<" "<<1.0e-6*sqrt(coefs[0]*1.0e15*sqrt(8*M_PI))/sqrt(coefs[1])*exp(-dis*alpha)<<" amp1 = "<<amp<<" ";
-	} else { // propogate amp to the receiver if extra info is given
-		// recCAmp = 1. / sqrt(J * U * C) in sqrt(sec^2/gram)
+		// dis = distance; alpha = average attenuation coeff
 		// J = receiver mode energy integration (from eigen);
 		// U = local group velocity at the receiver location
-		// C = local phase velocity at the receiver location
-		auto coefs = cAmp(per);	// cAmp and wavenumber
-		amp *= 100. * M0 * sqrt( coefs[0] / (sqrt(8.*M_PI)) )
-				 * recCAmp / sqrt(coefs[1]);		// receiver norm term * second part of propogation
-	}
-	if( dis>0 ) {	// attenuation and geometric spreading
-		// dis = distance; alpha = average attenuation coeff
-		amp /= sqrt(dis);
-		if( alpha > 0 ) amp *= exp(-dis*alpha);		// anelastic propogation
-		//std::cerr<<dis<<" "<<alpha<<" amp2 = "<<amp<<"  ";
+		amp *= ( oofourpi * M0 *			// oofourpi = const in source&propogation combined
+					exp(-dis*alpha) *			// anelastic propogation
+					sqrt(per / (dis*J*U)) );// receiver norm term * second part of propogation
+					//(Jsrc*Csrc*Usrc)) ) );	// source norm term is accounted for in rad_pattern
 	}
 
 	return true;

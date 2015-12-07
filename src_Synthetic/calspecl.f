@@ -28,6 +28,7 @@ C-------to introduce a phase shift -pi/2 for horizontal component----
         do i=1,nf
         sre(i)=sre(i)*s(i)
         sim(i)=sim(i)*s(i)
+C      write(*,*) "al after interp:",i,f0+df*(i-1),sqrt(sre(i)**2+sim(i)**2)
         end do
         return 
         end

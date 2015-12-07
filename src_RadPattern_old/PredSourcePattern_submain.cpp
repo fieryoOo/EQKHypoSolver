@@ -12,9 +12,9 @@
 inline int nint(float datain) { return (int)floor(datain+0.5); }
 
 int main( int argc, char* argv[] ) {
-   if( argc != 11 ) {
+   if( argc != 10 ) {
       std::cerr<<"Usage: "<<argv[0]<<" [R/L] [eigen_file (.R/L)] [phvel_file (.R/L.phv)]";
-      std::cerr<<" [per_lst] [strike] [dip] [rake] [depth] [M0] [out_name]"<<std::endl;
+      std::cerr<<" [per_lst] [strike] [dip] [rake] [depth] [out_name]"<<std::endl;
       exit(-1);
    }
 
@@ -41,8 +41,7 @@ int main( int argc, char* argv[] ) {
    std::cout<<"### "<<perlst.size()<<" periods read in. ###"<<std::endl;
 
    /* read in focal info */
-   const float strike = atof(argv[5]), dip = atof(argv[6]), rake = atof(argv[7]);
-	const float dep = atof(argv[8]), M0 = atof(argv[9]);
+   float strike = atof(argv[5]), dip = atof(argv[6]), rake = atof(argv[7]), dep = atof(argv[8]);
    /*
    int strike = nint(strikein), dip = nint(dipin), rake = nint(rakein), dep = nint(depin);
    if( strike!=strikein || dip!=dipin || rake!=rakein || dep!=depin ) {
@@ -50,25 +49,13 @@ int main( int argc, char* argv[] ) {
    }
    */
    //FocalInfo<float> finfo(strike, dip, rake, dep);
-   std::cout<<"### Input Focal info = ("<<strike<<" "<<dip<<" "<<rake<<" "<<dep<<" "<<M0<<"). ###"<<std::endl;
+   std::cout<<"### Input Focal info = ("<<strike<<" "<<dip<<" "<<rake<<" "<<dep<<"). ###"<<std::endl;
 
 	//bool GetPred( const float per, const float azi,	float& grt, float& pht, float& amp ) const;
    /* run rad_pattern_r */
    RadPattern rp;
-   rp.Predict( type, argv[2], argv[3], strike, dip, rake, dep, M0, perlst );
-	rp.OutputPreds( argv[10] );
-
-	// debug
-	float Q = 150.;
-	for( const auto per : perlst ) {
-		float alpha = M_PI/(per*2.8*Q);
-		for(float azi=202.1805; azi<203; azi+=2) {
-			float grt, pht, amp;
-			rp.GetPred(per, azi, grt, pht, amp, 192.0526, alpha);
-			std::cerr<<per<<" "<<amp<<" "<<grt<<" "<<pht<<" "<<azi<<std::endl;
-		}
-		//std::cerr<<"\n\n";
-	}
+   rp.Predict( type, argv[2], argv[3], strike, dip, rake, dep, perlst );
+	rp.OutputPreds( argv[9] );
 
    return 0;
 }

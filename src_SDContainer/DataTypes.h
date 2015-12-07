@@ -183,7 +183,7 @@ struct StaData : public AziData, public Point<float> {
    float dis = NaN; //, azi = NaN;
 	//float Gdata = NaN, Pdata = NaN, Adata = NaN;
 	float Gsource = NaN, Psource = NaN, Asource = NaN;
-	float Gpath = NaN, Ppath = NaN;
+	float Gpath = NaN, Ppath = NaN, alpha = NaN;
 
    StaData() : AziData() {}
 
@@ -227,15 +227,22 @@ struct StaData : public AziData, public Point<float> {
 		return AziData( azi, Gdata, Pdata, Adata );
 	}
 
-	bool ToMisfit( AziData& ad ) const {
+	bool ToMisfit( AziData& ad, const float per = 2. ) const {
 		if( ! ( GisComplete() && PisComplete() && AisComplete() ) )
 			return false;
 		ad.azi = azi;
 		ad.Gdata = Gdata-Gpath-Gsource;
 		ad.Pdata = Pdata-Ppath-Psource;
-		ad.Adata = Adata-Asource;
-		ad.user = Asource;
+		ad.Adata = Adata/Asource - 1.;
+		ad.user = NormAmp(Asource, per);
+		//if( Adata < Asource ) ad.user = -ad.user;
 		return true;
+	}
+
+	// return normalized amplitude based on dis and alpha (default to 1 km)
+	inline float NormAmp( const float Acur, const float per = 2., const float normdis = 1. ) const {
+		const float wavnum = (2. * M_PI * Ppath ) / (dis * per);
+		return Acur * std::sqrt(wavnum*dis/normdis) * exp(-alpha*(normdis-dis));
 	}
 
 /*

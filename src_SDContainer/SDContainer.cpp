@@ -153,12 +153,15 @@ void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 	*/
 
 	// update source predictions
+	float Q = type==R ? 200. : 175.;
+	float alpha = M_PI/(per*2.8*Q);
 	for( auto& sd : dataV ) {
 		//float grt, pht, amp;
-		const float Q = 100.;
-		const float I0 = rad.I0(per);	// use I0_source for now
-		rad.GetPred( per, sd.azi, sd.Gsource, sd.Psource, sd.Asource,
-						 sd.dis, M_PI/(per*sd.Gdata*Q), I0, sd.Gdata );
+		//const float cAmp = rad.cAmp(per)[0];	// use norm term at source for now
+		rad.GetPred( per, sd.azi, sd.Gsource, sd.Psource, sd.Asource, sd.dis, alpha );
+		//rad.GetPred( per, sd.azi, sd.Gsource, sd.Psource, sd.Asource,
+		//				 sd.dis, alpha, cAmp??? );
+		sd.alpha = alpha;	// store alpha for normalization
 	}
 }
 
@@ -172,7 +175,7 @@ void SDContainer::ToMisfitV( std::vector<AziData>& adV, const float Tmin ) const
 			//std::cerr<<"ToMisfitV 1: "<<sdcur.Pdata<<" "<<sdcur.Psource<<" "<<sdcur.Ppath<<" "<<Tmin<<std::endl;
 			if( sdcur.Pdata < Tmin ) continue;
 			AziData ad;
-			if( sdcur.ToMisfit( ad ) ) adV.push_back(ad);
+			if( sdcur.ToMisfit( ad, per ) ) adV.push_back(ad);
 		}
 	}
 }
@@ -267,7 +270,7 @@ void SDContainer::HandleBadBins( std::vector<AziData>& adVmean,
       if( ad_stdest.azi != NaN ) adstd.azi = ad_stdest.azi;
       if( adstd.Gdata == NaN ) adstd.Gdata = ad_stdest.Gdata;
       if( adstd.Pdata == NaN ) adstd.Pdata = ad_stdest.Pdata;
-      if( adstd.Adata == NaN ) adstd.Adata = admean.user * ad_stdest.Adata;
+      if( adstd.Adata == NaN ) adstd.Adata = ad_stdest.Adata;	// * admean.user;
       // store
       adVmean2.push_back( std::move(admean) );
       adVstd2.push_back( std::move(adstd) );
@@ -285,16 +288,15 @@ void SDContainer::ComputeVariance( std::vector<AziData>& adVmean,
    for(int i=0; i<adVmean.size(); i++) {
       auto& admean = adVmean[i];
       auto& adstd = adVstd[i];
-//std::cerr<<"before var correction: admean = "<<admean<<"   adstd = "<<adstd<<"   admean.user = "<<admean.user<<" Aperc = "<<Asca<<std::endl;
 		//if( adstd.Gdata < Gmin ) adstd.Gdata = Gmin;
 		//if( adstd.Pdata < Pmin ) adstd.Pdata = Pmin;
 		//float Amin = admean.user * Asca;
 		//if( adstd.Adata < Amin ) adstd.Adata = Amin;
-		float Ain = admean.user*admean.user * Asca;
+
+		//float Ain = admean.user*admean.user * Asca;
 		adstd.Gdata = adstd.Gdata*adstd.Gdata + Gin;
 		adstd.Pdata = adstd.Pdata*adstd.Pdata + Pin;
-		adstd.Adata = adstd.Adata*adstd.Adata + Ain;
-//std::cerr<<"after var correction: admean = "<<admean<<"   advar = "<<adstd<<std::endl;
+		adstd.Adata = adstd.Adata*adstd.Adata + Asca;
 	}
 }
 

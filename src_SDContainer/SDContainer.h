@@ -153,9 +153,17 @@ public:
 	void LoadMeasurements( const std::string& fmeasure, const float clon, const float clat, 
 								  const float dismin, const float dismax, const std::string fsta="" );
 	void LoadMaps( const std::string& fmapG, const std::string& fmapP );
-	void PrintAll( std::ostream& sout = std::cout ) {
-		for( const auto& sd : dataV )
-			sout<<sd<<"\n";
+	void PrintAll( std::ostream& sout = std::cout, const bool normAmp = false ) {
+		if( normAmp ) {
+			for( const auto& sd : dataV )	{
+				auto sdout = sd;
+				sdout.Adata = sd.NormAmp(sd.Adata, per);
+				sdout.Asource = sd.NormAmp(sd.Asource, per);
+				sout<<sdout<<"\n";
+			}
+		} else {
+			for( const auto& sd : dataV )	sout<<sd<<"\n";
+		}
 	}
 
 
@@ -168,9 +176,7 @@ protected:
 	static constexpr float exfactor = 2.5;							/* #sigma for excluding bad data */
 
    static constexpr float Min_Perc = 0.8;							/* allowed min fraction of path length in the vel map */
-   static constexpr float Lfactor = 0.;							/* define lambda = per * Lfactor for PathAvg; 
-																					note, however, that the Map object runs much 
-																					faster when lambda=0 and map is regular*/
+   static constexpr float Lfactor = 2.5;							/* define lambda = per * Lfactor for PathAvg; traced along GCP when lambda=0 */
 
    //static constexpr float DISMIN = 0.;								// defined in EQKAnalyzer!! /* allowed min */
    //static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */
@@ -182,7 +188,7 @@ protected:
    static constexpr float varRGmin = 4.0, varLGmin = 4.0;		/* the lowerbound of GroupT (sec), was 0.8 */
    static constexpr float varRPmin = 0.5, varLPmin = 0.5;		/* PhaseT (sec), was 0.3 */
    static constexpr float varRPHmin = 0.05, varLPHmin = 0.05;	/* Specturm Phase Shift (radians), */
-   static constexpr float varRAmin = 0.04, varLAmin = 0.04;		/* and Amplitude (as fraction of the amplitude square!) std-devs, was 0.02 */
+   static constexpr float varRAmin = 0.04, varLAmin = 0.04;		/* and Amplitude (as fraction of the amplitude square!) variances, was 0.02 */
 
 	static constexpr float nwavelength = 2.;						/* allowed min sta distance = nwavelength * wavelength */
 	

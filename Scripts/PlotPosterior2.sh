@@ -106,9 +106,9 @@ Nsearch=`tail -n3 $fin | awk 'BEGIN{N=0}{if($2>N){N=$2}}END{print N}'`
 
 ### range for reduced chi-square
 rCrange=`awk '{print $2/$3}' .PlotPosterior_tmp_acc | minmax -C`
-rCl=`echo $rCrange | awk '{printf "%.2f", $1+0.015}'`
+rCl=`echo $rCrange | awk '{printf "%.2f", $1-0.02}'`
 rCu=`echo $rCl | awk '{printf "%.2f", $1+0.2}'`
-rCl=2.1; rCu=2.4
+#rCl=2.1; rCu=2.4
 
 ### plot histograms
 gmtset HEADER_FONT_SIZE 12

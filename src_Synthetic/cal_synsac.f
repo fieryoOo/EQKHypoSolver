@@ -56,7 +56,7 @@ C         nf = nf * 2
       end do
 C      PRINT*,'n2pow=',n2pow,'  nbase=',nf,' npoints=',npoints
       df = 1. / (dt*nf);
-      f0 = 0.
+C      f0 = 0.
       nf = nf / 2
 C ---------------------------------------
 C         write(*,*) "Station: ",codi(ista)
@@ -78,7 +78,7 @@ C         write(*,*) "in cal_synsac: nt = ",nt
 C            fr(j)=1./t(j)
             wvar(j) = pi*2.0/cor(j-1,1,ista)*fr(j)
 C           PRint*,t(j),ampr(j),ratio(j),qR(j),wvr(j)
-C      write(*,*) "check wvar: ", wvar(j), cor(j-1,1,ista), fr(j), pi
+C      write(*,*) "check wvar: ", j, wvar(j), cor(j-1,1,ista), fr(j), pi
          enddo
          if (sigR.eq.'+')then
             wvar(1) = wvr(1)
@@ -126,8 +126,14 @@ C            al(j)=suml*ampl(j)*aM*unitC
      *            sqrt(8.0*pi*cl(j)*ul(j)*I0(j))
 cYT     *            sqrt(8.0*pi*cor(j-1,1,ista)*cl(j)*ul(j)*I0(j))
 C           spread=1./sqrt(R0*sin(DEL))
+C         write(*,*) 1./fr(j)," amp0 = ",cabs(suml),unitC,aM,1./sqrt(8.0*pi*cl(j)*ul(j)*I0(j)),
+C     *                  cor(j-1,2,ista)," amp1 = ",cabs(al(j))
             az(j)=sumr*aM*unitC*cor(j-1,2,ista)/
      *            sqrt(8.0*pi*cr(j)*ur(j)*I0(j))
+C         if(fr(j).gt.0.062.and.fr(j).lt.0.063) 
+C         write(*,*) 1./fr(j)," amp0 = ",cabs(sumr),aM,1./sqrt(8.0*pi*cr(j)*ur(j)*I0(j)),
+C     *                  cor(j-1,2,ista)," amp1 = ",cabs(az(j))
+C     *               aM,1./sqrt(8.0*pi*cl(j)*ul(j)*I0(j)),cor(j-1,2,ista)," amp1 = ",cabs(al(j))
 cYT     *            sqrt(8.0*pi*cor(j-1,1,ista)*cr(j)*ur(j)*I0(j))
 C     +            (2.0*sqrt(cr(j)*ur(j)*I0(j)))/sqrt(2.0*pi)
             ah(j)=az(j)*ratio(j)
