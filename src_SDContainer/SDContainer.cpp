@@ -133,7 +133,6 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 			//float minP = Min_Perc;
 			float vel = mapP.PathAverage_Reci( Point<float>(sd.lon,sd.lat), perc, lam ).Data();
 			if( perc > minP ) sd.Ppath = dis / vel + srct0;
-//std::cerr<<vel<<" "<<dis<<" "<<srct0<<" "<<perc<<" "<<sd.lon<<" "<<sd.lat<<" "<<lam<<std::endl;
 		}
 	} else {
 		for( auto& sd : dataV ) sd.Ppath = sd.dis / _velP + srct0;
@@ -153,8 +152,7 @@ void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 	*/
 
 	// update source predictions
-	float Q = type==R ? 200. : 175.;
-	float alpha = M_PI/(per*2.8*Q);
+	float alpha = M_PI/(per*2.8*(type==R?QR:QL));
 	for( auto& sd : dataV ) {
 		//float grt, pht, amp;
 		//const float cAmp = rad.cAmp(per)[0];	// use norm term at source for now
@@ -180,12 +178,26 @@ void SDContainer::ToMisfitV( std::vector<AziData>& adV, const float Tmin ) const
 	}
 }
 
+AziData SDContainer::ComputeVar() {
+	if( _isFTAN ) Correct2PI();
+	std::vector<AziData> mis_adV;
+	const float Tmin = _isFTAN ? nwavelength*per : -99999.; // n-wavelength criterion
+	ToMisfitV( mis_adV, Tmin );
+	if( mis_adV.size() < 3 )
+		throw ErrorSC::InsufData(FuncName, "less than 3 stations with valid misfits");
+	AziData admean, adstd;
+	VO::MeanSTD( mis_adV.begin(), mis_adV.end(), admean, adstd );
+	admean.azi = adstd.azi = 0;
+	sigmaS = adstd * adstd;
+	return sigmaS;
+}
+
 /* compute bin average */
 void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2pi ) {
 	// dump into AziData vector
 	if( c2pi ) Correct2PI();
 	std::vector<AziData> adVori;
-	const float Tmin = nwavelength * per;	// three wavelength criterion
+	const float Tmin = nwavelength * per;	// n-wavelength criterion
 	ToMisfitV( adVori, Tmin );
 
 	// periodic extension
@@ -206,11 +218,11 @@ void SDContainer::BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, bool c2p
 	VO::SelectData( dataV, sdVgood, adVmean, adVstd, exfactor );
 }
 
-void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi, bool isFTAN ) {
+void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, bool c2pi, bool isFTAN, bool compVars ) {
 	if( c2pi ) Correct2PI();
 	// dump into AziData vector
 	float Tmin;
-	if( isFTAN ) Tmin = nwavelength * per;	// three wavelength criterion
+	if( isFTAN ) Tmin = nwavelength * per;	// n-wavelength criterion
 	else Tmin = -99999.;
 	std::vector<AziData> adVori;
 	ToMisfitV( adVori, Tmin );
@@ -242,6 +254,8 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	ad_stdest = AziData{ NaN, stdGest, stdest_phase, stdAest };
 	// NOTE!: invalid adVvar[].Adata will be set to admean.user * ad_stdest.Adata
 	HandleBadBins( adVmean, adVvar, ad_stdest );
+
+	if( ! compVars ) return;
 
 	// compute variance by combining the data std-dev with the internally defined variance (for path predictions)
 	// (old: pull up any std-devs that are smaller than defined minimum)

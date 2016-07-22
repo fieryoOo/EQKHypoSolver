@@ -35,10 +35,10 @@ public:
    virtual bool LoadLine( const std::string& line, bool storeline = false ) {
 		std::stringstream ss(line);
 		// check/load first three terms
-		bool suc = (ss >> lon >> lat >> name);
+		bool suc = (bool)(ss >> lon >> lat >> name);
 		if( ! suc ) {
 			std::stringstream ss(line);
-			suc = (ss >> name >> lon >> lat);
+			suc = (bool)(ss >> name >> lon >> lat);
 		}
 		if( ! suc ) return false;
 		// store name and correct longitude

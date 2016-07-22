@@ -47,7 +47,7 @@ protected:
 	bool key_compr = false;
 	char sigR = '-', sigL = '-', its = 'C', modestr[2];
 	//char fstr_fmodel[256];
-	int im = 6, iq = 1, nd = 1000, nper; //npoints;
+	int im = 6, iq = 1, nper; //nd = 10000; //npoints;
    float fix_vel = 2.8;
 	float elat, elon, elatc, elonc, aM, tm[6], permin, permax, vmax = 100000; //dt;
 	
@@ -70,6 +70,8 @@ protected:
 
 class SynGenerator : public SynGeneratorData {
 public:
+	ModelInfo minfo;
+
 	SynGenerator() {}
 	SynGenerator( const fstring& name_fmodel, const fstring& name_fphvel, const fstring& name_feigen, const char wavetype, const int mode ) {
 		Initialize( name_fmodel, name_fphvel, name_feigen, wavetype, mode );
@@ -106,17 +108,16 @@ public:
 
 	// produce synthetic as sac file
 	bool ComputeSyn( const std::string& staname, const float slon, const float slat, int npts, float delta, 
-						  float f1, float f2, float f3, float f4, SacRec& sacZ, SacRec& sacN, SacRec& sacE, bool rotate = true);
+						  SacRec& sacZ, SacRec& sacN, SacRec& sacE, bool rotate = true, float f1=NaN, float f2=NaN, float f3=NaN, float f4=NaN);
 
 	//bool Synthetic( const float lon, const float lat, const std::string& chname,
 	//					 const float f1, const float f2, const float f3, const float f4, SacRec& sac );
 
 protected:
 	static constexpr float GEO = 0.993277, pio180 = M_PI / 180.;
+	static constexpr float NaN = -123456.;
 
 private:
-	ModelInfo minfo;
-
 	// tracer data managed by unique_ptr
 	std::unique_ptr<char[]> peig;
 	std::unique_ptr<float[]> pcor;

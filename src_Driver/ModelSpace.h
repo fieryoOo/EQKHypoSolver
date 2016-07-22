@@ -5,6 +5,7 @@
 #include "MyOMP.h"
 #include "Searcher.h"
 #include "EQKAnalyzer.h"
+#include "Rand.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -39,33 +40,29 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			for( std::string line; std::getline(fin, line); ) {
 				std::istringstream ss(line);
 				if( ! (ss>>line) ) continue;
-				bool succeed = false;
-				if( line == "lon" ) { 
-					succeed = ss >> lon; 
-					if( succeed && lon<0.) lon += 360.; 
-				}
-				else if( line == "lat" ) succeed = ss >> lat;
-				else if( line == "t0" ) succeed = ss >> t0;
-				else if( line == "stk" ) succeed = ss >> stk;
-				else if( line == "dip" ) succeed = ss >> dip;
-				else if( line == "rak" ) succeed = ss >> rak;
-				else if( line == "dep" ) succeed = ss >> dep;
-				else if( line == "M0" ) succeed = ss >> M0;
-				else if( line == "Rlon") succeed = ss >> Rlon;
-				else if( line == "Rlat") succeed = ss >> Rlat;
-				else if( line == "Rstk") succeed = ss >> Rstk;
-				else if( line == "Rdip") succeed = ss >> Rdip;
-				else if( line == "Rrak") succeed = ss >> Rrak;
-				else if( line == "Rdep") succeed = ss >> Rdep;
-				else if( line == "RM0") succeed = ss >> RM0;
-				else if( line == "pertfactor") succeed = ss >> pertfactor;
+				if( line == "lon" ) { if( ss>>lon && lon<0.) lon += 360.; }
+				else if( line == "lat" ) ss >> lat;
+				else if( line == "t0" )  ss >> t0;
+				else if( line == "stk" ) ss >> stk;
+				else if( line == "dip" ) ss >> dip;
+				else if( line == "rak" ) ss >> rak;
+				else if( line == "dep" ) ss >> dep;
+				else if( line == "M0" )  ss >> M0;
+				else if( line == "Rlon") ss >> Rlon;
+				else if( line == "Rlat") ss >> Rlat;
+				else if( line == "Rstk") ss >> Rstk;
+				else if( line == "Rdip") ss >> Rdip;
+				else if( line == "Rrak") ss >> Rrak;
+				else if( line == "Rdep") ss >> Rdep;
+				else if( line == "RM0")  ss >> RM0;
+				else if( line == "pertfactor") ss >> pertfactor;
 				else continue;
-				nparam ++;
+				nparam += (bool)ss;
 			}
 			fin.close();
 
 			std::cout<<"### ModelSpace::LoadParams: "<<nparam<<" succed loads from param file "<<fname<<". ###\n"
-						<<"    current model state = "<<MInfo()<<std::endl;
+						<<"    current model = "<<MInfo()<<std::endl;
 
 			// reset model center, perturbation ranges, and random number generators
 			//if( ! this->isValid() )
@@ -152,6 +149,24 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			}
 		}
 
+		//void RandomState( ModelSpace &msnew ) const {
+		//	msnew = *this;	msnew.RandomState();
+		//}	// bad idea: the randO objects are not evolved by the call
+		void RandomState( ModelInfo &mi ) const {
+			if( &mi != this )	mi = *this;	
+			auto& rand_t = randO[omp_get_thread_num()];
+			if(Plon>0.) mi.lon = (rand_t.Uniform()*2.-1) * Rlon + Clon;
+			if(Plat>0.) mi.lat = (rand_t.Uniform()*2.-1) * Rlat + Clat;
+			if(Ptim>0.) mi.t0  = (rand_t.Uniform()*2.-1) * Rtim + Ctim;
+			if(Pstk>0.) mi.stk = (rand_t.Uniform()*2.-1) * Rstk + Cstk;
+			if(Pdip>0.) mi.dip = (rand_t.Uniform()*2.-1) * Rdip + Cdip;
+			if(Prak>0.) mi.rak = (rand_t.Uniform()*2.-1) * Rrak + Crak;
+			if(Pdep>0.) mi.dep = (rand_t.Uniform()*2.-1) * Rdep + Cdep;
+			if(PM0 >1.) mi.M0  = exp( (rand_t.Uniform()*2.-1)*log(RM0) ) * CM0;
+			//std::cerr<<mi.stk<<" "<<mi.dip<<" "<<mi.rak<<" "<<mi.dep<<"   "<<mi.lon<<" "<<mi.lat<<" "<<mi.t0<<" "<<mi.M0<<std::endl;
+		}
+		void RandomState() {	RandomState(*this); }
+
 		// centralize the model space around the current MState
 		void Centralize() {
 			// set model center to the current MState
@@ -162,16 +177,18 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		void Bound( const float Rfactor = 1., const float pertf = NaN ) {
 			// create default model space
 			ModelSpace ms;
-			// reset perturb factor
-			pertfactor = pertf>0. ? pertf : ms.pertfactor;
 			// reset perturb half lengths
 			Rlon = ms.Rlon*Rfactor; Rlat = ms.Rlat*Rfactor;
 			Rtim = ms.Rtim*Rfactor; RM0 = ms.RM0*Rfactor;
 			Rstk = ms.Rstk*Rfactor; Rdip = ms.Rdip*Rfactor;
 			Rrak = ms.Rrak*Rfactor; Rdep = ms.Rdep*Rfactor;
+			// reset perturb factor
+			auto psave = pertfactor;
+			pertfactor = pertf>0. ? pertf : ms.pertfactor;
 			// reset model center, perturbation ranges, and random number generators
 			Centralize();
 			resetPerturb();
+			pertfactor = psave;
 		}
 
 		// decide perturb step length for each parameter based on the model sensitivity to them
@@ -250,56 +267,81 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			std::cout<<"### State of the model space after estimating perturb step sizes:\n"<<*this<<std::endl;
 		}
 
-		void Perturb( ModelInfo& minew ) const {
+		void Perturb( ModelInfo& minew ) const { Perturb( minew, false ); }	// this overloaded version has to exist (Searcher::IModelSpace)
+		void Perturb( ModelInfo& minew, bool pertall ) const {
 			//if( ! (validS && validP) ) throw std::runtime_error("incomplete model space");
 			if( ! isValid() ) throw std::runtime_error("invalid/incomplete model info");
 
-			// stk
-			float stk_cur = ShiftInto(this->stk, Cstk-Rstk, Cstk+Rstk, 360.);
-			if( Rstk >= 180. ) {
-				minew.stk = Neighbour_Cycle(stk_cur, Pstk, 0., 360.);
-			} else {
-				minew.stk = Neighbour_Reflect(stk_cur, Pstk, Cstk-Rstk, Cstk+Rstk);
-				minew.stk = ShiftInto(minew.stk, 0., 360., 360.);
+			if( ! pertall ) minew = *this;
+
+			bool perturbed = false;
+			while( ! perturbed ) {
+				int dice = pertall ? 0 : randO[omp_get_thread_num()].UniformI();
+				//std::cerr<<" rolled "<<dice<<std::endl;
+
+				if( Pstk>0 && (pertall||dice==1) ) {
+					// stk
+					float stk_cur = ShiftInto(this->stk, Cstk-Rstk, Cstk+Rstk, 360.);
+					if( Rstk >= 180. ) {
+						minew.stk = Neighbour_Cycle(stk_cur, Pstk, 0., 360.);
+					} else {
+						minew.stk = Neighbour_Reflect(stk_cur, Pstk, Cstk-Rstk, Cstk+Rstk);
+						minew.stk = ShiftInto(minew.stk, 0., 360., 360.);
+					}
+					perturbed = true;
+				} 
+				if( Pdip>0 && (pertall||dice==2) ) {
+					// dip
+					float lb = Cdip-Rdip, ub = Cdip+Rdip;
+					if( lb < 0. ) lb = 0.;
+					if( ub > 90. ) ub = 90.;
+					minew.dip = Neighbour_Reflect(this->dip, Pdip, lb, ub);
+					perturbed = true;
+				}
+				if( Prak>0 && (pertall||dice==3) ) {
+					// rak
+					float rak_cur = ShiftInto(this->rak, Crak-Rrak, Crak+Rrak, 360.);
+					if( Rrak >= 180. ) {
+						minew.rak = Neighbour_Cycle(rak_cur, Prak, -180., 180.);
+					} else {
+						minew.rak = Neighbour_Reflect(rak_cur, Prak, Crak-Rrak, Crak+Rrak);
+						minew.rak = ShiftInto(minew.rak, -180., 180., 360.);
+					}
+					perturbed = true;
+				}
+				if( Pdep>0 && (pertall||dice==4) ) {
+					// dep
+					float lb = Cdep-Rdep, ub = Cdep+Rdep;
+					if( lb < 0. ) lb = 0.;
+					if( ub > DEPMAX ) ub = DEPMAX;
+					minew.dep = Neighbour_Reflect(this->dep, Pdep, lb, ub);
+					perturbed = true;
+				}
+				if( PM0>1 && (pertall||dice==5) ) {
+					// M0
+					//minew.M0 = M0;
+					float lb = CM0 / RM0, ub = CM0 * RM0;
+					if( lb < 1.0e19 ) lb = 1.0e19;
+					if( ub > 1.0e31 ) lb = 1.0e31;
+					minew.M0 = Neighbour_ReflectM(this->M0, PM0, lb, ub);
+					perturbed = true;
+				}
+				if( Plon>0 && (pertall||dice==6) ) {
+					// longitude
+					minew.lon = Neighbour_Reflect(this->lon, Plon, Clon-Rlon, Clon+Rlon);
+					perturbed = true;
+				}
+				if( Plat>0 && (pertall||dice==7) ) {
+					// latitude
+					minew.lat = Neighbour_Reflect(this->lat, Plat, Clat-Rlat, Clat+Rlat);
+					perturbed = true;
+				}
+				if( Ptim>0 && (pertall||dice==8) ) {
+					// origin time
+					minew.t0 = Neighbour_Reflect(this->t0, Ptim, Ctim-Rtim, Ctim+Rtim);
+					perturbed = true;
+				}
 			}
-
-			// dip
-			float lb = Cdip-Rdip, ub = Cdip+Rdip;
-			if( lb < 0. ) lb = 0.;
-			if( ub > 90. ) ub = 90.;
-			minew.dip = Neighbour_Reflect(this->dip, Pdip, lb, ub);
-
-			// rak
-			float rak_cur = ShiftInto(this->rak, Crak-Rrak, Crak+Rrak, 360.);
-			if( Rrak >= 180. ) {
-				minew.rak = Neighbour_Cycle(rak_cur, Prak, -180., 180.);
-			} else {
-				minew.rak = Neighbour_Reflect(rak_cur, Prak, Crak-Rrak, Crak+Rrak);
-				minew.rak = ShiftInto(minew.rak, -180., 180., 360.);
-			}
-
-			// dep
-			lb = Cdep-Rdep; ub = Cdep+Rdep;
-			if( lb < 0. ) lb = 0.;
-			if( ub > DEPMAX ) ub = DEPMAX;
-			minew.dep = Neighbour_Reflect(this->dep, Pdep, lb, ub);
-
-			// M0
-			//minew.M0 = M0;
-			lb = CM0 / RM0; ub = CM0 * RM0;
-			if( lb < 1.0e19 ) lb = 1.0e19;
-			if( ub > 1.0e31 ) lb = 1.0e31;
-			minew.M0 = Neighbour_ReflectM(this->M0, PM0, lb, ub);
-
-			// longitude
-			minew.lon = Neighbour_Reflect(this->lon, Plon, Clon-Rlon, Clon+Rlon);
-
-			// latitude
-			minew.lat = Neighbour_Reflect(this->lat, Plat, Clat-Rlat, Clat+Rlat);
-
-			// origin time
-			minew.t0 = Neighbour_Reflect(this->t0, Ptim, Ctim-Rtim, Ctim+Rtim);
-
 		}
 
 		/* streaming perturbation ranges */
@@ -355,7 +397,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			randO.clear();
 			for(int i=0; i<omp_get_max_threads(); i++) {
 				// apply separated seed by sleeping
-				randO.push_back( Rand() );
+				randO.push_back( Rand(1,8) );
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			}
 		}

@@ -46,6 +46,12 @@ namespace ErrorSC {
          : Base("Error("+funcname+"): Empty Map(s) ("+info+").") {}
    };
 
+   class InsufData : public Base {
+   public:
+      InsufData(const std::string funcname, const std::string info = "")
+         : Base("Error("+funcname+"): Insufficient data ("+info+").") {}
+   };
+
    class InternalException : public Base {
    public:
       InternalException(const std::string funcname, const std::string info = "")
@@ -57,20 +63,25 @@ namespace ErrorSC {
 enum Dtype { Undefined=0, B, R, L }; // type of data to be used
 
 
+
 /* ----- station data container ----- */
 class SDContainer {
 public:
 	float per = NaN;
 	//const char type = 'N';
 	Dtype type = Undefined;
+	bool _isFTAN;
+
+	// uncertainties
+	AziData sigmaS = PredefinedVar();
 
 	/* con/destructors */
 
 	SDContainer(){}
 
 	// waveform: No vel maps needed. Misfits will be pushed back (to Pdata and Adata) on the fly. Path and source terms will be set to zero
-	SDContainer( const float perin, const Dtype typein )
-		: per(perin), type(typein) {
+	SDContainer( const float perin, const Dtype typein, const bool isFTAN = false )
+		: per(perin), type(typein), _isFTAN(isFTAN) {
 		if( type!=R && type!=L ) {
 			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
@@ -78,10 +89,10 @@ public:
 	}
 
 	// 3D model: Path velocities (and thus Tpaths) are predicted on the fly from vel maps
-	SDContainer( const float perin, const Dtype typein, const std::string fmeasure, 
+	SDContainer( const float perin, const Dtype typein, const bool isFTAN, const std::string fmeasure, 
 					 const std::string fmapG, const std::string fmapP, const std::string fsta="", 
 					 const float clon = NaN, const float clat = NaN, const float dismin = 0., const float dismax = 99999. ) 
-		: per(perin), oop(1./perin), type(typein) {
+		: per(perin), oop(1./perin), type(typein), _isFTAN(isFTAN) {
 		if( type!=R && type!=L ) {
 			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
 			throw ErrorSC::BadParam( FuncName, str );
@@ -91,10 +102,10 @@ public:
 	}
 
 	// 1D model: Path velocities are fixed at the input velocities
-	SDContainer( const float perin, const Dtype typein, const std::string fmeasure, 
+	SDContainer( const float perin, const Dtype typein, const bool isFTAN, const std::string fmeasure, 
 					 const float velG, const float velP, const std::string fsta="",
 					 const float clon = NaN, const float clat = NaN, const float dismin = 0., const float dismax = 99999. ) 
-		: per(perin), oop(1./perin), type(typein), 
+		: per(perin), oop(1./perin), type(typein), _isFTAN(isFTAN),
 		  _velG(velG), _velP(velP) {
 		if( type!=R && type!=L ) {
 			std::string str( "unknown data type: " + std::to_string(type) ); //str.push_back(type);
@@ -117,6 +128,17 @@ public:
 	StaData& back() { return dataV.back(); }
 
 	std::size_t size() const { return dataV.size(); }
+
+	void clear() { dataV.clear(); }
+
+	AziData ComputeVar();	// cannot be const, Correct2PI is called inside
+	// get Variances of G, P, and A stored in an AziData
+	AziData PredefinedVar() {
+		float stdest_phase = _isFTAN ? stdPest : stdPHest;
+		auto sigma = AziData{ 0., stdGest, stdest_phase, stdAest };
+		return sigma * sigma;
+	}
+
 
 	/* dump into an AziData vector */
 	//void ToAziVector( std::vector<AziData>& adV );
@@ -146,7 +168,7 @@ public:
 	}
 
 	/* compute bin average */
-	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, const bool c2pi = true, const bool isFTAN = true );
+	void BinAverage( std::vector<AziData>& adVmean, std::vector<AziData>& adVvar, const bool c2pi = true, const bool isFTAN = true, const bool compVars = true );
 	void BinAverage_ExcludeBad( std::vector<StaData>& sdVgood, const bool c2pi = true );
 
 	/* IO */
@@ -169,6 +191,8 @@ public:
 
 protected:
    /* define class scope constants */
+	static constexpr float QR = 200., QL = 175.;					/* Q values for Rayleigh and Love */
+
    static constexpr int MIN_BAZI_SIZE = 1;						/* allowed min number of measurements in each azimuth bin */
    static constexpr float BINSTEP = 20;							/* bin averaging step size */
    static constexpr float BINHWIDTH = 10;							/* bin averaging half width */
@@ -182,9 +206,9 @@ protected:
    //static constexpr float DISMAX = 9999.;							/* and max event-station distance for location searching */
 
    static constexpr float stdGest = 4.5;							/* an estimation of GroupT (sec), */
-   static constexpr float stdPest = 1.5;							/* PhaseT (sec), */
+   static constexpr float stdPest = 1.0;							/* PhaseT (sec), */
    static constexpr float stdPHest = 0.5;							/* Spectrum Phase Shift (radians) */
-   static constexpr float stdAest = 0.35;							/* and Amplitude (as fraction of the amplitude!) std-dev */
+   static constexpr float stdAest = 0.3;							/* and Amplitude (as fraction of the amplitude!) std-dev */
    static constexpr float varRGmin = 4.0, varLGmin = 4.0;		/* the lowerbound of GroupT (sec), was 0.8 */
    static constexpr float varRPmin = 0.5, varLPmin = 0.5;		/* PhaseT (sec), was 0.3 */
    static constexpr float varRPHmin = 0.05, varLPHmin = 0.05;	/* Specturm Phase Shift (radians), */

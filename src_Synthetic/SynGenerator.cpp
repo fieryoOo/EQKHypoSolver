@@ -17,11 +17,11 @@ extern"C" {
 
 	void angles2tensor_(float* stk, float* dip, float* rak, float tm[6]);
 
-	void atracer_( char name_fmodel[256], float* elat, float* elon, int* ncor, bool* applyQ, int* nsta,
+	void atracer_( char name_fmodel[256], float* elat, float* elon, int* ncor, bool* applyQ, int* nper, int* nsta,
 						float latc[2000], float lon[2000], float* cor );
 
 //	void surfread_( char name_feigen[255], char* sigR, char* sigL, char modestr[2], int* nper, int* nd, float* depth, float freq[2000],
-	void surfread_( char *feig_buff, int *eig_len, char* sigR, char* sigL, char modestr[2], int* nper, int* nd, float* depth, float freq[2000],
+	void surfread_( char *feig_buff, int *eig_len, char* sigR, char* sigL, char modestr[2], int* nper, float* depth, float freq[2000],
 						float cr[2000], float ur[2000], float wvr[2000], float cl[2000], float ul[2000], float wvl[2000], float v[2000][3], 
 						float dvdz[2000][3], float ampr[2000], float ampl[2000], float ratio[2000], float qR[2000], float qL[2000], float I0[2000] );
 
@@ -80,6 +80,7 @@ void SynGenerator::Initialize( const fstring& name_fmodel_in, const fstring& nam
 	peig.reset( new char[feig_len] );
 	fin.seekg(0, std::ios::beg);
 	fin.read(peig.get(), feig_len);
+	//std::cerr<<feig_len<<" characters read from "<<name_feigen<<std::endl;
 }
 
 void SynGenerator::ReadPerRange( const std::string& name_fphvel, const int mode ) {
@@ -101,23 +102,25 @@ void SynGenerator::ReadPerRange( const std::string& name_fphvel, const int mode 
 	bool validlastline = false;
 	nper = 2;
 	while( std::getline(fin, line) ) {
-		bool validline = (sscanf(line.c_str(), "%f", &permax) == 1);
+		float percur;
+		bool validline = (sscanf(line.c_str(), "%f", &percur) == 1);
 		if( validline && !validlastline ) { // new mode starts
 			if( nmode == mode ) break;	// break if the last mode is wanted
 			nmode++;
 			nper = 0;
 		}
 		if( validline && validlastline ) {
-			if( dper != permax-perlast )
+			if( dper != percur-perlast )
 				throw std::runtime_error("invalid phavel file: " + name_fphvel);
 		}
 		if( validline ) nper++;
 		validlastline = validline;
-		perlast = permax;
+		perlast = percur;
 	}
+	permax = perlast;
 	if( nmode != mode ) // mode not found!
 		throw std::runtime_error("mode number not found in " + name_fphvel);
-	if( nper > 1998 )	// memory will explode
+	if( nper > 1998 )	// memory would explode
 		throw std::runtime_error("too many periods in " + name_fphvel);
 	//std::cerr<<"nper = "<<nper<<" permin = "<<permin<<" permax = "<<permax<<" for mode "<<mode<<std::endl;
 
@@ -165,7 +168,7 @@ void SynGenerator::SetEvent( const ModelInfo mi ) {
 
 	// call surfread with the new depth
 	//#pragma omp critical
-	surfread_( peig.get(), &feig_len, &sigR, &sigL, modestr, &nper, &nd, &(minfo.dep), freq, cr, ur, wvr,
+	surfread_( peig.get(), &feig_len, &sigR, &sigL, modestr, &nper, &(minfo.dep), freq, cr, ur, wvr,
 				  cl, ul, wvl, v, dvdz, ampr, ampl, ratio, qR, qL, I0 );
 	//surfread_( name_feigen.f_str(255), &sigR, &sigL, modestr, &nper, &nd, &(minfo.dep), freq, cr, ur, wvr,
 
@@ -182,14 +185,14 @@ void SynGenerator::TraceAll() {
 	if( ! pcor )
 		throw std::runtime_error("new failed for pcor!");
 	//#pragma omp critical
-	atracer_( name_fmodel.f_str(256), &elat, &elon, &ncor, &applyQ, &nsta, latc, lon, pcor.get() );
+	atracer_( name_fmodel.f_str(256), &elat, &elon, &ncor, &applyQ, &nper, &nsta, latc, lon, pcor.get() );
 	//atracer_( fstr_fmodel, &elat, &elon, &ncor, &applyQ, &nsta, latc, lon, pcor.get() );
 	// all traced
 	traced = true;
 }
 
 bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, const float slat, int npts, float delta,
-										 float f1, float f2, float f3, float f4, SacRec& sacz, SacRec& sac1, SacRec& sac2, bool rotate ) {
+										 SacRec& sacz, SacRec& sac1, SacRec& sac2, bool rotate, float f1, float f2, float f3, float f4 ) {
 	// trace all GCPs
 	if( ! traced ) TraceAll();
 
@@ -203,8 +206,12 @@ bool SynGenerator::ComputeSyn( const std::string& staname, const float slon, con
 	// period range
    //if(TMAX.gt.(nt-1)*dper+per1)TMAX=PERMAX-2.*dper	// these are what misha had in the fortran version
    //if(TMIN.lt.per1)TMIN=PERMIN+2.*dper					// cannot understand the logic...
-	if( 1./f1>permax || 1./f4<permin )
-		throw std::runtime_error("Error(SynGenerator::ComputeSyn): corner freq out of range!");
+	if( f1==NaN || f1<1./permax ) { f1 = 1./permax; f2 = f1 * 1.1; }
+	if( f4==NaN || f4>1./permin ) { f4 = 1./permin; f3 = f4 * 0.9; }
+	if( f2 > f3 ) f2 = f3 = sqrt(f1*f4);
+
+	//if( f1<1./permax || f4>1./permin )
+		//throw std::runtime_error("Error(SynGenerator::ComputeSyn): corner freq out of range!");
 
 	// search for the requested station in the list
 	int ista = 0;

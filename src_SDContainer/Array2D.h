@@ -21,7 +21,8 @@ public:
 
     // Size and structure
     void clear();
-    void resize( int rows, int cols, const T& initVal = T() );
+    void assign( int rows, int cols, const T& initVal = T() );
+	 const T& back() const;
     int NumRows() const                       { return m_rows; }
     int NumCols() const                    { return m_cols; }
     int Size() const                   { return m_data.size(); }
@@ -92,10 +93,13 @@ template <class T>
 void Array2D<T>::clear() {	m_data.clear(); }
 
 template <class T>
-void Array2D<T>::resize( int rows, int cols, const T& initVal ) {
+const T& Array2D<T>::back() const { return m_data.back(); }
+
+template <class T>
+void Array2D<T>::assign( int rows, int cols, const T& initVal ) {
    m_rows = rows;
    m_cols = cols;
-   m_data.resize( rows * cols, initVal );
+   m_data.assign( rows * cols, initVal );
 }
 
 

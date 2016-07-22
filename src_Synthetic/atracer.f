@@ -1,19 +1,20 @@
 c group velocity tracer for cross-correlation paths
 c ---
       module mmodel
-      integer*4 Cnper, Cnlat, Cnlon
-      parameter (Cnper=225)
-      parameter (Cnlat=97)
-      parameter (Cnlon=201)
+c      integer*4 Cnper, Cnlat, Cnlon
+c      parameter (Cnper=225)
+c      parameter (Cnlat=97)
+c      parameter (Cnlon=201)
+      integer*4 npermax, nlatmax, nlonmax
+      parameter (npermax=500)
+      parameter (nlatmax=200)
+      parameter (nlonmax=300)
       type tmdl
-C         integer, parameter :: Cnper = 225
-C         integer, parameter :: Cnlat = 97
-C         integer, parameter :: Cnlon = 201
          integer*4 ic,jc,n,nper,nfi,nla
          real*8 fi,sfi,la,sla,per,sper,bf,ef,bl,el,bp,ep,
-     +          hfi(Cnlat),hla(Cnlon),hper(Cnper),chfi(Cnlat)
-         real*8 uw(Cnlat,Cnlon),cw(Cnlat,Cnlon)
-         real*8 gw(Cnlat,Cnlon),aw(Cnlat,Cnlon)
+     +          hfi(nlatmax),hla(nlonmax),hper(npermax),chfi(nlatmax)
+         real*8 uw(nlatmax,nlonmax),cw(nlatmax,nlonmax)
+         real*8 gw(nlatmax,nlonmax),aw(nlatmax,nlonmax)
       end type
 
       type tmodel
@@ -34,21 +35,23 @@ c  nstai = No. of stations
 c  fici = station latitudes
 c  lami = station longitudes
 c  ---------------------------------------------
-      recursive subroutine atracer(fmodel,fsol,lsol,n,applyQ, nstai,fici,lami, cor)
+      recursive subroutine atracer(fmodel,fsol,lsol,n,applyQ, nperi,nstai,fici,lami, cor)
       use mmodel
       use omp_lib
       implicit none
 
 c ---
+c --- assuming nper<=500 and nsta<=2000!
+      integer*4 nstamax
+      parameter (nstamax=2000)
 C      character*8 codi(2000)
-      integer*4   nstai
-      real*4      fici(2000),lami(2000)
+      integer*4   nperi, nstai
+      real*4      fici(nstamax),lami(nstamax)
 C      common /stn/ nstai,codi,figi,fici,lami
 C      common /mdl/ic,jc,nn,nper,nfi,nla,fi,sfi,la,sla,pper,sper,
 C     +        bf,ef,bl,el,bp,ep,
 C     +        hfi,hla,hper,chfi,uw,cw,gw,aw
-c ---
-      real*4 cor(500,2,2000)
+      real*4 cor(npermax,2,nstamax)
 C      common /trk/ cor
 c ---
       logical*1 applyQ
@@ -63,10 +66,15 @@ C      data GEO/1.0/
 
       type (tmdl) mdl
       type (tmodel) model
-      allocate (model%uw(Cnper,Cnlat,Cnlon))
-      allocate (model%cw(Cnper,Cnlat,Cnlon))
-      allocate (model%gw(Cnper,Cnlat,Cnlon))
-      allocate (model%aw(Cnper,Cnlat,Cnlon))
+
+      if( nstai.gt.nstamax ) then
+         write(*,*) "#sta = ",nstai," nstamax = ",nstamax
+         STOP "No. stations exceeds limit"
+      endif
+c      allocate (model%uw(Cnper,Cnlat,Cnlon))
+c      allocate (model%cw(Cnper,Cnlat,Cnlon))
+c      allocate (model%gw(Cnper,Cnlat,Cnlon))
+c      allocate (model%aw(Cnper,Cnlat,Cnlon))
 c ---
       rad = datan(1.0d0)/45.0d0
       pi2 = datan(1.0d0)*8.0d0
@@ -84,9 +92,14 @@ c --- MAIN LOOP ------------
       call read_model_file(fmodel, model)
 !$OMP END CRITICAL (IO)
 
+      if( nperi.ne.model%nper ) then
+         write(*,*) "nper-in = ",nperi," nper-mfile = ",model%nper
+         STOP "No. periods mismatch"
+      endif
+
       call read_rect_model(model,0,per,ierr, mdl)
 C      n = 0
-      do k = 1,Cnper
+      do k = 1,model%nper
         call read_rect_model(model,1,per,ierr, mdl)
         do m = 1,nstai
 c     write(*,*) per,ierr

@@ -66,8 +66,8 @@ namespace ErrorEA {
    public:
       Base(const std::string message)
          : runtime_error(message) {
-            PrintStacktrace();
       }
+		~Base() { PrintStacktrace(); }
    };
 
    class BadFile : public Base {
@@ -140,6 +140,7 @@ public:
    int Set( const char*, const bool MoveExistF = true );
    void CheckParams();
    void LoadData();
+	void SaveOldOutputs() const;
 
 	inline std::vector<float> perRlst() const;
 	inline std::vector<float> perLlst() const;
@@ -147,27 +148,31 @@ public:
 
 	// initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer
 	// version (1): non-const, modifies internal states
-	void PredictAll( const ModelInfo& mi, bool updateSource = false );
-	// version (2): const, modify external data based on internal states
-	void PredictAll( const ModelInfo& mi,	std::vector<SDContainer>& dataR, 
-						  std::vector<SDContainer>& dataL, bool updateSource ) const;
-	// version (3): const, modify external data based on external states
-	void PredictAll( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
-						  std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
-						  float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const;
-
-	// use Love group data only when isInit=true
-	void SetInitSearch( bool isInit ) { _isInit = isInit; }
-
-	// chi-square misfits from measurements-predictions
-	void chiSquareM( ModelInfo minfo, float& chiS, int& N ) const;
-
-	// chi-square misfits from waveform data-synthetics
-	void chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
-	void chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
-		SDContainer dataR, dataL;
-		chiSquareW( minfo, chiS, N, false, dataR, dataL );
+	void UpdatePredsM( const ModelInfo& mi, bool updateSource = false ) {
+		UpdatePredsM( mi, _rpR, _rpL, _dataR, _dataL, _AfactorR, _AfactorL, _source_updated, updateSource );
 	}
+	// version (2): const, modify external data based on internal states
+	void UpdatePredsM( const ModelInfo& mi,	std::vector<SDContainer>& dataR, 
+							 std::vector<SDContainer>& dataL, bool updateSource ) const;
+	// version (3): const, modify external data based on external states
+	void UpdatePredsM( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
+							 std::vector<SDContainer> &dataR, std::vector<SDContainer> &dataL,
+							 float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const;
+
+	void UpdatePredsW( const ModelInfo& minfo, std::vector<SDContainer> &dataR, std::vector<SDContainer> &dataL ) const;
+	void UpdatePredsW( const ModelInfo& minfo ) {
+		UpdatePredsW( minfo, _dataR, _dataL );
+	}
+
+	void UpdatePreds( const ModelInfo& minfo ) {
+		if( _usewaveform ) {
+			UpdatePredsW( minfo );
+		} else {
+			UpdatePredsM( minfo );
+		}
+	}
+
+/*
 	void FilldataW( const ModelInfo& minfo ) {
 		float chiS; int N;
 		SDContainer dataR, dataL;
@@ -176,6 +181,23 @@ public:
 		if(dataR.type!=Undefined) _dataR.push_back( std::move(dataR) );
 		if(dataL.type!=Undefined) _dataL.push_back( std::move(dataL) );
 	}
+*/
+
+	// use Love group data only when isInit=true
+	void SetInitSearch( bool isInit ) { _isInit = isInit; }
+
+	// chi-square misfits from measurements-predictions
+	void chiSquareM( ModelInfo minfo, float& chiS, int& N ) const;
+
+	// chi-square misfits from waveform data-synthetics
+	void chiSquareW( ModelInfo minfo, float& chiS, int& N ) const;
+/*
+	void chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
+	void chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
+		SDContainer dataR, dataL;
+		chiSquareW( minfo, chiS, N, false, dataR, dataL );
+	}
+*/
 
 	// call the relevant chiSquare method based on the _usewaveform value
 	inline void chiSquare( const ModelInfo& minfo, float& chiS, int& N ) const {
@@ -201,6 +223,8 @@ public:
    //void Output( bool excludeBad = false, const OutType otype = FIT );
    //void ComputeMisfitsAll();
 
+	void EstimateSigmas( const ModelInfo& minfo );
+	void OutputSigmas() const;
    // output G,P,A data and predictions to separated files for each period
 	void OutputFits( ModelInfo minfo );
    // compute and output misfits, separately, for group, phase, and amplitudes
@@ -213,6 +237,7 @@ public:
 
 public:
 	/* ---------- input parameters that needs to be externally accessible ---------- */
+	float _indep_factor = 1.;			// describes the correlations among data (0: 100% correlated, 1: 100% independent)
 	FileName outname_misF;           // filename for output focal misfit
    FileName outname_misL;           // filename for output location misfit
    FileName outname_misAll;         // filename for output all separated misfits (group, phase, amplitude)
@@ -220,21 +245,28 @@ public:
 	FileName outname_srcR;				// filename for output Rayl source patterns
 	FileName outname_srcL;				// filename for output Love source patterns
 	FileName outdir_sac;					// dirname for output real and synthetic sacs
+	FileName outname_sigmas;			// filename for output sigmas (predefined or estimated)
 
 protected:
+	static const bool dynamicVar = false;			// when true, uncertainties are dynamically estimated in each bin for computing chiSquare 
 	static const int NdataMin = 3;
 	static constexpr float NaN = AziData::NaN;
-	static const bool rotateSyn = false;		// false=R&T; true=N&E
-   static constexpr float _SNRMIN = 18.;		/* allowed min SNR for waveform fitting */
-   static constexpr float _DISMIN = 0.;			/* allowed min */
-   static constexpr float _DISMAX = 2000.;		/* and max event-station distance for location searching */
+	static const bool rotateSyn = false;			// false=R&T; true=N&E
+   static constexpr float _SNRMIN = 18.;			// allowed min SNR for waveform fitting */
+   static constexpr float _DISMIN = 0.;			// allowed min */
+   static constexpr float _DISMAX = 2000.;		// and max event-station distance for location searching */
 
-private:
+private:	// class
+	struct SinglePeriodInfo {
+		float sigmaG = -1, sigmaP = -1, sigmaA = -1;
+		FileName fmeasure, fmapG, fmapP, fstalst;
+	};
+
+private: // variables
 	// option 1. measurements
 	// RadPattern objects for predicting source terms
 	RadPattern _rpR, _rpL;
 
-	//std::vector< std::vector<FileName> > fRlist, fLlist;
 	/* store measurements/predictions of each station with a StaData,
 	 * all StaDatas at a single period is handeled by a SDContainer */
 	std::vector<SDContainer> _dataR, _dataL;
@@ -257,7 +289,6 @@ private:
 	// data type
 	char datatype_name;
 	Dtype datatype;
-	float _indep_factor = 1.;		// describes the correlations among data (0: 100% correlated, 1: 100% independent)
 	bool _useG = true, _useP = true, _useA = true;
 	bool _usewaveform = false;
 	bool _isInit = false;
@@ -265,7 +296,8 @@ private:
    float weightR_Loc = 1., weightL_Loc = 1.;  // weighting between Rayleigh and Love data for Location search
    float weightR_Foc = 1., weightL_Foc = 1.;  // weighting between Rayleigh and Love data for Focal search
 	// Input files. Three files at each period for 1) measurements, 2) group vel map, and 3) phase vel map
-	std::map<float, std::array<FileName, 4> > fRlist, fLlist;
+	//std::map<float, std::array<FileName, 4> > fRlist, fLlist;
+	std::map<float, SinglePeriodInfo> spiRM, spiLM;
 	// Input eigen-function and phase-velocity files
 	FileName fReigname, fRphvname;
    FileName fLeigname, fLphvname;
@@ -279,10 +311,9 @@ private:
 	float _AfactorR = 1, _AfactorL = 1;
 	// output files
 	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit
-   std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions
+   //std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions
 
-private:
-	// private functions
+private: // functions
 	bool FilenameToVel( const FileName& fname, float& vel ) const;
 	inline void NormalizeWeights( Dtype& datatype, float& wR, float& wL);
 	inline float ShiftInto( float val, float lb, float ub, float T) const;
@@ -292,7 +323,9 @@ private:
 	void MKDirs( const std::string& path ) const { MKDirFor(path, true); }
 	void MKDirFor( const std::string& path, const bool isdir = false ) const;
 
-	float Tpeak( const SacRec& sac ) const;
+	//float Tpeak( const SacRec& sac ) const;
+	SacRec ComputeSyn(const SacRec &sac, SynGenerator &synG) const;
+	StaData WaveformMisfit( const SacRec3 &sac3, SynGenerator &synG ) const;
 };
 
 #endif

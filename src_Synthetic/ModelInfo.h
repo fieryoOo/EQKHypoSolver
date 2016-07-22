@@ -11,12 +11,13 @@
 #include <thread>
 
 /* -------------------- the RNG class-------------------- */
+/*
 class Rand {
    std::default_random_engine generator1;
    std::uniform_real_distribution<float> d_uniform;
    std::normal_distribution<float> d_normal;
 public:
-   Rand() /* add a true random number from std::random_device to the time seed to ensure thread safety */
+   Rand() // add a true random number from std::random_device to the time seed to ensure thread safety 
       : generator1( std::chrono::system_clock::now().time_since_epoch().count() + std::random_device{}() )
       , d_uniform(0., 1.)
       , d_normal(0., 1.) {}
@@ -27,12 +28,13 @@ public:
    inline float Normal() { return d_normal(generator1); }
 
 };
+*/
 
 template< class T >
 struct FocalInfo {
 	static constexpr float NaN = -12345.;
 	static constexpr float DEPMAX = 60.;
-   T stk, dip, rak, dep, M0;
+   T stk, dip, rak, dep; mutable T M0;
 
    //FocalInfo( T stkin = 180, T dipin = 45, T rakin = 0, T depin = 10 )
    FocalInfo( T stkin = NaN, T dipin = NaN, T rakin = NaN, T depin = NaN, T M0in = NaN )
@@ -97,7 +99,10 @@ struct FocalInfo {
 		const float Myy =  M0 * (sind*cosr*sin2s - sin2d*sinr*coss*coss);
 		const float Myz = -M0 * (cosd*cosr*sins - cos2d*sinr*coss);
 		const float Mzz =  M0 * (sin2d*sinr);
-		std::cout<<Mxx<<" "<<Mxy<<" "<<Mxz<<" "<<Myy<<" "<<Myz<<" "<<Mzz<<std::endl;
+		std::cout<<std::setprecision(5)<<std::fixed
+					<<std::setw(9)<<Mxx<<std::setw(9)<<Mxy<<std::setw(9)<<Mxz<<"\n"
+					<<std::setw(9)<<" "<<std::setw(9)<<Myy<<std::setw(9)<<Myz<<"\n"
+					<<std::setw(9)<<" "<<std::setw(9)<<" "<<std::setw(9)<<Mzz<<std::endl;
 	}
 
    friend std::ostream& operator<< ( std::ostream& o, const FocalInfo& f ) {
@@ -219,9 +224,7 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 			return val;
 		}
 		inline float BoundInto( float val, float lb, float ub ) const {
-			if( val < lb ) val = lb;
-			else if( val > ub ) val = ub;
-			return val;
+			return val<lb ? lb : (val>ub ? ub : val);
 		}
 };
 

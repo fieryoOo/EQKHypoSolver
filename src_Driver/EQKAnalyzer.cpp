@@ -94,54 +94,54 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	std::string stmp;
 	if( ! (buff>>stmp) ) return -2;
 	bool succeed;
-	if( stmp == "fRse" ) succeed = buff >> fReigname;
-	else if( stmp == "fRsp" ) succeed = buff >> fRphvname;
-	else if( stmp == "fLse" ) succeed = buff >> fLeigname;
-	else if( stmp == "fLsp" ) succeed = buff >> fLphvname;
-	else if( stmp == "weightR_Loc" ) succeed = buff >> weightR_Loc;
-	else if( stmp == "weightL_Loc" ) succeed = buff >> weightL_Loc;
-	else if( stmp == "weightR_Foc" ) succeed = buff >> weightR_Foc;
-	else if( stmp == "weightL_Foc" ) succeed = buff >> weightL_Foc;
+	if( stmp == "fRse" ) succeed = (bool)(buff >> fReigname);
+	else if( stmp == "fRsp" ) succeed = (bool)(buff >> fRphvname);
+	else if( stmp == "fLse" ) succeed = (bool)(buff >> fLeigname);
+	else if( stmp == "fLsp" ) succeed = (bool)(buff >> fLphvname);
+	else if( stmp == "weightR_Loc" ) succeed = (bool)(buff >> weightR_Loc);
+	else if( stmp == "weightL_Loc" ) succeed = (bool)(buff >> weightL_Loc);
+	else if( stmp == "weightR_Foc" ) succeed = (bool)(buff >> weightR_Foc);
+	else if( stmp == "weightL_Foc" ) succeed = (bool)(buff >> weightL_Foc);
 	else if( stmp == "noG" ) { succeed = true; _useG = false; }
 	else if( stmp == "noP" ) { succeed = true; _useP = false; }
 	else if( stmp == "noA" ) { succeed = true; _useA = false; }
-	else if( stmp == "SNRMIN" ) succeed = buff >> SNRMIN;
-	else if( stmp == "DISMIN" ) succeed = buff >> DISMIN;
-	else if( stmp == "DISMAX" ) succeed = buff >> DISMAX;
+	else if( stmp == "SNRMIN" ) succeed = (bool)(buff >> SNRMIN);
+	else if( stmp == "DISMIN" ) succeed = (bool)(buff >> DISMIN);
+	else if( stmp == "DISMAX" ) succeed = (bool)(buff >> DISMAX);
 	else if( stmp == "lon" ) { 
-		succeed = buff >> initlon; 
+		succeed = (bool)(buff >> initlon); 
 		if( succeed && initlon<0.) initlon += 360.; 
 	}
-	else if( stmp == "lat" ) succeed = buff >> initlat;
-	else if( stmp == "fmodelR" ) succeed = buff >> fmodelR;
-	else if( stmp == "fmodelL" ) succeed = buff >> fmodelL;
+	else if( stmp == "lat" ) succeed = (bool)(buff >> initlat);
+	else if( stmp == "fmodelR" ) succeed = (bool)(buff >> fmodelR);
+	else if( stmp == "fmodelL" ) succeed = (bool)(buff >> fmodelL);
 	else if( stmp == "fsaclistR" ) {
-		succeed = buff >> fsaclistR >> sacRtype;
+		succeed = (bool)(buff >> fsaclistR >> sacRtype);
 		if( sacRtype!=0 && sacRtype!=1 )
 			throw ErrorEA::BadParam( FuncName, "sacRtype: expecting either 0 (displacement) or 1 (velocity)");
 	}
 	else if( stmp == "fsaclistL" ) {
-		succeed = buff >> fsaclistL >> sacLtype;
+		succeed = (bool)(buff >> fsaclistL >> sacLtype);
 		if( sacLtype!=0 && sacLtype!=1 )
 			throw ErrorEA::BadParam( FuncName, "sacLtype: expecting either 0 (displacement) or 1 (velocity)");
 	}
 	else if( stmp == "permin" ) {
 		float permin;
-		succeed = buff >> permin;
+		succeed = (bool)(buff >> permin);
 		f3 = 1./permin; f4 = 1.1/permin;
 	}
 	else if( stmp == "permax" ) {
 		float permax;
-		succeed = buff >> permax;
+		succeed = (bool)(buff >> permax);
 		f1 = 0.9/permax; f2 = 1./permax;
 	}
 	else if( stmp == "indep" ) { 
-		succeed = buff >> _indep_factor;
+		succeed = (bool)(buff >> _indep_factor);
 		if( _indep_factor<=0. || _indep_factor>1. )
 			throw ErrorEA::BadParam( FuncName, "indep factor out of range: "+std::to_string(_indep_factor) );
 	}
 	else if( stmp == "dflag" ) {
-		succeed = buff >> datatype_name;
+		succeed = (bool)(buff >> datatype_name);
 		if( succeed ) {
 			switch( datatype_name ) {
 				case 'B': datatype = B;
@@ -157,26 +157,44 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "fRm" ) {
 		FileName stmp1, stmp2, stmp3, stmp4;
 		float per;
-		succeed = buff >> stmp1 >> stmp2 >> stmp3 >> per;	// fmeasure, fmapG, fmapP, per
+		succeed = (bool)(buff>>stmp1>>stmp2>>stmp3>>per);	// fmeasure, fmapG, fmapP, per
 		buff >> stmp4;													// station list (optional)
 		if( succeed ) {
-			if( fRlist.find(per) != fRlist.end() ) return -3;	// period already exists
-			fRlist[per] = std::array<FileName, 4>{stmp1, stmp2, stmp3, stmp4};
+			//if( spiRM.find(per) != spiRM.end() ) return -3;	// period already exists
+			auto &spi = spiRM[per];
+			spi.fmeasure = stmp1; spi.fmapG = stmp2; spi.fmapP = stmp3; spi.fstalst = stmp4;
 		}
 	}
 	else if( stmp == "fLm" ) {
 		FileName stmp1, stmp2, stmp3, stmp4;
 		float per;
-		succeed = buff >> stmp1 >> stmp2 >> stmp3 >> per;	// fmeasure, fmapG, fmapP, per
+		succeed = (bool)(buff>>stmp1>>stmp2>>stmp3>>per);	// fmeasure, fmapG, fmapP, per
 		buff >> stmp4;													// station list (optional)
 		if( succeed ) {
-			if( fLlist.find(per) != fLlist.end() ) return -3;	// period already exists
-			fLlist[per] = std::array<FileName, 4>{stmp1, stmp2, stmp3, stmp4};
+			//if( fLlist.find(per) != fLlist.end() ) return -3;	// period already exists
+			auto &spi = spiLM[per];
+			spi.fmeasure = stmp1; spi.fmapG = stmp2; spi.fmapP = stmp3; spi.fstalst = stmp4;
+		}
+	}
+	else if( stmp == "sigmaR" ) {
+		float per, sG, sP, sA;
+		succeed = (bool)(buff>>per>>sG>>sP>>sA);
+		if( succeed ) {
+			auto &spi = spiRM[per];
+			spi.sigmaG = sG; spi.sigmaP = sP; spi.sigmaA = sA;
+		}
+	}
+	else if( stmp == "sigmaL" ) {
+		float per, sG, sP, sA;
+		succeed = (bool)(buff>>per>>sG>>sP>>sA);
+		if( succeed ) {
+			auto &spi = spiLM[per];
+			spi.sigmaG = sG; spi.sigmaP = sP; spi.sigmaA = sA;
 		}
 	}
 	else if( stmp == "fmisL" ) {
 		FileName& outname = outname_misL;
-		succeed = buff >> outname;
+		succeed = (bool)(buff >> outname);
 		if( succeed && MoveF ) outname.SaveOld();
 		/*
 		if( succeed && MoveF && access(outname.c_str(), F_OK) == 0 ) {
@@ -188,38 +206,38 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	}
 	else if( stmp == "fmisF" ) {
 		FileName& outname = outname_misF;
-		succeed = buff >> outname;
+		succeed = (bool)(buff >> outname);
 		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "fmisAll" ) {
 		FileName& outname = outname_misAll;
-		succeed = buff >> outname;
+		succeed = (bool)(buff >> outname);
 		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "fpos" ) {
 		FileName& outname = outname_pos;
-		succeed = buff >> outname;
+		succeed = (bool)(buff >> outname);
 		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "fsrcR" ) {
 		FileName& outname = outname_srcR;
-		succeed = buff >> outname;
+		succeed = (bool)(buff >> outname);
 		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "fsrcL" ) {
 		FileName& outname = outname_srcL;
-		succeed = buff >> outname;
+		succeed = (bool)(buff >> outname);
 		if( succeed && MoveF ) outname.SaveOld();
 	}
 	else if( stmp == "dirsac" ) {
 		FileName& dirname = outdir_sac;
-		succeed = buff >> dirname;
+		succeed = (bool)(buff >> dirname);
 		if( succeed && MoveF ) dirname.SaveOld();
 	}
 	else if( stmp == "ffitR" ) {
 		FileName outname;
 		float per;
-		succeed = buff >> outname >> per;
+		succeed = (bool)(buff >> outname >> per);
 		if( succeed ) {
 			outlist_RF[per] = outname;
 			if( MoveF ) {
@@ -233,7 +251,7 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "ffitL" ) {
 		FileName outname;
 		float per;
-		succeed = buff >> outname >> per;
+		succeed = (bool)(buff >> outname >> per);
 		if( succeed ) {
 			outlist_LF[per] = outname;
 			if( MoveF ) {
@@ -244,11 +262,16 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 			}
 		}
 	}
+	else if( stmp == "fsigmas" ) {
+		FileName& outname = outname_sigmas;
+		succeed = (bool)(buff >> outname);
+		if( succeed && MoveF ) outname.SaveOld();
+	}
 /*
 	else if( stmp == "fpredR" ) {
 		FileName outname;
 		float per;
-		succeed = buff >> outname >> per;
+		succeed = (bool)(buff >> outname >> per);
 		if( succeed ) {
 			outlist_RP[per] = outname;
 			//if( MoveF ) outname.SaveOld();
@@ -257,17 +280,35 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 	else if( stmp == "fpredL" ) {
 		FileName outname;
 		float per;
-		succeed = buff >> outname >> per;
+		succeed = (bool)(buff >> outname >> per);
 		if( succeed ) {
 			outlist_LP[per] = outname;
 			//if( MoveF ) outname.SaveOld();
 		}
 	} */
 	else return -1;
-	if( succeed ) return 1;
-	return 0;
+	return succeed;
 }
 
+
+void EQKAnalyzer::SaveOldOutputs() const {
+	outname_misF.SaveOld();
+	outname_misL.SaveOld();
+	outname_misAll.SaveOld();
+	outname_pos.SaveOld();
+	outname_srcR.SaveOld();
+	outname_srcL.SaveOld();
+	outname_sigmas.SaveOld();
+	outdir_sac.SaveOld();
+	for( const auto &pfpair : outlist_RF ) {
+		((FileName)(pfpair.second + "_sta")).SaveOld();
+		((FileName)(pfpair.second + "_bin")).SaveOld();
+	}
+	for( const auto &pfpair : outlist_LF ) {
+		((FileName)(pfpair.second + "_sta")).SaveOld();
+		((FileName)(pfpair.second + "_bin")).SaveOld();
+	}
+}
 
 /* -------------------- param/data preparations (checking and post-processing) -------------------- */
 inline void EQKAnalyzer::NormalizeWeights( Dtype& datatype, float& wR, float& wL) {
@@ -332,6 +373,7 @@ bool EQKAnalyzer::FilenameToVel( const FileName& fname, float& vel ) const {
 		return true;
 	}
 }
+static inline int nint( float val ) { return (int)floor(val + 0.5); }
 void EQKAnalyzer::LoadData() {
 	// check input params
 	// do waveform fitting if model and saclist are input
@@ -340,7 +382,7 @@ void EQKAnalyzer::LoadData() {
 	if( _usewaveform ) {	// read in sacs
 		// period band
 		if( f2<0. || f3<0. || f2>=f3 )
-			throw ErrorSC::BadParam(FuncName, "invalid freq range: "+std::to_string(f2)+" - "+std::to_string(f3));
+			throw ErrorEA::BadParam(FuncName, "invalid freq range: "+std::to_string(f2)+" - "+std::to_string(f3));
 
 		// lambda function that loads a single sac file into both sac3V and synG
 		auto LoadSac = [&]( const std::string& sacname, SynGenerator& synG, std::vector<SacRec3>& sac3V ) {
@@ -389,49 +431,71 @@ void EQKAnalyzer::LoadData() {
 		_synGR.Initialize(fmodelR, fRphvname, fReigname, 'R', 0);
 		std::ifstream fin( fsaclistR );
 		if( ! fin )
-	      throw ErrorSC::BadFile(FuncName, fsaclistR);
+	      throw ErrorEA::BadFile(FuncName, fsaclistR);
 		_sac3VR.clear(); _synGR.ClearSta();
 		for( std::string line; std::getline(fin, line); ) {
 			std::stringstream ss(line); ss >> line;
 			LoadSac( line, _synGR, _sac3VR );
 		}
 		fin.close(); fin.clear();
+		float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
+		_dataR.push_back( SDContainer{pseudo_per, R, false} );	// waveform data container
+		// Uncertainties
+		auto Ispi = spiRM.find(-1.);
+		if( Ispi != spiRM.end() ) {
+			auto &spi = Ispi->second; auto &sigmaS = _dataR.back().sigmaS;
+			sigmaS = AziData{0., spi.sigmaG, spi.sigmaP, spi.sigmaA}; sigmaS = sigmaS * sigmaS;
+		}
 
 		// Love
 		_synGL.Initialize(fmodelL, fLphvname, fLeigname, 'L', 0);
 		fin.open( fsaclistL );
 		if( ! fin )
-			throw ErrorSC::BadFile(FuncName, fsaclistL);
+			throw ErrorEA::BadFile(FuncName, fsaclistL);
 		_sac3VL.clear(); _synGL.ClearSta();
 		for( std::string line; std::getline(fin, line); ) {
 			std::stringstream ss(line); ss >> line;
 			LoadSac( line, _synGL, _sac3VL );
 		}
+		_dataL.push_back( SDContainer{pseudo_per, L, false} );	// waveform data container
+		// Uncertainties
+		Ispi = spiLM.find(-1.);
+		if( Ispi != spiLM.end() ) {
+			auto &spi = Ispi->second; auto &sigmaS = _dataL.back().sigmaS;
+			sigmaS = AziData{0., spi.sigmaG, spi.sigmaP, spi.sigmaA}; sigmaS = sigmaS * sigmaS;
+		}
 
 		std::cout<<"### "<<_sac3VR.size()<<"(Rayl) + "<<_sac3VL.size()<<"(Love) sac file(s) loaded. ###"<<std::endl;
 	} else {	// read DISP measurements
-		auto LoadSDData = [&]( const std::map<float, std::array<FileName, 4> >& flist, std::vector<SDContainer>& dataV, const Dtype t ) {
-			dataV.clear(); dataV.reserve( flist.size() );
-			for( const auto& f : flist ) {
-				const float per = f.first;
-				const auto& farray = f.second;
+		auto LoadSDData = [&]( const std::map<float, SinglePeriodInfo>& spiM, std::vector<SDContainer>& dataV, const Dtype t ) {
+			dataV.clear(); dataV.reserve( spiM.size() );
+			for( const auto& psPair : spiM ) {
+				const float per = psPair.first;
+				const auto& spi = psPair.second;
+				if( spi.fmeasure.empty() || spi.fmapG.empty() || spi.fmapP.empty() ) {
+					WarningEA::BadParam(FuncName, "invalid SinglePeriodInfo, skipped.");
+					continue;
+				}
 				// farray[0]: measurement file
 				// farray[1] & [2]: either G&P vel_map files or G&P velocities (float for 1D model)
 				// farray[3]: list of stations to be used
 				float velG, velP;
 				SDContainer sd;
-				if( FilenameToVel(farray[1], velG) && FilenameToVel(farray[2], velP) ) {
-					sd = SDContainer(per, t, farray[0], velG, velP, farray[3], initlon, initlat, DISMIN, DISMAX);
+				if( FilenameToVel(spi.fmapG, velG) && FilenameToVel(spi.fmapP, velP) ) {
+					sd = SDContainer(per, t, true, spi.fmeasure, velG, velP, spi.fstalst, initlon, initlat, DISMIN, DISMAX);	// FTAN measurement container
 				} else {
-					sd = SDContainer(per, t, farray[0], farray[1], farray[2], farray[3], initlon, initlat, DISMIN, DISMAX);
+					sd = SDContainer(per, t, true, spi.fmeasure, spi.fmapG, spi.fmapP, spi.fstalst, initlon, initlat, DISMIN, DISMAX);
+				}
+				if( spi.sigmaG>0 && spi.sigmaP>0 && spi.sigmaA>0 ) {
+					sd.sigmaS = AziData{0., spi.sigmaG, spi.sigmaP, spi.sigmaA}; sd.sigmaS = sd.sigmaS * sd.sigmaS;
 				}
 				dataV.push_back( std::move(sd) );
 			}
 		};
 		// Rayleigh
-		LoadSDData( fRlist, _dataR, R );
+		LoadSDData( spiRM, _dataR, R );
 		// Love
-		LoadSDData( fLlist, _dataL, L );
+		LoadSDData( spiLM, _dataL, L );
 
 		std::cout<<"### "<<_dataR.size()<<"(Rayl) + "<<_dataL.size()<<"(Love) data periods (measurements+maps) loaded. ###"<<std::endl;
 	}
@@ -448,23 +512,13 @@ inline std::vector<float> EQKAnalyzer::perlst(const Dtype dtype) const {
 		perV.push_back(1./f3);
 		perV.push_back(1./f2);
 	} else {
-		auto dataV = dtype==R ? _dataR : _dataL;
-		for( const auto& data : dataV ) perV.push_back( data.per );
+		const auto &dataV = dtype==R ? _dataR : _dataL;
+		for( const auto &data : dataV ) perV.push_back( data.per );
 	}
 	return perV;
 }
 
 // initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer based on the current model info
-void EQKAnalyzer::PredictAll( const ModelInfo& minfo, bool updateSource ) {
-	PredictAll( minfo, _rpR, _rpL, _dataR, _dataL, _AfactorR, _AfactorL, _source_updated, updateSource );
-}
-void EQKAnalyzer::PredictAll( const ModelInfo& minfo,	std::vector<SDContainer>& dataR, 
-										std::vector<SDContainer>& dataL, bool updateSource ) const {
-	auto rpR = _rpR, rpL = _rpL;
-	float AfactorR = _AfactorR, AfactorL = _AfactorL;
-	bool source_updated = _source_updated;
-	PredictAll( minfo, rpR, rpL, dataR, dataL, AfactorR, AfactorL, source_updated, updateSource );
-}
 // shift by T multiples according to lower and upper bound. Results not guranteed to be in the range
 inline float EQKAnalyzer::ShiftInto( float val, float lb, float ub, float T) const {
 	while(val >= ub) val -= T;
@@ -476,13 +530,26 @@ inline float EQKAnalyzer::BoundInto( float val, float lb, float ub ) const {
 	else if( val > ub ) val = ub;
 	return val;
 }
-void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPattern& rpL,
-										std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
-										float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const {
+/*
+void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo, bool updateSource ) {
+	UpdatePredsM( minfo, _rpR, _rpL, _dataR, _dataL, _AfactorR, _AfactorL, _source_updated, updateSource );
+}
+*/
+void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo,	std::vector<SDContainer>& dataR, 
+										  std::vector<SDContainer>& dataL, bool updateSource ) const {
+	auto rpR = _rpR, rpL = _rpL;
+	float AfactorR = _AfactorR, AfactorL = _AfactorL;
+	bool source_updated = _source_updated;
+	UpdatePredsM( minfo, rpR, rpL, dataR, dataL, AfactorR, AfactorL, source_updated, updateSource );
+}
+void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo, RadPattern& rpR, RadPattern& rpL,
+										  std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
+										  float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const {
 	// radpattern
 	bool model_updated = false;
 	float stk = minfo.stk, dip = minfo.dip, rak = minfo.rak, dep = minfo.dep, M0 = minfo.M0;
-	stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
+	stk = ShiftInto( stk, 0., 360., 360. );	
+	dip = BoundInto( dip, 0., 90. );
 	rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
 	model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, M0, perRlst() );
 	model_updated |= rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, M0, perLlst() );
@@ -507,7 +574,7 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 			const auto& rp = sdc.type==R ? rpR : rpL;
 			sdc.UpdateSourcePred( rp );
 		}
-		/*	Amplitudes are now correcly scaled by RadPattern::GetPred
+		/*	Amplitudes are now correctly scaled by RadPattern::GetPred
 		// rescale source amplitudes to match the data
 		std::vector<float> ampratioV;	
 		ampratioV.reserve( dataV.size() * dataV.at(0).size() );
@@ -525,6 +592,7 @@ void EQKAnalyzer::PredictAll( const ModelInfo& minfo, RadPattern& rpR, RadPatter
 	// SDContainers L: source terms
 	if( dataL.size() > 0 ) Usource( dataL, AfactorL );
 }
+
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
 void EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
@@ -553,78 +621,142 @@ void EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
 	// make a copy of the data and RadPattern objs (for multi-threading),
 	// update both path and source predictions for all SDcontainers
 	auto dataR = _dataR, dataL = _dataL;
-	PredictAll( minfo, dataR, dataL, true );
+	UpdatePredsM( minfo, dataR, dataL, true );
 
-	// main loop for Rayleigh
+	// lambda: computes chi-square of a single wavetype (with a vector of SDContainer)
 	chiS = 0.; N = 0; //wSum = 0.;
-	if( Rsize>0 && RFlag ) {
-		for( auto& sdc : dataR ) {
+	auto chiSM = [&](std::vector<SDContainer> &SDV) {
+		for( auto& sdc : SDV ) {
 			// compute misfits on all stations,
 			// average in each (20 degree) bin,
 			// and store the results into AziData vectors
 			std::vector<AziData> adVmean, adVvar;
-			sdc.BinAverage( adVmean, adVvar );	// correct for 2pi, data taken as FTAN measurements
+			auto getVar = [&](const int i){ return dynamicVar ? adVvar[i] : sdc.sigmaS; };
+			//std::cerr<<"debug(Check Sigmas): "<<dynamicVar<<" "<<getVar(0)<<" "<<getVar(10)<<std::endl;
+			sdc.BinAverage( adVmean, adVvar, true, true, dynamicVar );	// correct for 2pi, data taken as FTAN measurements
 			// add to chi-square misfit
 			for( int i=0; i<adVmean.size(); i++ ) {
 				const auto& admean = adVmean[i];
-				const auto& advar = adVvar[i];
-				//AziData adtmp = 1./(adstd*adstd);
-				//wSum += adder( adtmp ); // (adtmp.Gdata + adtmp.Pdata + adtmp.Adata);
-				//adtmp *= (admean * admean);
+				//const auto& advar = adVvar[i];
 				// (mis * mis / variance)
-				chiS += adder( (admean * admean)/advar );
+				chiS += adder( (admean * admean)/getVar(i) );
 				N += Nadd;
 			}
 			//std::cerr<<"Rayleigh at per="<<sdc.per<<": "<<chiS<<" "<<N<<" "<<chiS/(N-8.)<<"\n";
 		}
-	}
+	};
 
-	// main loop for Love
-	if( Lsize>0 && LFlag ) {
-		for( auto& sdc : dataL ) {
-			// compute misfits on all stations,
-			// average in each (20 degree) bin,
-			// and store the results into AziData vectors
-			std::vector<AziData> adVmean, adVvar;
-			sdc.BinAverage( adVmean, adVvar );	// correct for 2pi, data taken as FTAN measurements
-			// compute chi-square misfit
-			for( int i=0; i<adVmean.size(); i++ ) {
-				const auto& admean = adVmean[i];
-				const auto& advar = adVvar[i];
-				// (mis * mis / variance)
-				chiS += adder( (admean * admean)/advar );
-				N += Nadd;
-			}
-			//std::cerr<<"Love at per="<<sdc.per<<": "<<chiS<<" "<<N<<" "<<chiS/(N-8.)<<"\n";
-		}
-	}
+	// accumulate for Rayleigh
+	if( Rsize>0 && RFlag ) chiSM(dataR);
+
+	// accumulate for Love
+	if( Lsize>0 && LFlag ) chiSM(dataL);
 
 }
 
-/* use SacRec::Tpeak instead
-float EQKAnalyzer::Tpeak( const SacRec& sac ) const {
-	//float tmin, tmax, min, max;
-	//sac.MinMax(tb, te, tmin, min, tmax, max);
-	//return fabs(min)>fabs(max) ? tmin : tmax;	// for signal
-	// for envelope
-	int imin, imax;
-	sac.MinMax(imin, imax);
-	if( imax==0 || imax==sac.shd.npts-1 ) {
-		return sac.Time(imax);
+
+// given an observed waveform (sac, sac_am, sac_ph), generate synthetic and compute misfit
+SacRec EQKAnalyzer::ComputeSyn(const SacRec &sac, SynGenerator &synG) const {
+	const auto &shd = sac.shd;
+	SacRec sacSZ, sacSR, sacST;
+	int nptsS = ceil( (shd.user3-synG.minfo.t0)/shd.delta ) + 1;
+	bool synsuc = synG.ComputeSyn( sac.stname(), shd.stlo, shd.stla, nptsS, shd.delta, 
+											 sacSZ, sacSR, sacST, rotateSyn, f1, f2, f3, f4 );
+	Dtype type = synG.type=='R' ? R : L;
+	if( ! synsuc ) {
+		(type==R ? sacSZ : sacST).Write("debug_Syn_"+sac.stname()+".SAC");
+		throw ErrorEA::InternalException(FuncName, "bad sac from ComputeSyn for station "+sac.stname());
+		//WarningEA::Other(FuncName, "failed to produce/invalid synthetics for station "+sac.stname() );
+		//return;
+	}
+
+	// clear-up/select sac
+	/*
+	if( type == R ) {
+		sacSR.clear(); sacST.clear();	// clear unnecessory channels
 	} else {
-		float* sigsac = sac.sig.get();
-		PointC p1(sac.Time(imax-1), sigsac[imax-1]);
-		PointC p2(sac.Time(imax),   sigsac[imax]  );
-		PointC p3(sac.Time(imax+1), sigsac[imax+1]);
-		return Parabola( p1, p2, p3 ).Vertex().x;
+		sacSZ.clear(); sacSR.clear();
 	}
-}
-*/
+	*/
 
-static inline int nint( float val ) { return (int)floor(val + 0.5); }
-void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataRout, SDContainer& dataLout ) const {
-	// check/correct input params
+	// check for bad sac (done already in ComputeSyn!)
+	//if( sacS.shd.depmax!=sacS.shd.depmax ) return;
+
+	return type==R ? sacSZ : sacST;
+}
+
+StaData EQKAnalyzer::WaveformMisfit( const SacRec3 &sac3, SynGenerator &synG ) const {
+	// references to data sacs
+	const SacRec &sacM = sac3[0], &sac_am1 = sac3[1], &sac_ph1 = sac3[2];
+
+	// produce synthetic
+	SacRec sacS = ComputeSyn(sacM, synG);
+
+	sacS.Resample();	// important! shift to regular sampling grids
+
+	// zoom in to the surface wave window
+	auto& shdM = sacM.shd;
+	//float tb = shdM.user2, te = shdM.user3;
+	sacS.cut( shdM.user2, shdM.user3 );
+
+	// FFT into freq-domain
+	SacRec sac_am2, sac_ph2;
+	sacS.ToAmPh(sac_am2, sac_ph2);
+	// take the amplitude from IFFT for envelope
+	sacS.FromAmPh(sac_am2, sac_ph2, 2); 
+
+	// group time shift
+	float grTShift = shdM.user4 - sacS.Tpeak();
+
+	// time-domain correlation
+	//std::cout<<shdM.stlo<<" "<<shdM.stla<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";
+
+	// freq-domain rms
+	float AmpTheory; sac_am2.Mean(f2, f3, AmpTheory);
+	sac_am2.Subf(sac_am1); sac_ph2.Subf(sac_ph1);
+	// correct for 2pi
+	const float TWO_PI = M_PI * 2.;
+	auto correct2PI = [&](float& val) {
+		if( val >= M_PI ) val -= TWO_PI;
+		else if( val < -M_PI ) val += TWO_PI;
+	};
+	sac_ph2.Transform( correct2PI );
+	float rms_am = -sac_am2.RMSAvg(f2, f3, true), rms_ph = -sac_ph2.RMSAvg(f2, f3, true);	// signed rms
+	//std::cerr<<grTShift<<" "<<rms_ph<<" "<<rms_am<<"   "<<rms_am+AmpTheory<<" "<<AmpTheory<<std::endl;
+	//amp_sum += rms_am; pha_sum += rms_ph; N++;
+	// store rms misfits as StaData. Put amp of synthetic in .Asource for computing variance later
+	StaData sd(sacS.Azi(), shdM.stlo, shdM.stla, grTShift, rms_ph, rms_am+AmpTheory, 0.); sd.Asource = AmpTheory;
+	return sd;
+	//data.push_back( sd );
+	//std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
+	//std::cerr<<lon<<" "<<lat<<" "<<rms_ph<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_pha "<<sacM.fname<<"\n";
+	//std::cerr<<lon<<" "<<lat<<" "<<100.*rms_am/AmpTheory<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_amp "<<sacM.fname<<"\n";
+}
+
+void EQKAnalyzer::UpdatePredsW( const ModelInfo& minfo, std::vector<SDContainer> &dataR, std::vector<SDContainer> &dataL ) const {
+	// lambda: update misfits for a single wavetype
+	auto updatePreds = [&]( SynGenerator synG, const std::vector<SacRec3> &sac3V, SDContainer &data ) {
+		// prepare SynGenerator
+		//auto synGR = _synGR;
+		synG.SetEvent( minfo );
+		//float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
+		//SDContainer data( pseudo_per, synG.type=='R' ? R : L, false );	// waveform data container
+		for( const auto& sac3 : sac3V ) data.push_back( WaveformMisfit(sac3, synG) );
+		//std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
+		data.Sort(); data.UpdateAziDis( minfo.lon, minfo.lat );
+	};
+	
+	if( ! dataR.empty() ) updatePreds( _synGR, _sac3VR, dataR[0] );
+	if( ! dataL.empty() ) updatePreds( _synGL, _sac3VL, dataL[0] );
+}
+
+void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
+	// check/correct input params 
 	minfo.Correct();
+
+	int Rsize = _dataR.size(), Lsize = _dataL.size();
+	if( Rsize!=1 && Lsize!=1 ) throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
+	if( datatype == Undefined ) throw ErrorEA::BadParam(FuncName, "Undefined datatype");
 
 	// data flags
 	bool RFlag = (datatype==B || datatype==R);
@@ -634,112 +766,58 @@ void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldat
 	bool useG = _useG, useP = _useP, useA = _useA;
 	if( _isInit ) {
 		useG = true; useA = useP = false;
-		//if( Lsize > 0 ) {	RFlag = false; LFlag = true; }
+		//if( LFlag ) { RFlag = false; }
 	}
 	ADAdder adder( useG, useP, useA );
 	const int Nadd = useG + useP + useA;
 
+	// make a copy of the data (for multi-threading),
+	// update predictions (into misfits) for all SDcontainers
+	std::vector<SDContainer> dataR, dataL;
+	if(! _dataR.empty()) { dataR.push_back(_dataR[0]); dataR.back().clear(); } // TODO: a SDContainer::method to copy header info only
+	if(! _dataL.empty()) { dataL.push_back(_dataL[0]); dataL.back().clear(); }
+	UpdatePredsW( minfo, dataR, dataL );
 
 	// lambda: computes chi square for a single wavetype
-	auto chiSW = [&]( SynGenerator synG, const std::vector<SacRec3>& sac3V, SDContainer& dataout ) {
+	auto chiSW = [&]( SynGenerator synG, SDContainer& data ) {
+/*
 		// prepare SynGenerator
 		//auto synGR = _synGR;
 		synG.SetEvent( minfo );
-		Dtype type = synG.type=='R' ? R : L;
 		float pseudo_per = nint(1./f3) + 0.001*nint(1./f2);
-		SDContainer data( pseudo_per, type );
+		SDContainer data( pseudo_per, synG.type=='R' ? R : L, false );	// waveform data container
 
 		//float amp_sum = 0., pha_sum = 0.;
-		for( const auto& sac3 : sac3V ) {
-			// references to data sacs
-			const SacRec &sacM = sac3[0], &sac_am1 = sac3[1], &sac_ph1 = sac3[2];
-			auto& shdM = sacM.shd;
-
-			// produce synthetic
-			SacRec sacSZ, sacSR, sacST;
-			float lon=shdM.stlo, lat=shdM.stla;
-			int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
-			bool synsuc = synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
-													 f1,f2,f3,f4, sacSZ, sacSR, sacST, rotateSyn );
-			if( ! synsuc ) {
-				WarningEA::Other(FuncName, "failed to produce/invalid synthetics for station "+sacM.stname() );
-				continue;
-			}
-
-			// clear-up/select sac
-			if( type == R ) {
-				sacSR.clear(); sacST.clear();	// ignore unnecessory channel
-			} else {
-				sacSZ.clear(); sacSR.clear();
-			}
-			SacRec& sacS = type==R ? sacSZ : sacST;
-
-			// check for bad sac 
-			if( sacS.shd.depmax!=sacS.shd.depmax ) continue;
-			sacS.Resample();	// important! shift to regular sampling grids
-
-			// zoom in to the surface wave window
-			//float tb = shdM.user2, te = shdM.user3;
-			sacS.cut( shdM.user2, shdM.user3 );
-
-			// FFT into freq-domain
-			SacRec sac_am2, sac_ph2;
-			sacS.ToAmPh(sac_am2, sac_ph2);
-			// take the amplitude from IFFT for envelope
-			sacS.FromAmPh(sac_am2, sac_ph2, 2); 
-
-			// group time shift
-			float grTShift = shdM.user4 - sacS.Tpeak();
-
-			// time-domain correlation
-			//std::cout<<lon<<" "<<lat<<" "<<sacM.Correlation( sacS, tmin, tmax )<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" CC_sigtime "<<sacM.fname<<"\n";
-
-			// freq-domain rms
-			float AmpTheory; sac_am2.Mean(f2, f3, AmpTheory);
-			sac_am2.Subf(sac_am1); sac_ph2.Subf(sac_ph1);
-			// correct for 2pi
-			const float TWO_PI = M_PI * 2.;
-			auto correct2PI = [&](float& val) {
-				if( val >= M_PI ) val -= TWO_PI;
-				else if( val < -M_PI ) val += TWO_PI;
-			};
-			sac_ph2.Transform( correct2PI );
-			float rms_am = sac_am2.RMSAvg(f2, f3), rms_ph = sac_ph2.RMSAvg(f2, f3);
-			//amp_sum += rms_am; pha_sum += rms_ph; N++;
-			// store rms misfits as StaData. Put amp of synthetic in .Asource for computing variance later
-			StaData sd(sacS.Azi(), lon, lat, grTShift, rms_ph, rms_am+AmpTheory, 0.); sd.Asource = AmpTheory;
-			data.push_back( sd );
-			//std::cout<<"RMS_amp = "<<rms_am<<"   RMS_pha = "<<rms_ph<<std::endl;
-			//std::cerr<<lon<<" "<<lat<<" "<<rms_ph<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_pha "<<sacM.fname<<"\n";
-			//std::cerr<<lon<<" "<<lat<<" "<<100.*rms_am/AmpTheory<<"   "<<sacM.stname()<<" "<<sacS.stname()<<" "<<sacS.Dis()<<" "<<sacS.Azi()<<" rms_amp "<<sacM.fname<<"\n";
-		}
+		for( const auto& sac3 : sac3V ) data.push_back( WaveformMisfit(sac3, synG) );
 		//std::cout<<"average misfits = "<<sqrt(amp_sum/(N-1))<<" "<<sqrt(pha_sum/(N-1))<<std::endl;
 		data.Sort();
+*/
 
 		// compute chi square
 		std::vector<AziData> adVmean, adVvar;
-		data.BinAverage( adVmean, adVvar, false, false );	// do not correct for 2 pi, data taken as waveform rms misfits
+		auto getVar = [&](const int i){ return dynamicVar ? adVvar[i] : data.sigmaS; };
+		data.BinAverage( adVmean, adVvar, false, false, dynamicVar );	// do not correct for 2 pi, data taken as waveform rms misfits
 		for( int i=0; i<adVmean.size(); i++ ) {
 			const auto& admean = adVmean[i];
-			const auto& advar = adVvar[i];
+			//const auto& advar = adVvar[i];
 			//std::cerr<<"admean = "<<admean<<"   advar = "<<advar<<"   adder = "<<(admean*admean)/advar<<std::endl;
 			// (mis * mis / variance)
-			chiS += adder( (admean * admean)/advar );
+			chiS += adder( (admean * admean)/getVar(i) );
 			N += Nadd;
 		}
-
+/*
 		// feed dataout/dataout if requested
 		if( filldata ) {
 			data.UpdateAziDis(minfo.lon, minfo.lat);
 			dataout = std::move(data);
 		}
-
+*/
 	};
 
 	// compute Rayleigh and Love
 	chiS = 0.; N = 0;
-	if( RFlag ) chiSW( _synGR, _sac3VR, dataRout );
-	if( LFlag ) chiSW( _synGL, _sac3VL, dataLout );
+	if( Rsize==1 && RFlag ) chiSW( _synGR, dataR[0] );
+	if( Lsize==1 && LFlag ) chiSW( _synGL, dataL[0] );
 
 }
 
@@ -766,23 +844,7 @@ void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& ou
 		for( auto& sac3 : sac3V ) {
 			auto &sacM = sac3[0]; auto &shdM = sacM.shd;
 			// produce synthetic
-			SacRec sacSZ, sacSR, sacST;
-			float lon=shdM.stlo, lat=shdM.stla;
-			int nptsS = ceil( (shdM.user3-minfo.t0)/shdM.delta ) + 1;
-			bool synsuc = synG.ComputeSyn( sacM.stname(), lon, lat, nptsS, shdM.delta, 
-													 f1,f2,f3,f4, sacSZ, sacSR, sacST, rotateSyn );
-			if( ! synsuc ) {
-				WarningEA::Other(FuncName, "failed to produce/invalid synthetics for station "+sacM.stname() );
-				continue;
-			}
-			if( type == R ) {
-				sacSR.clear(); sacST.clear();	// ignore unnecessory channel
-			} else {
-				sacSZ.clear(); sacSR.clear();
-			}
-			SacRec& sacS = type==R ? sacSZ : sacST;
-			// check for bad sac 
-			if( shdM.depmax!=shdM.depmax || sacS.shd.depmax!=sacS.shd.depmax ) continue;
+			SacRec sacS = ComputeSyn(sacM, synG);
 			sacS.Resample();	// shift to regular sampling grids
 			sacS.cut( shdM.user2, shdM.user3 );
 
@@ -798,6 +860,31 @@ void EQKAnalyzer::OutputWaveforms( const ModelInfo& minfo, const std::string& ou
 }
 
 
+// output variances for R & L all periods into a single file
+void EQKAnalyzer::EstimateSigmas( const ModelInfo& minfo ) {
+	// prepare/update data for the input minfo
+	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
+		UpdatePredsW(minfo);
+	} else {	// update both path and source predictions for all SDcontainers
+		UpdatePredsM( minfo, true );
+	}
+
+	for( auto& sdc : _dataR ) sdc.ComputeVar();
+
+	for( auto& sdc : _dataL ) sdc.ComputeVar();
+}
+void EQKAnalyzer::OutputSigmas() const {
+	// open output file
+	std::ofstream fout( outname_sigmas, std::ofstream::app );
+	//fout<<"# [ minfo = "<<minfo<<" ]\n";
+	fout<<"Rayl:\n";
+	for( auto& sdc : _dataR ) fout<<sqrt(sdc.sigmaS)<<"\n";
+	fout<<"Love:\n";
+	for( auto& sdc : _dataL ) fout<<sqrt(sdc.sigmaS)<<"\n";
+	fout<<"\n";
+}
+
+
 /* -------------------- Output the data and predictions based on the input model info -------------------- */
 void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 	// check/correct input params
@@ -805,9 +892,9 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 
 	// prepare/update data for the input minfo
 	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
-		FilldataW(minfo);
+		UpdatePredsW(minfo);
 	} else {	// update both path and source predictions for all SDcontainers
-		PredictAll( minfo, true );
+		UpdatePredsM( minfo, true );
 	}
 	bool isFTAN = ! _usewaveform;
 
@@ -833,7 +920,8 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 		}
 		// average in each (20 degree) bin,
 		std::vector<AziData> adVmean, adVvar;
-		sdc.BinAverage( adVmean, adVvar, isFTAN, isFTAN );	// 2pi gets corrected here
+		auto getVar = [&](const int i){ return dynamicVar ? adVvar[i] : sdc.sigmaS; };
+		sdc.BinAverage( adVmean, adVvar, isFTAN, isFTAN, dynamicVar );	// 2pi gets corrected here
 		// output data and predictions at each station (append at the end)
 		std::ofstream foutsta( outname + "_sta", std::ofstream::app );
 		foutsta<<"# [ minfo = "<<minfo<<" ]\n";
@@ -844,7 +932,8 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 		foutbin<<"# [ minfo = "<<minfo<<" ]\n";
 		for( int i=0; i<adVmean.size(); i++ ) {
 			const auto& admean = adVmean[i];
-			const auto adstd = sqrt( adVvar[i] );
+			//const auto adstd = sqrt( adVvar[i] );
+			const auto adstd = sqrt( getVar(i) );
 			float Gsource, Psource, Asource;
 			if( _usewaveform ) {
 				Gsource = Psource = Asource = 0.;
@@ -877,9 +966,9 @@ void EQKAnalyzer::OutputMisfits( ModelInfo minfo ) {
 
 	// prepare/update data for the input minfo
 	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
-		FilldataW(minfo);
+		UpdatePredsW(minfo);
 	} else {	// update both path and source predictions for all SDcontainers
-		PredictAll( minfo, true );
+		UpdatePredsM( minfo, true );
 	}
 	bool isFTAN = ! _usewaveform;
 
@@ -898,15 +987,15 @@ void EQKAnalyzer::OutputMisfits( ModelInfo minfo ) {
 		const float per = sdc.per;
 		// average in each (20 degree) bin,
 		std::vector<AziData> adVmean, adVvar;
+		auto getVar = [&](const int i){ return dynamicVar ? adVvar[i] : sdc.sigmaS; };
 		sdc.BinAverage( adVmean, adVvar, isFTAN, isFTAN );
 		// output misfits and source preds at each bin azi (append at the end)
 		AziData misL1{0.}, misL2{0.}, chiS{0.}; 
 		float nbin = adVmean.size();
 		for( int i=0; i<nbin; i++ ) {
 			const auto& admean = adVmean[i];
-			const auto& advar = adVvar[i];
 			misL1 += fabs(admean); misL2 += admean * admean;
-			chiS += (admean*admean) / advar;
+			chiS += (admean*admean) / getVar(i);
 		}
 		misL1 /= nbin; misL2 = sqrt( misL2/(nbin-1.) );
 		chiS /= nbin;
@@ -929,8 +1018,8 @@ void EQKAnalyzer::OutputMisfits( ModelInfo minfo ) {
 /* -------------------- output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves -------------------- */
 void EQKAnalyzer::OutputSourcePatterns( const ModelInfo& mi ) {
 	if( outname_srcR.empty() && outname_srcL.empty() ) return;
-	// call PredictAll for Afactors (needs a new, less redundant method here!)
-	PredictAll( mi, true );
+	// call UpdatePredsM for Afactors (needs a new, less redundant method here!)
+	UpdatePredsM( mi, true );
 	/*
 	float stk = mi.stk, dip = mi.dip, rak = mi.rak, dep = mi.dep;
 	//stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
