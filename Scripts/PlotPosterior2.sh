@@ -88,15 +88,16 @@ if [ ! -e $exeCSpline ]; then
 fi
 
 ### discard results from the first search and grab qualified data from the second
-awk 'BEGIN{flag=1;NFold=0}{if(NF==0&&NFold!=0){flag++} if(flag==1)print; NFold=NF}' $fin | awk 'NF>0' | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1,$4}' | sed s/')'/''/g | awk -v Emul=$Emul '{if(NF==17){M0=$5}else{M0=1} printf "%d %f %d ",$(NF-1),$(NF-3)*Emul,$(NF-6); print $1,$2,$3,$4,M0,$(NF-11),$(NF-10),$(NF-9),$(NF);}' | awk -v cm=$chiS_max '$2/$3<cm' > .PlotPosterior_tmp
-grep 'accepted' .PlotPosterior_tmp > .PlotPosterior_tmp_acc
+awk 'BEGIN{flag=1;NFold=0}{if(NF==0&&NFold!=0){flag++} if(flag==1)print; NFold=NF}' $fin | grep "search#" | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1,$4}' | sed s/')'/''/g | awk -v Emul=$Emul '{if(NF==17){M0=$5}else{M0=1} printf "%d %f %d ",$(NF-1),$(NF-3)*Emul,$(NF-6); print $1,$2,$3,$4,M0,$(NF-11),$(NF-10),$(NF-9),$(NF);}' | awk -v cm=$chiS_max '$2/$3<cm' > .PlotPosterior_tmp
 grep 'rejected' .PlotPosterior_tmp > .PlotPosterior_tmp_rej
+#grep 'accepted' .PlotPosterior_tmp > .PlotPosterior_tmp_acc
+awk 'BEGIN{lastacc=""}{if($(NF)=="accepted"){print $0; lastacc=$0}else{if(lastacc!=""){print lastacc}}}' .PlotPosterior_tmp > .PlotPosterior_tmp_acc
 #awk 'BEGIN{flag=1;NFold=0}{if(NF==0&&NFold!=0){flag++} if(flag==1)print; NFold=NF}' $fin | awk 'NF>0' | grep 'rejected' | awk -v is=$is -v ie=$ie '$2>is&&$2<ie' | awk -F\( '{print $3,$1}' | sed s/')'/''/ | awk -v Emul=$Emul '{print $16,$14*Emul,$11,$1,$2,$3,$4,$6,$7,$8}' > .PlotPosterior_tmp_rej
 #awk 'NF!=0' $fin | awk 'begin{flag=0;Nold=0}{if($1<Nold){flag=1} Nold=$1; if(flag==1)print}' | awk -v is=$is -v ie=$ie '$1>is&&$1<ie' > .PlotPosterior_tmp
 
 
 ### check posterior file
-Naccept=`more .PlotPosterior_tmp_acc | wc -l`
+Naccept=`grep -c 'accepted' .PlotPosterior_tmp`
 if [ $Naccept -le 0 ]; then
 	echo "Problematic PosteriorD.txt"
 	exit
@@ -120,13 +121,13 @@ gmtset ANNOT_OFFSET 0.05
 
 pwd | psxy -R0/1/0/1 -JX1 -K -P > ${fps}
 pstext -R0/10/0/10 -JX15/25.5 -Wwhite,O3 -V -O -K -N << EOF >>  ${fps}
-2.8 9.2 16 0.0 4 LT Naccept/Nsearch = $Naccept/$Nsearch
+2.8 10. 16 0.0 4 LT Naccept/Nsearch = $Naccept/$Nsearch
 EOF
-#4.0 10.2 16 0.0 4 LT Naccept = $Naccept
+#2.8 9.2 16 0.0 4 LT Naccept/Nsearch = $Naccept/$Nsearch
 
 rm -f results
 
-PlotHisto .PlotPosterior_tmp_acc 9 -0.9 17 "longitude" "longitude (deg)" >> results
+PlotHisto .PlotPosterior_tmp_acc 9 -0.9 19 "longitude" "longitude (deg)" >> results
 PlotHisto .PlotPosterior_tmp_acc 10 6.7 0 "latitude" "latitude (deg)" >> results
 PlotHisto .PlotPosterior_tmp_acc 11 6.7 0 "origin time" "origin time (sec)" >> results
 
@@ -136,21 +137,23 @@ PlotHisto .PlotPosterior_tmp_acc 6 6.7 0 "rake" "rake (deg)" >> results
 PlotHisto .PlotPosterior_tmp_acc 7 -10.7 -6.2 "depth" "depth (km)" >> results
 PlotHisto .PlotPosterior_tmp_acc 8 8 0 "M0" "M0" >> results
 
-if [ 0 == 1 ]; then
+if [ 1 == 1 ]; then
 
-finfo1=`more results | awk '{print $1,$4,$7,$10}'`
+finfo1=`more results | awk '{print $10,$13,$16,$19}'`
+echo $finfo1
 finfo2=`/projects/yeti4009/eqkhyposolver/Auxiliary $finfo1`
+echo $finfo2
 #finfo2=`/home/tianye/EQKHypoSolver/Auxiliary $finfo1`
 echo -e "\nFocal: ("$finfo1") - ("$finfo2")" >> results
 
 # plot misfits
 # rejected
 ie=`awk 'BEGIN{imax=0}{if(imax<$1){imax=$1}}END{print imax}' .PlotPosterior_tmp_acc`
-awk '{print $1,$2/$3}' .PlotPosterior_tmp_rej | psxy -R${is}/${ie}/${rCl}/${rCu} -JX18/5 -Ba10000f2000/a0.1f0.02:."reduced chi-square":WeSn -A -Sc0.03 -G100/100/100 -X-13.7 -Y-6.5 -O -K >> ${fps}
+awk '{print $1,$2/$3}' .PlotPosterior_tmp_rej | psxy -R${is}/${ie}/${rCl}/${rCu} -JX18/5 -Ba10000f2000/a0.1f0.02:."reduced chi-square":WeSn -A -Sc0.03 -G100/100/100 -X-11. -Y-6.5 -O -K >> ${fps}
 # accepted
 awk '{print $1,$2/$3}' .PlotPosterior_tmp_acc | psxy -R -J -A -Sc0.03 -Gred -O -K >> ${fps}
-# accepted min boundary (min each 1000 acceptances)
-awk '{print $1,$2/$3}' .PlotPosterior_tmp_acc |  awk 'BEGIN{min=99999;N=0;issum=0}{if(N==1000 && min!=99999){print issum/N,min; min=99999;issum=0;N=0}if($2<min){min=$2} N++;issum+=$1}' | psxy -R -J -A -S-1. -W5,red -O -K >> ${fps}
+# accepted min boundary (min each 5000 acceptances)
+awk '{print $1,$2/$3}' .PlotPosterior_tmp_acc |  awk 'BEGIN{min=99999;N=0;issum=0}{if(N==5000 && min!=99999){print issum/N,min; min=99999;issum=0;N=0}if($2<min){min=$2} N++;issum+=$1}' | psxy -R -J -A -S-1. -W5,red -O -K >> ${fps}
 
 fi
 

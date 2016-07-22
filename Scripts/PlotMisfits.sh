@@ -44,13 +44,9 @@ GetSNR1() {
 GetSNR2() {
 	succ=true
    local _sta=$1
-   local _f1=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_10sec.txt`
-   local _f2=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_16sec.txt`
-	if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then
-		_f1=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_${ch}_10sec.txt
-		_f2=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_${ch}_16sec.txt
-		if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then succ=false; return; fi
-	fi
+   local _f1=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_10sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_?${ch}_10sec.txt 2>/dev/null | head -n1`
+   local _f2=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_16sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_?${ch}_16sec.txt 2>/dev/null | head -n1`
+	if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then succ=false; return; fi
 
 	#if [ $per == 10 ]; then
 	#	SNR=`awk -v sta=$_sta '$4==sta{print $11}' $_f1`
@@ -258,6 +254,7 @@ awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,($11
 	fi
 	echo $lon $lat $grTmis $phTmis $ampPerc $size $SNR $sta $dis $azi >> $fdata
 done
+echo $fdata
 
 # station sizes (SNR - size)
 SNRs=( 0 0 0 )
@@ -276,7 +273,12 @@ echo "size: "${sizes[@]}
 
 ### plot
 psout=${fin}.ps
-REG=-R-123/-108/32.5/46.5
+lonsign=`awk 'NR==1{if($1>0){print "+"}else{print "-"}}' $fdata`
+if [ $lonsign == "+" ]; then
+	REG=-R237/252/32.5/46.5
+else
+	REG=-R-123/-108/32.5/46.5
+fi
 SCA=-Jn-115.5/0.5
 
 ### group T
@@ -302,7 +304,8 @@ if [ $useW == true ]; then
 	psbasemap -R -J -Ba5f1/a5f1:."Phase Misfit ($label)":WeSn -X8 -K -O >> $psout
 	unit=radian
 else
-	fcpt=${Sdir}/PMisfit.cpt
+	#fcpt=${Sdir}/PMisfit.cpt
+	fcpt=${Sdir}/PMisfit.cpt~
 	psbasemap -R -J -Ba5f1/a5f1:."Phase Time Misfit ($label)":WeSn -X8 -K -O >> $psout
 	unit=sec
 fi

@@ -19,8 +19,8 @@ PlotText() {
 
 GetSNR() {
    local _sta=$1
-   local _f1=/work1/tianye/EQKLocation/SAC/Disps/${event}_disp_LHZ_10sec.txt
-   local _f2=/work1/tianye/EQKLocation/SAC/Disps/${event}_disp_LHZ_16sec.txt
+   local _f1=${dirWork}/SAC/Disps/${event}_disp_LHZ_10sec.txt
+   local _f2=${dirWork}/SAC/Disps/${event}_disp_LHZ_16sec.txt
 
 	#if [ $per == 10 ]; then
 	#	SNR=`awk -v sta=$_sta '$4==sta{print $11}' $_f1`
@@ -78,13 +78,27 @@ gmtset LABEL_FONT_SIZE 12
 gmtset ANNOT_FONT_SIZE 10
 gmtset HEADER_OFFSET 0.
 
+### paths
+if [ $(hostname) == "spice" ]; then
+	dirHeader=/home/tianye/code/Programs/head
+	dirEQKsrc=/home/tianye/EQKHypoSolver
+	dirWork=/work1/tianye/EQKLocation
+elif [ $(echo $(hostname) | grep -c "rc.colorado.edu") == 1 ]; then
+	dirHeader=/projects/yeti4009/code/Programs/head
+	dirEQKsrc=/projects/yeti4009/eqkhyposolver
+	dirWork=/lustre/janus_scratch/yeti4009/EQKLocation
+else
+	echo "Unknown host "$(hostname)
+	exit
+fi
+
 ### compute
 Ntmp=`grep -n '#' $fin | awk -F: '{print $1}' | tail -n1`
 #awk -v N=$Ntmp '{if(NR>N){print $1,$2,$8-$9-$10}}' $fin | awk 'NF==3' | psxy -R -J -Sc0.5 -W1,black -C$fcpt -O -K >> $psout
 fdata=${fin}.tmp; rm -f $fdata
 awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$8-$9,$10}}' $fin | awk 'NF==4' | while read lon lat Tmis Tsrc; do
 #awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6,$7}}' $fin | awk 'NF==4' | while read lon lat Tmis Tsrc; do
-	sta=`awk -v lon=$lon -v lat=$lat 'BEGIN{if(lon<0){lon+=360.}}{lonsta=$2; if(lonsta<0.){lonsta+=360.} latsta=$3; if( (lon-lonsta)**2+(lat-latsta)**2 < 0.0001 ){print $1} }' /home/tianye/EQKHypoSolver/Scripts/station.lst`
+	sta=`awk -v lon=$lon -v lat=$lat 'BEGIN{if(lon<0){lon+=360.}}{lonsta=$2; if(lonsta<0.){lonsta+=360.} latsta=$3; if( (lon-lonsta)**2+(lat-latsta)**2 < 0.0001 ){print $1} }' ${dirEQKsrc}/Scripts/station.lst`
 	GetSNR $sta
 	#echo $sta $lon $lat $Tmis $SNR
 	echo $lon $lat $Tmis $Tsrc $SNR | awk '{size=0.04*$5; if(size>0.6){size=0.6;} print $1,$2,$3,$4,size,$5}' >> $fdata
@@ -95,11 +109,12 @@ psout=${fin}.ps
 REG=-R-123/-109/34/48
 
 ### with source
-fcpt=/home/tianye/EQKHypoSolver/Scripts/Tsource.cpt
+#fcpt=${dirEQKsrc}/Scripts/Tsource.cpt
+fcpt=${dirEQKsrc}/Scripts/TshiftP.cpt
 psbasemap $REG -Jn-116/0.6 -Ba5f1/a5f1:."Phase Time Misfit ($label)":WeSn -X4.5 -Y6 -K > $psout
 pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy /home/tianye/code/Programs/head/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy /home/tianye/code/Programs/head/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${dirHeader}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${dirHeader}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
 awk '{print $1,$2,$3,$5}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
 #psscale  -C$fcpt -B1:"Source Phase (sec)": -P -D4./-1./8./0.4h -O -K >> $psout
 psscale  -C$fcpt -B:"Misfit (sec)": -P -D3.95/-1./7.9/0.4h -O -K >> $psout
@@ -123,11 +138,11 @@ EOF
 
 
 ### final
-fcpt=/home/tianye/EQKHypoSolver/Scripts/TshiftP.cpt
+fcpt=${dirEQKsrc}/Scripts/TshiftP.cpt
 psbasemap -R -J -Ba5f1/a5f1:."Phase Time Misfit ($label)":WeSn -X9 -K -O >> $psout
 pscoast -R -J -A100 -N1/3/0/0/0 -N2/3/0/0/0 -O -K -W3 >> $psout
-psxy /home/tianye/code/Programs/head/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
-psxy /home/tianye/code/Programs/head/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${dirHeader}/wus_province_II.dat -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
+psxy ${dirHeader}/platebound.gmt -R -J -W5/255/0/0 -M"99999 99999"  -O -K >> $psout
 awk '{print $1,$2,$3-$4,$5}' $fdata | psxy -R -J -Sc -W1,black -C$fcpt -O -K >> $psout
 psscale  -C$fcpt -B1.5:"Misfit (sec)": -P -D3.95/-1./7.9/0.4h -O -K >> $psout
 

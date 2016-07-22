@@ -111,7 +111,7 @@ for wtype in R L; do
 			alpha=0
 		fi
 		fout=${dir_out}/${wtype}_Sta_grT_phT_Amp_${per}_dis${dismax}.txt
-		# get lon-lat-grv-phv-amp info (amp is corrected for both geometric spreading and attenuation)
+		# get lon-lat-grv-phv-amp info (when cGS and cQ are true, apply amp correction for geometric spreading and attenuation)
 	   awk -v cGS=$correctGS -v per=$per_v -v alp=$alpha -v dismax=$dismax -v snrmin=$snrmin 'NR>1&&$11>snrmin&&$12>0&&$13>0&&$14>0&&$7<dismax{
 			if( cGS=="false" ) {
 				disQ = 1000.;
