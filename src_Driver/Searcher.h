@@ -2,6 +2,8 @@
 #define SEARCHER_H
 
 #include "MyOMP.h"
+#include "Rand.h"
+#include "VectorOperations.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -12,14 +14,16 @@
 #include <functional>
 
 namespace Searcher {
+//class Searcher {
 	static float _poc = -1.;	// percentage-of-completion of the current search
 
 	// Interfaces. Required by the searcher!!
 	template < class MI >
 	class IModelSpace {	
-		virtual void Perturb( MI& ) const = 0;
-		virtual void SetMState( const MI& ) = 0;
-		// also: ModelSpace has to be assignable to MI
+		virtual void SetMState( const MI& ) = 0;					// required by SimulatedAnnealing
+		virtual void Perturb( MI&, bool isfree ) const = 0;	// and MonteCarlo
+		virtual void RandomState( IModelSpace &msnew ) const {}			// required by EStatistic
+		// also: IModelSpace has to be assignable to MI
 	};
 
 	template < class MI >
@@ -28,7 +32,7 @@ namespace Searcher {
 	};
 
 	// empirical formula for alpha
-	inline float Alpha( const int nsearch, const float Tfactor ) {
+	static inline double Alpha( const int nsearch, const double Tfactor ) {
 		if( Tfactor <= 0 ) return 0.;
 		return std::pow(0.01/Tfactor,1.25/nsearch);	// emperically decided alpha
 	}
@@ -38,14 +42,14 @@ namespace Searcher {
 	struct SearchInfo {
 		int isearch;	// search#
 		int ithread;	// thread#
-		float T;			// current temperature
+		double T;		// current temperature
 		MI info;			// model info
 		int Ndata;		// #data
 		float E;			// energy of current model
 		int accepted;	// accepted in search?
 
 		SearchInfo() {}
-		SearchInfo( int isearch, float T, MI info, int Ndata, float E, int accepted = 0 )
+		SearchInfo( int isearch, double T, MI info, int Ndata, float E, int accepted = 0 )
 			: isearch(isearch), T(T), info(info), Ndata(Ndata), E(E), accepted(accepted), ithread(omp_get_thread_num()) {}
 
 		friend bool operator< ( const SearchInfo& s1, const SearchInfo& s2 ) { return s1.isearch<s2.isearch; }
@@ -62,43 +66,62 @@ namespace Searcher {
 
 
    // accept (likelihood function)
-   static bool Accept(const float E, const float Enew, const double T, const float probability) {
-      bool accept;
-      if( Enew<E || probability<exp((E-Enew)/T) ) {
-         accept = true;
-      } else {
-         accept = false;
-      }
-      //std::cerr<<"E="<<E<<" Enew="<<Enew<<"  accept="<<accept<<" "<<ftmp<<" "<<exp((E-Enew)/T)<<std::endl;
-      return accept;
+   static float Paccept(const float E, const float Enew, const double T) {
+		return Enew<E ? 1. : exp((E-Enew)/T);
    }
 
 
-	// Simulated Allealing. Three classes required for 1) modelinfo, 2) modelspace, and 3) datahandler
+	// estimate Energy n times and compute the statistic
+	template < class MI, class MS, class DH >
+	void EStatistic( MS& ms, DH& dh, const int n, float &Emean, float &Estd ) {
+		std::vector<float> EV(n);
+		#pragma omp parallel for schedule(dynamic, 1)
+		for( int i=0; i<n; i++ ) {
+			MI minew; ms.RandomState( minew );
+			int Ndata; dh.Energy( minew, EV[i], Ndata );
+		}
+		VO::MeanSTD(EV.begin(), EV.end(), Emean, Estd);
+	} 
+	
+
+	// Simulated Annealing. Three classes required for 1) modelinfo, 2) modelspace, and 3) datahandler
 	// a vector of search info is returned upon request
 	// Tinit: initial temperature ( controls initial temperature. called when Tinit is real )
 	// Tfactor: T_initial = E_initial * Tfactor ( controls initial temperature. called when Tfactor is int )
 	// alpha: T_current = T_last * alpha ( controls rate of temperature decay )
 	// outSI: -1=no, 0=all, 1=accepted
+	/*
 	template < class MI, class MS, class DH >
-	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch, float alpha, const int Tfactor,
+	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch, double alpha, const int Tfactor,
 																	  std::ostream& sout = std::cout, short outSI = -1, bool saveV = false,
 																	  const int istart = 0 ) {
 		if( alpha < 0. )
 			alpha = std::pow(0.01/Tfactor,1.25/nsearch);	// emperically decided
-		return SimulatedAnnealing<MI>( ms, dh, nsearch, alpha, -(float)Tfactor, sout, outSI, saveV, istart );
+		return SimulatedAnnealing<MI>( ms, dh, nsearch, alpha, -(double)Tfactor, sout, outSI, saveV, istart );
 	}
 
 	template < class MI, class MS, class DH >
-	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch, const float alpha, const float Tinit,
+	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch, const double alpha, const double Tinit,
 																	  std::ostream& sout = std::cout, short outSI = -1, bool saveV = false, 
+																	  const int istart = 0 ) {
+	*/
+	// Simulated Allealing. Three classes required for 1) modelinfo, 2) modelspace, and 3) datahandler
+	// cooltype: 0=exponential cooling, 1=linear cooling
+	// outSI: -1=no-output, 0=output-all, 1=output-accepted
+	// saveV: a vector of search info is returned upon request
+	template < class MI, class MS, class DH >
+	std::vector< SearchInfo<MI> > SimulatedAnnealing( MS& ms, DH& dh, const int nsearch, const double Tinit, 
+																	  const double Tfinal, const int cooltype = 0,
+																	  std::ostream& sout = std::cout, short outSI = 0, bool saveV = false,
 																	  const int istart = 0 ) {
 		// initialize random number generator
 		_poc = 0.; float pocinc = 1./(nsearch+2);
-		std::default_random_engine generator1( std::chrono::system_clock::now().time_since_epoch().count() + std::random_device{}() );
-		std::uniform_real_distribution<float> d_uniform(0., 1.);
+		//std::default_random_engine generator1( std::chrono::system_clock::now().time_since_epoch().count() + std::random_device{}() );
+		//std::uniform_real_distribution<float> d_uniform(0., 1.);
 		//std::normal_distribution<float> d_normal(0., 1.);
-		auto rnd = std::bind( d_uniform, generator1 );
+		//auto rnd = std::bind( d_uniform, generator1 );
+		const int nthread = omp_get_max_threads();
+		Rand randA[nthread];
 
 		// force MS, and DH to be derived from the provided interfaces at compile time
 		const IModelSpace<MI>& ims = ms;
@@ -107,9 +130,16 @@ namespace Searcher {
 		bool outacc = outSI>=0;
 		bool outrej = outSI==0;
 
+		// cooling schedule
+		const double alpha = cooltype==0 ? pow(Tfinal/Tinit, 1./(nsearch-1)) : (Tfinal-Tinit)/(nsearch-1);
+		auto Cool = cooltype==0 ? 
+						std::function<void(double&)>([&alpha](double &T) { T *= alpha; }) : 
+						[&alpha](double &T) { T = T+alpha>0. ? T+alpha : 0.; };
+
 		// search starts
+		sout.precision(6);
 		if( ! (alpha==1 && Tinit==2.0) )	// not MonteCarlo
-			sout<<"### Starting simulated annealing search (#search="<<nsearch<<" alpha="<<alpha<<" Tinit="<<Tinit<<") "<<std::endl;
+			sout<<"### Starting simulated annealing search (#search="<<nsearch<<" alpha="<<alpha<<" Tinit="<<Tinit<<" Tfinal="<<Tfinal<<") "<<std::endl;
 			sout<<"### with model state =\n"<<ms<<std::endl;
 
 		// initial energy (force MS to be assignable to MI at compile time)
@@ -117,7 +147,8 @@ namespace Searcher {
 		float E; dh.Energy( ms, E, Ndata0 );
 		float Ebest = E;
 		// initial temperature
-		float T = Tinit>0. ? Tinit : std::fabs(E*Tinit);
+		//double T = Tinit>0. ? Tinit : std::fabs(E*Tinit);
+		double T = Tinit;
 		// SearchInfo vector
 		std::vector< SearchInfo<MI> > VSinfo; 
 		VSinfo.reserve( nsearch/2*(outacc+outrej) );
@@ -126,13 +157,67 @@ namespace Searcher {
 		if( saveV ) VSinfo.push_back( sibest );
 		sout<<sibest<<"\n";
 		_poc += pocinc;
+
 		// main loop
-		#pragma omp parallel for schedule(dynamic, 1) private(Ndata)
+		const int nspawn = nthread; 
+		float paccA[nspawn]; SearchInfo<MI> SIA[nspawn];
+		for( int i=istart; i<istart+nsearch; i+=nspawn ) {
+		  #pragma omp parallel
+		  { // spawn (simultaneously perturb) num_threads new locations from the current
+			MI minew; float Enew; int isaccepted = 0;	// 0 for rejected
+			try {	
+				ms.Perturb( minew, false );
+				dh.Energy( minew, Enew, Ndata );
+				Enew *= ((float)Ndata0 / Ndata);
+			} catch (const std::exception& e) {
+				std::cerr<<e.what()<<"   skipped!\n";
+				isaccepted = -1;	// -1 for skipped
+			}
+			int ithread = omp_get_thread_num();
+			paccA[ithread] = isaccepted==-1 ? 0. : Paccept(E, Enew, T);
+			// records whether the current model should be 'accepted' according to Paccept
+			// note, however, that this does not decide which of the spawned models will be accepted as the new location
+			if( randA[ithread].Uniform()<paccA[ithread] ) isaccepted = 1;
+			// save searching info of current location
+			SIA[ithread] = { i+1+ithread, T, minew, Ndata, Enew, isaccepted };
+			// update (if is) the best
+			if( isaccepted && Enew<Ebest ) {
+				#pragma omp critical
+				if( Enew < Ebest ) { Ebest = Enew; sibest = SIA[ithread]; }
+			}
+		  } // spawn ends
+			// select the new location base on paccA
+			// normalize paccA
+			float psum = 0.; for(int ip=0; ip<nspawn; ip++) psum += paccA[ip];
+			for(int ip=0; ip<nspawn; ip++) paccA[ip] /= psum;
+			// select model with a random probability and accumulated pacc
+			float p = randA[0].Uniform(), Paccu = 0.;
+			int ip; for(ip=0; ip<nspawn-1; ip++) {
+				Paccu += paccA[ip]; if(Paccu>p) break;
+			}
+			// update Energy and model state
+			const auto &si = SIA[ip]; ms.SetMState( si.info ); E = si.E;
+			// output
+			if( outacc ) {
+				for(const auto &si : SIA)
+					if(outrej || si.accepted==1) {
+						if(saveV) VSinfo.push_back( si );
+						sout<<si<<"\n";
+					}
+				if( i % 100 == 0 ) sout.flush();
+			}
+			// temperature decrease
+			for(int it=0; it<nspawn; it++) Cool(T);
+			_poc += pocinc*nspawn;	// update perc-of-completion
+		}
+		/*
+		RWLock rwlock;
+		#pragma omp parallel for schedule(dynamic, 1) shared private(Ndata)
 		for( int i=istart; i<istart+nsearch; i++ ) {
 			float Enew; int isaccepted = 0;	// 0 for rejected
 			MI minew;
-			try {
-				ms.Perturb( minew );
+			try {	
+				rwlock.lock4Read(); ms.Perturb( minew, false ); rwlock.unlock4Read();
 				dh.Energy( minew, Enew, Ndata );
 				Enew *= ((float)Ndata0 / Ndata);
 			} catch (const std::exception& e) {
@@ -140,12 +225,13 @@ namespace Searcher {
 				isaccepted = -1;	// -1 for skipped
 			}
 			SearchInfo<MI> si( i+1, T, minew, Ndata, Enew, isaccepted );
-			#pragma omp critical
+			#pragma omp critical (MS)
 			{ // critical begins
 			//if( Enew<E || rnd()<exp((E-Enew)/T) ) {
-			if( isaccepted==0 && Accept(E, Enew, T, rnd()) ) {
+			if( isaccepted==0 && rnd()<Pccept(E, Enew, T) ) {
 				// update Energy and model state
-				ms.SetMState( minew ); E = Enew;
+				rwlock.lock4Write(); ms.SetMState( minew ); rwlock.unlock4Write();
+				E = Enew;
 				// mark as accepted
 				si.accepted = 1;
 				// update (if is) the best
@@ -163,15 +249,19 @@ namespace Searcher {
 				sout<<si<<"\n";
 			}
 			// temperature decrease
-			T *= alpha;
+			Cool(T);
 			_poc += pocinc;	// update perc-of-completion
 			if( i % 100 == 0 ) sout.flush();
 			} // critical ends
 		}
+		*/
+
+
 		// output final result
 		sibest.accepted = 2;	// 2 for best fitting model
 		sout<<sibest<<std::endl;
 		std::sort( VSinfo.begin(), VSinfo.end() );
+		if(saveV) VSinfo.push_back( sibest );
 		// set model state to the best fitting model
 		ms.SetMState( sibest.info );
 		_poc = -1.;
@@ -183,7 +273,7 @@ namespace Searcher {
 	template < class MI, class MS, class DH >
 	std::vector< SearchInfo<MI> > MonteCarlo( MS& ms, DH& dh, const int nsearch, std::ostream& sout = std::cout ) {
 		std::cout<<"### Monte Carlo search started. (#search = "<<nsearch<<") ###"<<std::endl;
-		return SimulatedAnnealing<MI>( ms, dh, nsearch, 1., 2.0f, sout, 0 );		// save all search info
+		return SimulatedAnnealing<MI>( ms, dh, nsearch, 2.0, 2.0, 1, sout, 0 );		// save all search info
 	}
 
 	template < class MI, class MS, class DH >
@@ -195,7 +285,7 @@ namespace Searcher {
 		#pragma omp parallel sections
 		{	// parallel S
 			#pragma omp section
-			SimulatedAnnealing<MI>( ms, dh, nsearch, 1., 2.0f, fout, 0, false );	// do not save search info
+			SimulatedAnnealing<MI>( ms, dh, nsearch, 2.0, 2.0, 1, fout, 0, false );	// do not save search info
 			#pragma omp section
 			{	// section S
 			std::this_thread::sleep_for( std::chrono::seconds(1) );

@@ -1,26 +1,24 @@
-      subroutine rad_pattern_l(feig_buff,eiglen, phvnper,dperin,
-     +                         strike,dip,rake,depth, period,nper,
-     +                         azimuth,groupT,phaseT,amplitude,coef_amp,wavenum)
+      subroutine rad_pattern_l(strike,dip,rake,nper,dper,t,eigH,deigH,ampl,wvl,
+     +                         perlist,nperlst,azimuth,groupT,phaseT,amplitude)
 c To calculate group_delay as a function of azimuth and period
-      integer*4 ntmax, phvnper
-      real*4 dper, dperin
-      parameter (ntmax=500)
+      integer*4 nper, nperlst
+      real*4 strike, dip, rake, dper
+C      parameter (ntmax=500)
       integer*4 pos1, pos2
-      integer*4 eiglen
-      real*4 v(3,ntmax),dvdz(3,ntmax),ampr(ntmax),ampl(ntmax)
-      real*4 tm(6),du(3),vu(3),wvn(2),period(20),ampl_max(ntmax)
+      real*4 eigH(nper), deigH(nper)
+      real*4 t(nper),fr(nper),wvl(nper),ampl(nper),ampl_max(nper)
+C      real*4 v(3,nper),dvdz(3,nper),
+      real*4 tm(6),du(3),vu(3),wvn(2),perlist(20)
       complex*8 br(6),bl(6),sumr,step
       character*20000000 feig_buff
 c(phvlen)
       character*40 bred
-      character*2 symbik
       character*1 sigR,sigL
-      real*4 pq(181,ntmax),ph(181,ntmax),gr_time(181,ntmax),aml(181,ntmax)
-      real*4 azimuth(181),groupT(181,nper),phaseT(181,nper),amplitude(181,nper)
-      real*4 coef_amp(nper), wavenum(nper)
-      real*4 cr(ntmax),ur(ntmax),wvr(ntmax),t(ntmax),fr(ntmax)
-      real*4 cl(ntmax),ul(ntmax),wvl(ntmax),stepr
-      real*4 temp_ph(ntmax),unph(ntmax),grt(ntmax)
+      real*4 pq(181,nper),ph(181,nper),gr_time(181,nper),aml(181,nper)
+      real*4 azimuth(181),groupT(181,nperlst),phaseT(181,nperlst),amplitude(181,nperlst)
+C      real*4 coef_amp(nperlst), wavenum(nperlst)
+      real*4 stepr
+      real*4 temp_ph(nper),unph(nper),grt(nper)
       data marg/6/,pi/3.1415927/,oo2pi/0.1591549431/,r/2./,eps/0.0001/
       data const/1.E+20/,const2/5013256549262000.0/
 
@@ -49,17 +47,15 @@ c      enddo
 c9988  close(1)
 c!$OMP END CRITICAL
 c9988     dper=per2-per1
-        m=phvnper
-        dper=dperin
 c-----------reading OLD_SURF_DEEP output------------c
-      symbik='1 '
+C      symbik='1 '
       nd=1000 
-      nt=m
-      if(nt.ge.ntmax) then
-         STOP"(rad_pattern_r): num of pers in .phv exceeds the limit!"
-      endif
-      call surfreadRad(feig_buff(1:eiglen),eiglen,sigR,sigL,symbik,nt,nd,
-     +              depth,t,cr,ur,wvr,cl,ul,wvl,v,dvdz,ampr,ampl)
+      nt=nper
+C      if(nt.ge.ntmax) then
+C         STOP"(rad_pattern_r): num of pers in .phv exceeds the limit!"
+C      endif
+C      call surfreadRad(feig_buff(1:eiglen),eiglen,sigR,sigL,symbik,nt,nd,
+C     +              depth,t,cr,ur,wvr,cl,ul,wvl,v,dvdz,ampr,ampl)
 c----------Source term calculations-----------------c
       call angles2tensorRad(strike,dip,rake,tm)
 
@@ -67,14 +63,14 @@ c    period loop
       DO j=1,nt
          ampl_max(j)=0.0
          fr(j)=1./t(j)
-         vu(1)=v(1,j)
-         vu(2)=v(2,j)
-         vu(3)=v(3,j)
-         du(1)=dvdz(1,j)
-         du(2)=dvdz(2,j)
-         du(3)=dvdz(3,j)
+C         vu(1)=v(1,j)
+C         vu(2)=v(2,j)
+         vu(3)=eigH(j)
+C         du(1)=dvdz(1,j)
+C         du(2)=dvdz(2,j)
+         du(3)=deigH(j)
          w=pi*2.0*fr(j)
-         wvn(1)=wvr(j)
+C         wvn(1)=wvr(j)
          wvn(2)=wvl(j)
 c         step=cmplx(0.,-1./w)
          stepr=1./w
@@ -119,12 +115,11 @@ c----azimuth-dependent output for a set of requested periods------
       do jkl=1,181
          azimuth(jkl) = 2. * (jkl-1)
       enddo
-      DO jop=1,nper 
+      DO jop=1,nperlst
 C---------------selection and output -----------------------S
          Do jpa=1,nt 
-         if(abs(period(jop)-t(jpa)).lt.eps)then
-            coef_amp(jop)=ampl(jpa)
-            wavenum(jop)=wvl(jpa)
+         if(abs(perlist(jop)-t(jpa)).lt.eps)then
+C            coef_amp(jop)=ampl(jpa); wavenum(jop)=wvl(jpa)
             do jkl=1,181
                groupT(jkl,jop)=gr_time(jkl,jpa)
                phaseT(jkl,jop)=pq(jkl,jpa)*oo2pi*t(jpa)

@@ -1,4 +1,5 @@
 #include "RadPattern.h"
+//#include "EigenRec.h"
 #include <fstream>
 #include <sstream>
 #include <cstring>
@@ -8,25 +9,103 @@
 const int nazi = RadPattern::nazi;
 extern"C" {
    void rad_pattern_r_(const float *strike, const float *dip, const float *rake, int *nper, const float *dper, 
-							  const float *per, const float *eigH, const float *deigH, const float *eigV, const float *deigV, const float *camp, const float *wvn,
-							  const float *perlst, int *nperlst, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
-   void rad_pattern_l_(const float *strike, const float *dip, const float *rake, int *nper, const float *dper,
-							  const float *per, const float *eigH, const float *deigH, const float *camp, const float *wvn,
-							  const float *perlst, int *nperlst, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
+							  const float *per, const float *eigH, const float *deigH, const float *eigV, const float *deigV, const float *campR, const float *wvnR,
+							  const float *perlst, int *nperlst, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi], float camplst[], float wvnlst[]);
+   void rad_pattern_r2_(char *feig_buff, int *eig_len, int *phvnper, float *phvdper,
+                       const float *strike, const float *dip, const float *rake, const float *depth,
+							  const float *per, int *nper, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi], 
+							  float cAmp[], float wvn[]);
+   void rad_pattern_l_(char *feig_buff, int *eig_len, int *phvnper, float *phvdper,
+                       const float *strike, const float *dip, const float *rake, const float *depth,
+							  const float *per, int *nper, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi], 
+							  float cAmp[], float wvn[]);
 }
 
 
+/* ---------- implimentation ---------- */
+struct RadPattern::Rimpl {
+   //FocalInfo<ftype> finfo, finfoold;
+   //std::string outname_mis;
+   std::string feignmem, fphvnmem; // name of files of the currently-in-the-memory contents
+
+	static const int NaN = RadPattern::NaN;
+   int feig_len = NaN;
+   int phvnper = NaN; float phvdper = NaN;
+   char *feig_buff = nullptr;
+
+   /* ---------- con/destructors ---------- */
+	Rimpl() {}
+
+	Rimpl( const Rimpl& r2 ) 
+		: phvnper(r2.phvnper), phvdper(r2.phvdper)
+		, feignmem(r2.feignmem), fphvnmem(r2.fphvnmem)
+		, feig_len(r2.feig_len) {
+		if( feig_len > 0) {
+			feig_buff = new char[feig_len];
+			memcpy(feig_buff, r2.feig_buff, feig_len );
+		}
+	}
+
+   ~Rimpl() {
+		if(feig_buff) {
+			delete [] feig_buff;
+			feig_buff = nullptr;
+		}
+	}
+
+};
+
+
 /* con/destructors and operators */
-RadPattern::RadPattern( const char type, const std::string& feigname )
-   : type(type), er(feigname, 1, true) {
+RadPattern::RadPattern( const char type, const std::string& feigname, const std::string& fphvname )
+   : type(type), feigname(feigname), fphvname(fphvname), er(feigname, 1, true), pimplR( new Rimpl ) {
 	if( type == 'N' ) return;
    if( type!='R' && type!='L' )
       throw ErrorRP::BadParam(FuncName, "unknown type = "+type);
 	er.FillSD();
 }
 
-void RadPattern::SetModel( const char typein, const std::string& feigname ) {
-   type = typein;	er.reLoad(feigname, 1, true); er.FillSD();
+RadPattern::RadPattern( const RadPattern& rp2 )
+   : pimplR( new Rimpl(*(rp2.pimplR)) ), er(rp2.er)
+	, type( rp2.type ), dep( rp2.dep ), M0( rp2.M0 )
+   , stk( rp2.stk ), dip( rp2.dip ), rak( rp2.rak )
+   , aziV( rp2.aziV ), grtM( rp2.grtM ) 
+   , phtM( rp2.phtM ), ampM( rp2.ampM )
+	, campM( rp2.campM ) {}
+
+RadPattern::RadPattern( RadPattern&& rp2 )
+   : pimplR( std::move(rp2.pimplR) ), er(std::move(rp2.er))
+	, type( rp2.type ), dep( rp2.dep ), M0( rp2.M0 )
+	, stk( rp2.stk ), dip( rp2.dip ), rak( rp2.rak )
+	, aziV( std::move(rp2.aziV) ), grtM( std::move(rp2.grtM) )
+	, phtM( std::move(rp2.phtM) ), ampM( std::move(rp2.ampM) )
+	, campM( std::move(rp2.campM) ) {}
+
+RadPattern& RadPattern::operator= ( const RadPattern& rp2 ) {
+   pimplR.reset( new Rimpl(*(rp2.pimplR)) );
+	er = rp2.er; type = rp2.type;
+	stk = rp2.stk; dip = rp2.dip; rak = rp2.rak; 
+	dep = rp2.dep; M0 = rp2.M0;
+	aziV = rp2.aziV; grtM = rp2.grtM;
+	phtM = rp2.phtM; ampM = rp2.ampM;
+	campM = rp2.campM;
+}
+
+RadPattern& RadPattern::operator= ( RadPattern&& rp2 ){
+   pimplR = std::move(rp2.pimplR);
+	er = rp2.er; type = rp2.type;
+	stk = rp2.stk; dip = rp2.dip;	rak = rp2.rak; 
+	dep = rp2.dep; M0 = rp2.M0;
+	aziV = std::move(rp2.aziV); grtM = std::move(rp2.grtM);
+	phtM = std::move(rp2.phtM); ampM = std::move(rp2.ampM);
+	campM = std::move(rp2.campM);
+}
+
+RadPattern::~RadPattern() {}
+
+void RadPattern::SetModel( const char typein, const std::string& feignamein, const std::string& fphvnamein ) {
+   type = typein; feigname = feignamein; fphvname = fphvnamein; 
+	er.reLoad(feigname, 1, true); er.FillSD();
 }
 
 /* copy arrayin[nazi] into Vout with positions shifted by int(nazi/2) */
@@ -62,37 +141,40 @@ bool RadPattern::Predict( const ftype stkin, const ftype dipin, const ftype raki
 	rak = rakin; dep = depin;
 	M0 = M0in;
 
-	// extract source data at dep
-	er.FillSDAtDep( dep );
-
-	// TODO extract wvn and coef_amp
-	campM.clear();
-	for( int iper=0; iper<perlst.size(); iper++ ) {
-		float per = perlst[iper];
-		auto Iper = std::lower_bound(er.sd.per.begin(), er.sd.per.end(), per);
-		if( Iper == er.sd.per.end() )
-			throw ErrorRP::BadParam( FuncName, "non-exist period = " + std::to_string(per) );
-		auto index = Iper - er.sd.per.begin();
-		campM[per] = std::array<float, 2>{ er.sd.ac[index], er.sd.wvn[index] };
-   }
+	// load feig&fphv if not already in memory
+	LoadEig();
 
    // run rad_pattern
    int nperlst = perlst.size();
-	float azi[nazi], grT[nperlst][nazi], phT[nperlst][nazi], amp[nperlst][nazi];
+	float azi[nazi], grT[nperlst][nazi], phT[nperlst][nazi], amp[nperlst][nazi], coef_amp[nperlst], wvn[nperlst];
 
    if( type == 'R' ) {
+		er.FillSDAtDep( dep );
       rad_pattern_r_( &(stk), &(dip), &(rak), &(er.sd.nper), &(er.sd.dper), 
 							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), er.sd.eigV.data(), er.sd.deigV.data(), er.sd.ac.data(), er.sd.wvn.data(),
-							 perlst.data(), &nperlst, azi, grT, phT, amp );
+							 perlst.data(), &nperlst, azi, grT, phT, amp, coef_amp, wvn );
+for(int i=0; i<nazi; i++)
+	std::cout<<azi[i]<<" "<<grT[0][i]<<" "<<phT[0][i]<<" "<<amp[0][i]<<" "<<coef_amp[0]<<" "<<wvn[0]<<std::endl;
+      rad_pattern_r2_( pimplR->feig_buff, &(pimplR->feig_len), &(pimplR->phvnper), &(pimplR->phvdper),
+                      &(stk), &(dip), &(rak), &(dep), &(perlst.at(0)), &nperlst, azi, grT, phT, amp, coef_amp, wvn );
+std::cout<<"\n\n";
+for(int i=0; i<nazi; i++)
+	std::cout<<azi[i]<<" "<<grT[0][i]<<" "<<phT[0][i]<<" "<<amp[0][i]<<" "<<coef_amp[0]<<" "<<wvn[0]<<std::endl;
+exit(-3);
+      //std::cerr<<pimplR->feignmem<<" "<<pimplR->feig_len<<" "<<pimplR->phvnper<<" "<<pimplR->phvdper<<"  "<<stk<<" "<<dip<<" "<<rak<<" "<<dep<<"   "<<nper<<std::endl;
    } else if( type == 'L' ) {
-      rad_pattern_l_( &(stk), &(dip), &(rak), &(er.sd.nper), &(er.sd.dper), 
-							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), er.sd.ac.data(), er.sd.wvn.data(),
-							 perlst.data(), &nperlst, azi, grT, phT, amp );
-		//for(int i=0; i<nazi; i++) std::cout<<azi[i]<<" "<<grT[0][i]<<" "<<phT[0][i]<<" "<<amp[0][i]<<std::endl;
+      rad_pattern_l_( pimplR->feig_buff, &(pimplR->feig_len), &(pimplR->phvnper), &(pimplR->phvdper),
+                      &(stk), &(dip), &(rak), &(dep), &(perlst.at(0)), &nperlst, azi, grT, phT, amp, coef_amp, wvn );
    }
 
+   // check if feig and fphv contents are modified
+   if( pimplR->feig_buff == nullptr || feigname != pimplR->feignmem ) 
+      throw ErrorRP::BadBuff(FuncName, feigname + " != " + pimplR->feignmem);
+   if( pimplR->phvnper < 0 || fphvname != pimplR->fphvnmem ) 
+      throw ErrorRP::BadBuff(FuncName, fphvname + " != " + pimplR->fphvnmem);
+
 	// copy predictions into maps
-	grtM.clear(); phtM.clear(); ampM.clear(); //campM.clear(); aziV.clear();
+	grtM.clear(); phtM.clear(); ampM.clear(); campM.clear(); //aziV.clear();
    //float azi[nazi], grT[nperlst][nazi], phT[nperlst][nazi], amp[nperlst][nazi];
 	for( int iper=0; iper<perlst.size(); iper++ ) {
 		float per = perlst[iper];
@@ -117,7 +199,7 @@ bool RadPattern::Predict( const ftype stkin, const ftype dipin, const ftype raki
 		ShiftCopy( grtM[per], grT[iper], nazi );
 		ShiftCopy( phtM[per], phT[iper], nazi );
 		ShiftCopy( ampM[per], amp[iper], nazi ); for( auto &val : ampM[per] ) val *= M0;
-		//campM[per] = std::array<float, 2>{ coef_amp[iper], wvn[iper] };
+		campM[per] = std::array<float, 2>{ coef_amp[iper], wvn[iper] };
    }
 	//aziV = std::vector<float>( azi, azi+nazi );
 
@@ -151,6 +233,69 @@ bool RadPattern::Predict( const ftype stkin, const ftype dipin, const ftype raki
 	}
 	return true;	// updated!
 }
+
+void RadPattern::LoadEig() {
+	if( pimplR->feig_buff && feigname==pimplR->feignmem ) return;
+
+  #pragma omp critical
+  { // omp critical begins
+   // read feig into memory
+   if( pimplR->feig_buff == nullptr || feigname != pimplR->feignmem ) {
+      if( feigname.empty() ) throw ErrorRP::BadParam(FuncName, "empty feigname");
+      std::ifstream fin( feigname.c_str() );
+      if( ! fin ) throw ErrorRP::BadFile(FuncName, feigname);
+      fin.seekg(0, std::ios::end);
+      pimplR->feig_len = fin.tellg();
+      if( pimplR->feig_buff ) {
+			delete [] pimplR->feig_buff;
+			pimplR->feig_buff = nullptr;
+      }
+      pimplR->feig_buff = new char[pimplR->feig_len];
+      fin.seekg(0,std::ios::beg);
+      fin.read(pimplR->feig_buff, pimplR->feig_len);
+      fin.close();
+      pimplR->feignmem = feigname;
+
+		// read mod energy integrals 
+		/* not necessary: I0 is included in cAmp
+		std::cerr<<"RadPattern::Predict: reading eigen file"<<std::endl;
+		EigenRec er(feigname);
+		I0M.clear();
+		for( const auto& pd : er.perDV) {
+			float per = pd.per, I0;
+			std::stringstream ss(pd.info2);
+			if( ! (ss >> I0) ) continue;
+			I0M[per] = I0;
+		}
+		*/
+   }
+
+   // read in nper and dper from fphv
+   if( pimplR->phvnper < 0 || fphvname != pimplR->fphvnmem )  {
+      if( fphvname.empty() ) throw ErrorRP::BadParam(FuncName, "empty fphvname");
+      std::ifstream fin( fphvname.c_str() );
+      if( ! fin ) throw ErrorRP::BadFile(FuncName, fphvname);
+      pimplR->phvnper = 0;
+      for( std::string line; std::getline(fin, line); ) {
+         float ftmp1, ftmp2, ftmp3;
+         if( sscanf(line.c_str(), "%f %f %f", &ftmp1, &ftmp2, &ftmp3) != 3 ) continue;
+         if( pimplR->phvnper == 0 ) pimplR->phvdper = ftmp1; //std::cerr<<"dper = "<<pimplR->phvdper<<" ftmp1 = "<<ftmp1<<std::endl; }
+         else if( pimplR->phvnper == 1 ) pimplR->phvdper = ftmp1 - pimplR->phvdper; //std::cerr<<"dper = "<<pimplR->phvdper<<" ftmp1 = "<<ftmp1<<std::endl; }
+         (pimplR->phvnper)++;
+      }
+      fin.close();
+      pimplR->fphvnmem = fphvname;
+   }
+  } // omp critical ends
+
+   // check if feig and fphv contents are modified
+   if( pimplR->feig_buff == nullptr || feigname != pimplR->feignmem ) 
+      throw ErrorRP::BadBuff(FuncName, feigname + " != " + pimplR->feignmem);
+   if( pimplR->phvnper < 0 || fphvname != pimplR->fphvnmem ) 
+      throw ErrorRP::BadBuff(FuncName, fphvname + " != " + pimplR->fphvnmem);
+
+}
+
 
 std::array<float, 2> RadPattern::cAmp( const float per ) const {
 	auto iter = campM.find(per);
@@ -283,35 +428,18 @@ RadPattern& RadPattern::operator*=(const float &mul) {
 
 // re-scale (the amplitude of) *this to have the minimum amp chiSquare misfit to rp2
 // sigmaV is a map (by period) of sigmaAs (fraction 0-1)
-void RadPattern::NormBy( const RadPattern &rp2, const MA3& sigmasM ) {
+void RadPattern::NormBy( const RadPattern &rp2, std::map<float, std::array<float,3>> sigmasM ) {
 	std::map<float, float> sigmaM;
 	for( const auto &paPair : sigmasM ) sigmaM[paPair.first] = (paPair.second)[2];
 	NormBy(rp2, sigmaM);
 }
-void RadPattern::NormBy( const RadPattern &rp2, const std::map<float,float>& sigmaM ) {
-	if( grtM.empty() ) return;
+void RadPattern::NormBy( const RadPattern &rp2, std::map<float,float> sigmaM ) {
 	float a = 0., b = 0.;
-	NormCoefs( rp2, sigmaM, a, b );
-	//std::cerr<<"NormBy: "<<a<<" "<<b<<" "<<exp(b/a)<<std::endl;
-	*this *= exp(b/a);
-}
-void NormAmps( RadPattern &rp1R, RadPattern &rp1L, const RadPattern &rp2R, const RadPattern &rp2L,
-					const MA3 &sigmasMR, const MA3 &sigmasML ) {
-	std::map<float, float> sigmaMR, sigmaML;
-	for( const auto &paPair : sigmasMR ) sigmaMR[paPair.first] = (paPair.second)[2];
-	for( const auto &paPair : sigmasML ) sigmaML[paPair.first] = (paPair.second)[2];
-	float a = 0., b = 0.;
-	rp1R.NormCoefs( rp2R, sigmaMR, a, b );
-	rp1L.NormCoefs( rp2L, sigmaML, a, b );
-	float mul = exp(b/a); rp1R *= mul; rp1L *= mul;
-}
-
-void RadPattern::NormCoefs( const RadPattern &rp2, const std::map<float,float>& sigmaM, float &a, float &b ) {
 	for( auto &pvPair : grtM ) {
 		// check for consistency
 		auto per = pvPair.first; auto size = pvPair.second.size();
 		auto I2 = rp2.grtM.find(per);
-		if( I2==rp2.grtM.end() || (I2->second).size()!=size ) {
+		if( (I2->first)!=per || (I2->second).size()!=size ) {
 			std::stringstream ss; ss<<"("<<per<<", "<<size<<") - ("<<(I2->first)<<", "<<(I2->second).size()<<")";
 			throw ErrorRP::HeaderMismatch(FuncName, ss.str());
 		}
@@ -327,15 +455,17 @@ void RadPattern::NormCoefs( const RadPattern &rp2, const std::map<float,float>& 
 		}
 		a += n * weightA;	b += (l2-l1)*weightA; 
 	}
+	std::cerr<<"NormBy: "<<a<<" "<<b<<" "<<exp(b/a)<<std::endl;
+	*this *= exp(b/a);
 }
 
 // sigmasV is a map (by period) of sigma triples: sigmaG (sec), sigmaP (sec), sigmaA (fraction 0-1)
 inline int nint(const float& val) { return (int)floor(val+0.5); }
-std::array<float,4> RadPattern::chiSquare(const RadPattern &rp2, const MA3 &sigmasM, const bool normalizeA) {
+std::array<float,4> RadPattern::rchiSquare(RadPattern &rp2, std::map<float, std::array<float,3>> sigmasM, const bool normalizeA) const {
 	if( grtM.empty() ) return {NaN, NaN, NaN, NaN};
 	// normalize the amplitudes of rp2in if requested
 	//RadPattern rp2C;
-	if( normalizeA ) { NormBy(rp2, sigmasM); }
+	if( normalizeA ) { rp2.NormBy(*this, sigmasM); }
 	//auto &rp2 = normalizeA ? rp2C : rp2in;
 
 	int n = 0; float chiSG = 0., chiSP = 0., chiSA = 0.;
@@ -368,17 +498,6 @@ std::array<float,4> RadPattern::chiSquare(const RadPattern &rp2, const MA3 &sigm
 		chiSA += rmsA / (sigmaA*sigmaA);
 	}
 
-	return std::array<float, 4>{chiSG, chiSP, chiSA, (float)n};
-}
-
-std::array<float,4> chiSquare( RadPattern &rp1R, RadPattern &rp1L, const RadPattern &rp2R, const RadPattern &rp2L,
-										  const MA3 &sigmasMR, const MA3 &sigmasML, const bool normalizeA ) {
-	if(normalizeA) NormAmps( rp1R, rp1L, rp2R, rp2L, sigmasMR, sigmasML );
-	auto resAR = rp1R.chiSquare( rp2R, sigmasMR, false );
-	auto resAL = rp1L.chiSquare( rp2L, sigmasML, false );
-	int n = 0; float chiSG = 0., chiSP = 0., chiSA = 0.;
-	if( resAR[0] != RadPattern::NaN ) { chiSG += resAR[0]; chiSP += resAR[1]; chiSA += resAR[2]; n += resAR[3]; }
-	if( resAL[0] != RadPattern::NaN ) { chiSG += resAL[0]; chiSP += resAL[1]; chiSA += resAL[2]; n += resAL[3]; }
-	return std::array<float, 4>{chiSG, chiSP, chiSA, (float)n};
+	return std::array<float, 4>{chiSG/n, chiSP/n, chiSA/n, (float)n};
 }
 
