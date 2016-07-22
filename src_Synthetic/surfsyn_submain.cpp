@@ -7,7 +7,7 @@
 int main( int argc, char* argv[] ) {
 	// input params
 	if( argc != 7 && argc != 8 ) {
-		std::cerr<<"Usage: "<<argv[0]<<" [fmodel] [feigen] [wavetype] [mode# (0=fundamental)] [real sac list] [outdir (has to exist)] [f_ModelInfo(optional)]"<<std::endl;
+		std::cerr<<"Usage: "<<argv[0]<<" [fmodel] [feigen (the phv file should be named ${feigen}.phv)] [wavetype] [mode# (0=fundamental)] [real sac list] [outdir (has to exist)] [f_ModelInfo]"<<std::endl;
 		return -1;
 	}
 	// mode #
@@ -62,7 +62,8 @@ int main( int argc, char* argv[] ) {
 		std::cerr<<line<<std::endl;
 		SacRec sac(line); sac.LoadHD();
 		SacRec sacz, sacn, sace;
-		if( ! synG.ComputeSyn( sac.stname(), sac.shd.stlo, sac.shd.stla, npts, delta, f1, f2, f3, f4, sacz, sacn, sace, false ) )
+		//if( ! synG.ComputeSyn( sac.stname(), sac.shd.stlo, sac.shd.stla, npts, delta, sacz, sacn, sace, false, f1, f2, f3, f4 ) )
+		if( ! synG.ComputeSyn( sac.stname(), sac.shd.stlo, sac.shd.stla, npts, delta, sacz, sacn, sace, false ) )
 			continue;
 		// write seismograms
 		auto wsac = [&]( SacRec& sac ) {

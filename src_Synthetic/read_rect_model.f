@@ -1,15 +1,6 @@
 c ==========================================================
 c read rectangular models into memory
 c ==========================================================
-C      module mmodel
-C      type tmdl
-C         integer*4 ic,jc,n,nper,nfi,nla
-C         real*8 fi,sfi,la,sla,per,sper,bf,ef,bl,el,bp,ep,
-C     +          hfi(97),hla(201),hper(225),chfi(97)
-C         real*8 uw(97,201),cw(97,201)
-C         real*8 gw(97,201),aw(97,201)
-C      end type
-C      end module mmodel
 
       recursive subroutine read_rect_model(model,nmod,p,ierr,mdl)
       use mmodel
@@ -62,8 +53,10 @@ C     +           mdl%n,mdl%fi,mdl%nfi,mdl%sfi,mdl%la,mdl%nla,mdl%sla,mdl%per,md
       p = mdl%per+mdl%n*mdl%sper
       mdl%n = mdl%n+1
 C      read(fid) mdl%uw,mdl%cw,mdl%gw,mdl%aw
-      mdl%uw = model%uw(mdl%n,:,:); mdl%cw = model%cw(mdl%n,:,:)
-      mdl%gw = model%gw(mdl%n,:,:); mdl%aw = model%aw(mdl%n,:,:)
+      mdl%uw(1:model%nfi,1:model%nla) = model%uw(mdl%n,:,:)
+      mdl%cw(1:model%nfi,1:model%nla) = model%cw(mdl%n,:,:)
+      mdl%gw(1:model%nfi,1:model%nla) = model%gw(mdl%n,:,:)
+      mdl%aw(1:model%nfi,1:model%nla) = model%aw(mdl%n,:,:)
 C      write(*,*) " in read 2: ",uw,cw,gw,aw
       end
 
