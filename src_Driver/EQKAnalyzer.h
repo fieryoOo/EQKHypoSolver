@@ -147,17 +147,10 @@ public:
 	inline std::vector<float> perlst(const Dtype) const;
 
 	// initialize the Analyzer by pre- predicting radpatterns and updating pathpred for all SDContainer
-	// version (1): non-const, modifies internal states
-	void UpdatePredsM( const ModelInfo& mi, bool updateSource = false ) {
-		UpdatePredsM( mi, _rpR, _rpL, _dataR, _dataL, _AfactorR, _AfactorL, _source_updated, updateSource );
-	}
-	// version (2): const, modify external data based on internal states
-	void UpdatePredsM( const ModelInfo& mi,	std::vector<SDContainer>& dataR, 
-							 std::vector<SDContainer>& dataL, bool updateSource ) const;
-	// version (3): const, modify external data based on external states
-	void UpdatePredsM( const ModelInfo& mi, RadPattern& rpR, RadPattern& rpL,
-							 std::vector<SDContainer> &dataR, std::vector<SDContainer> &dataL,
-							 float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const;
+	// version (1): non-const, modifies internal data
+	void UpdatePredsM( const ModelInfo& mi ) { UpdatePredsM( mi, _dataR, _dataL ); }
+	// version (2): const, modify external data 
+	void UpdatePredsM( const ModelInfo& mi, std::vector<SDContainer> &dataR, std::vector<SDContainer> &dataL ) const;
 
 	void UpdatePredsW( const ModelInfo& minfo, std::vector<SDContainer> &dataR, std::vector<SDContainer> &dataL ) const;
 	void UpdatePredsW( const ModelInfo& minfo ) {
@@ -186,11 +179,14 @@ public:
 	// use Love group data only when isInit=true
 	void SetInitSearch( bool isInit ) { _isInit = isInit; }
 
+	// compute M0 for least chiS when true
+	void SetCorrectM0( bool correct ) { _correctM0 = correct; }
+
 	// chi-square misfits from measurements-predictions
-	void chiSquareM( ModelInfo minfo, float& chiS, int& N ) const;
+	void chiSquareM( const ModelInfo &minfo, float& chiS, int& N ) const;
 
 	// chi-square misfits from waveform data-synthetics
-	void chiSquareW( ModelInfo minfo, float& chiS, int& N ) const;
+	void chiSquareW( const ModelInfo &minfo, float& chiS, int& N ) const;
 /*
 	void chiSquareW( ModelInfo minfo, float& chiS, int& N, bool filldata, SDContainer& dataR, SDContainer& dataL ) const;
 	void chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
@@ -226,9 +222,9 @@ public:
 	void EstimateSigmas( const ModelInfo& minfo );
 	void OutputSigmas() const;
    // output G,P,A data and predictions to separated files for each period
-	void OutputFits( ModelInfo minfo );
+	void OutputFits( const ModelInfo &minfo );
    // compute and output misfits, separately, for group, phase, and amplitudes
-	void OutputMisfits( ModelInfo minfo );
+	void OutputMisfits( const ModelInfo &minfo );
 	// output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves
 	void OutputSourcePatterns( const ModelInfo& mi );
 	// output real (processed) and synthetic waveforms when the waveform fitting method is used
@@ -263,9 +259,10 @@ private:	// class
 	};
 
 private: // variables
+	const size_t nthd = omp_get_max_threads();
 	// option 1. measurements
-	// RadPattern objects for predicting source terms
-	RadPattern _rpR, _rpL;
+	// RadPattern objects for predicting source terms (a pair for each thread)
+	mutable std::vector<RadPattern> _rpR{std::vector<RadPattern>(nthd)}, _rpL{std::vector<RadPattern>(nthd)};
 
 	/* store measurements/predictions of each station with a StaData,
 	 * all StaDatas at a single period is handeled by a SDContainer */
@@ -307,8 +304,9 @@ private: // variables
 	short sacRtype = NaN, sacLtype = NaN;	// expecting 0 for displacement or 1 for velocity
 	float f1 = NaN, f2 = NaN, f3 = NaN, f4 = NaN;
 	/* ---------- internal variables ---------- */
-	bool _source_updated = false;
-	float _AfactorR = 1, _AfactorL = 1;
+	//bool _source_updated = false;
+	bool _correctM0 = false;
+	//float _AfactorR = 1, _AfactorL = 1;
 	// output files
 	std::map<float, FileName> outlist_RF, outlist_LF; // filename for output focal_fit
    //std::map<float, FileName> outlist_RP, outlist_LP; // filename for output travel time predictions
@@ -326,6 +324,7 @@ private: // functions
 	//float Tpeak( const SacRec& sac ) const;
 	SacRec ComputeSyn(const SacRec &sac, SynGenerator &synG) const;
 	StaData WaveformMisfit( const SacRec3 &sac3, SynGenerator &synG ) const;
+	float RescaleSourceAmps( std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL ) const;
 };
 
 #endif

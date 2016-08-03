@@ -159,8 +159,8 @@ ie=`awk 'BEGIN{imax=0}{if(imax<$1){imax=$1}}END{print imax}' .PlotPosterior_tmp_
 awk '{print $1,$2/$3}' .PlotPosterior_tmp_rej | psxy -R${is}/${ie}/${rCl}/${rCu2} -JX18/5 -Ba2000f400/a5f1:."reduced chi-square":WeSn -A -Sc0.03 -G100/100/100 -X-11. -Y-6.5 -O -K >> ${fps}
 # accepted
 awk '{print $1,$2/$3}' .PlotPosterior_tmp_acc | psxy -R -J -A -Sc0.03 -Gred -O -K >> ${fps}
-# accepted min boundary (min each 5000 acceptances)
-awk '{print $1,$2/$3}' .PlotPosterior_tmp_acc |  awk 'BEGIN{min=99999;N=0;issum=0}{if(N==5000 && min!=99999){print issum/N,min; min=99999;issum=0;N=0}if($2<min){min=$2} N++;issum+=$1}' | psxy -R -J -A -S-1. -W5,red -O -K >> ${fps}
+# accepted min boundary (min each 50000 acceptances)
+awk '{print $1,$2/$3}' .PlotPosterior_tmp_acc |  awk 'BEGIN{min=99999;N=0;issum=0}{if(N==50000 && min!=99999){print issum/N,min; min=99999;issum=0;N=0}if($2<min){min=$2} N++;issum+=$1}' | psxy -R -J -A -S-1. -W5,red -O -K >> ${fps}
 
 fi
 

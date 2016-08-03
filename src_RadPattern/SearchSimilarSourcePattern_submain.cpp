@@ -93,6 +93,7 @@ int main( int argc, char* argv[] ) {
 	std::string feignmR( argv[2] ), feignmL( argv[3] );
 
    // read in the per-sigmas lists
+	// per sigmaG(sec) sigmaP(sec) sigmaA(fraction 0-1)
 	auto loadfSigmas = []( const std::string &fsigmas, MA3 &sigmasM ) {
 	   std::ifstream fin(fsigmas);
 		if( ! fin ) {
@@ -149,8 +150,11 @@ int main( int argc, char* argv[] ) {
 	//std::cerr<<Emean<<" "<<Estd<<"   CPUtimer = "<<timer.CPUSec()<<" Walltime = "<<timer.WallSec()<<std::endl;
 
 	// run simulated annealing
-	std::ofstream fout(argv[10]);	int nsearch = 2000000;
-	Searcher::SimulatedAnnealing<ModelInfo>(ms, rpd, nsearch, Emean+Estd*3, 0.1, 0, fout);
+	std::ofstream fout(argv[10]);	int nsearch = 10000, niter = 1000;
+	for(int i=0; i<niter; i++) {
+		ms.RandomState();
+		Searcher::SimulatedAnnealing<ModelInfo>(ms, rpd, nsearch, Emean+Estd*3, 0.1, 0, fout);
+	}
 
    return 0;
 }

@@ -44,8 +44,8 @@ namespace Searcher {
 		int ithread;	// thread#
 		double T;		// current temperature
 		MI info;			// model info
-		int Ndata;		// #data
-		float E;			// energy of current model
+		int Ndata = 0;	// #data
+		float E = -1.;	// energy of current model
 		int accepted;	// accepted in search?
 
 		SearchInfo() {}
@@ -53,14 +53,31 @@ namespace Searcher {
 			: isearch(isearch), T(T), info(info), Ndata(Ndata), E(E), accepted(accepted), ithread(omp_get_thread_num()) {}
 
 		friend bool operator< ( const SearchInfo& s1, const SearchInfo& s2 ) { return s1.isearch<s2.isearch; }
-		friend std::ostream& operator<<( std::ostream& o, const SearchInfo<MI>& mi ) {
-			o << "search# " << std::setw(3) << mi.isearch << " (T=" << mi.T << ", tid="<<std::setw(2)<<mi.ithread
-			  <<"):\tminfo = (" << mi.info << ")\tN = " << mi.Ndata << "\tE = " << mi.E;
-			if( mi.accepted == 1 ) o << " (accepted)";
-			else if( mi.accepted == 0 ) o << " (rejected)";
-			else if( mi.accepted == -1 ) o << " (skipped)";
+		friend bool operator== ( const SearchInfo& s1, const SearchInfo& s2 ) { return s1.info==s2.info; }
+
+		friend std::ostream &operator<<( std::ostream& o, const SearchInfo<MI> &si ) {
+			o << "search# " << std::setw(3) << si.isearch << " (T=" << si.T << ", tid="<<std::setw(2)<<si.ithread
+			  <<"):\tminfo = (" << si.info << ")\tN = " << si.Ndata << "\tE = " << si.E;
+			if( si.accepted == 1 ) o << " (accepted)";
+			else if( si.accepted == 0 ) o << " (rejected)";
+			else if( si.accepted == -1 ) o << " (skipped)";
 			else o << " (best)";
 			return o;
+		}
+
+		friend std::istream &operator>>( std::istream &i, SearchInfo<MI> &si ) {
+			std::string stmp;	i >> stmp;
+			if( stmp == "search#" ) {
+				i>>si.isearch; i.ignore(4,'='); i>>si.T; i.ignore(6,'='); i>>si.ithread; i.ignore(12,'('); 
+				i>>si.info; i.ignore(5,'='); i>>si.Ndata; i.ignore(3,'='); i>>si.E; i>>stmp;
+				if( stmp == "(accepted)") si.accepted = 1;
+				else if( stmp=="(rejected)" ) si.accepted = 0;
+				else if( stmp=="(skipped)" ) si.accepted = -1;
+				else si.accepted = 2;
+			} else {
+				i.setstate(std::ios::failbit);
+			}
+			return i;
 		}
 	};
 
@@ -81,6 +98,7 @@ namespace Searcher {
 			int Ndata; dh.Energy( minew, EV[i], Ndata );
 		}
 		VO::MeanSTD(EV.begin(), EV.end(), Emean, Estd);
+		std::cerr<<Emean<<" "<<Estd<<std::endl;
 	} 
 	
 
@@ -143,7 +161,7 @@ namespace Searcher {
 			sout<<"### with model state =\n"<<ms<<std::endl;
 
 		// initial energy (force MS to be assignable to MI at compile time)
-		int Ndata0, Ndata;
+		int Ndata0;
 		float E; dh.Energy( ms, E, Ndata0 );
 		float Ebest = E;
 		// initial temperature
@@ -164,7 +182,8 @@ namespace Searcher {
 		for( int i=istart; i<istart+nsearch; i+=nspawn ) {
 		  #pragma omp parallel
 		  { // spawn (simultaneously perturb) num_threads new locations from the current
-			MI minew; float Enew; int isaccepted = 0;	// 0 for rejected
+			MI minew; float Enew; 
+			int Ndata, isaccepted = 0;	// 0 for rejected
 			try {	
 				ms.Perturb( minew, false );
 				dh.Energy( minew, Enew, Ndata );

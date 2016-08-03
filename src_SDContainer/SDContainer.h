@@ -125,6 +125,11 @@ public:
 
 	void push_back( const StaData& sd ) { dataV.push_back(sd); }
 
+	std::vector<StaData>::const_iterator begin() const { return dataV.begin(); }
+	std::vector<StaData>::iterator begin() { return dataV.begin(); }
+	std::vector<StaData>::const_iterator end() const { return dataV.end(); }
+	std::vector<StaData>::iterator end() { return dataV.end(); }
+
 	StaData& back() { return dataV.back(); }
 
 	std::size_t size() const { return dataV.size(); }
@@ -135,7 +140,7 @@ public:
 	// get Variances of G, P, and A stored in an AziData
 	AziData PredefinedVar() {
 		float stdest_phase = _isFTAN ? stdPest : stdPHest;
-		auto sigma = AziData{ 0., stdGest, stdest_phase, stdAest };
+		auto sigma = AziData{ 0., stdGest, stdest_phase, -log(1.-stdAest) };
 		return sigma * sigma;
 	}
 
@@ -148,7 +153,7 @@ public:
 	void UpdateAziDis( const float srclon, const float srclat );
 	// predict/store traveltimes from VelMaps into Gpath&Ppath
 	bool UpdatePathPred( const float srclon, const float srclat, const float srct0 );
-	// predict/store source terms into Gpath&Ppath
+	// predict/store source terms into Gpath&Ppath, accumulate amplitude coefs a and b (for re-scaling)
 	void UpdateSourcePred( const RadPattern& );
 	// scale source amplitudes to match the observations
 	void ComputeAmpRatios( std::vector<float>& ampratioV ) const {

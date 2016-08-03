@@ -234,7 +234,8 @@ struct StaData : public AziData, public Point<float> {
 		ad.Gdata = Gdata-Gpath-Gsource;
 		ad.Pdata = Pdata-Ppath-Psource;
 		//ad.Adata = Adata/Asource - 1.;
-		ad.Adata = Adata>Asource ? 1.-Asource/Adata : Adata/Asource-1.;
+		//ad.Adata = Adata>Asource ? 1.-Asource/Adata : Adata/Asource-1.;
+		ad.Adata = Adata-Asource;	// Amps are now in log scale
 		ad.user = NormAmp(Asource, per);
 		//std::cerr<<"misfits at "<<lon<<" "<<lat<<" "<<dis<<" "<<azi<<": "<<ad.Gdata<<" "<<ad.Pdata<<" "<<ad.Adata<<" "<<ad.user<<std::endl;
 		return true;
@@ -244,7 +245,8 @@ struct StaData : public AziData, public Point<float> {
 	inline float NormAmp( const float Acur, const float per = 2., const float normdis = 1. ) const {
 		const float wavnum = (2. * M_PI * Ppath ) / (dis * per);
 		//std::cerr<<"NormAmp: "<<Ppath<<" "<<dis<<" "<<per<<" "<<wavnum<<" "<<normdis<<" "<<alpha<<std::endl;
-		return Acur * std::sqrt(wavnum*dis/normdis) * exp(-alpha*(normdis-dis));
+		//return Acur * std::sqrt(wavnum*dis/normdis) * exp(-alpha*(normdis-dis));
+		return Acur + 0.5*log(wavnum*dis/normdis) - alpha*(normdis-dis);
 	}
 
 /*

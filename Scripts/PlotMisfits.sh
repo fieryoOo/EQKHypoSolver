@@ -136,8 +136,11 @@ PlotMap() {
 	# station location and color bar
 	#psxy ${_fdata} -R -J -Sc -W2,black -C$fcpt -O -K >> $psout
 	sort -g -k3 ${_fdata} | psxy -R -J -Sc -W2,black -C$fcpt -O -K >> $psout
-	#psscale  -C$fcpt -B4.5:"Misfit (sec)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
-	psscale  -C$fcpt -B:"${_label}": -P -D3.6/-1./7.2/0.3h -O -K >> $psout
+	if [ $_icol == 5 ]; then
+		psscale  -L -C$fcpt -B:"${_label}": -P -D3.6/-1./7.2/0.3h -O -K >> $psout
+	else
+		psscale  -C$fcpt -B:"${_label}": -P -D3.6/-1./7.2/0.3h -O -K >> $psout
+	fi
 	# centre (earthquake) location
 	clon=-114.9; clat=41.14
 	echo $clon $clat | psxy -R -J -Sa0.6 -W2,blue -Gred -O -K >> $psout
@@ -191,7 +194,7 @@ echo "label = "$label
 ### set up gmt
 gmtset HEADER_FONT_SIZE 12
 gmtset LABEL_FONT_SIZE 12
-gmtset ANNOT_FONT_SIZE 10
+gmtset ANNOT_FONT_SIZE 8
 gmtset HEADER_OFFSET 0.
 
 ### find script/header directory
@@ -241,7 +244,7 @@ fi
 Ntmp=`grep -n '#' $fin | awk -F: '{print $1}' | tail -n1`
 #awk -v N=$Ntmp '{if(NR>N){print $1,$2,$8-$9-$10}}' $fin | awk 'NF==3' | psxy -R -J -Sc0.5 -W1,black -C$fcpt -O -K >> $psout
 fdata=${fin}.tmp; rm -f $fdata
-awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,($11-$12)/$12,$3,$4}}' $fin | awk 'NF==7' | while read lon lat grTmis phTmis ampPerc dis azi; do
+awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,exp($11-$12),$3,$4}}' $fin | awk 'NF==7' | while read lon lat grTmis phTmis ampPerc dis azi; do
 #awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6,$7}}' $fin | awk 'NF==4' | while read lon lat Tmis Tsrc; do
 	sta=`awk -v lon=$lon -v lat=$lat 'BEGIN{if(lon<0){lon+=360.}}{lonsta=$2; if(lonsta<0.){lonsta+=360.} latsta=$3; if( (lon-lonsta)**2+(lat-latsta)**2 < 0.0001 ){print $1} }' $fsta`
 	GetSNR $sta
@@ -320,7 +323,7 @@ else
 	fcpt=${Sdir}/AMisfit.cpt
 fi
 psbasemap -R -J -Ba5f1/a5f1:."Amplitude Misfit Percentage ($label)":WeSn -X8 -K -O >> $psout
-PlotMap $fdata 5 "Misfit (%)"
+PlotMap $fdata 5 "Amp Ratio"
 #psscale  -C$fcpt -B0.5:"Misfit (%)": -P -D3.65/-1./7.3/0.3h -O -K >> $psout
 
 

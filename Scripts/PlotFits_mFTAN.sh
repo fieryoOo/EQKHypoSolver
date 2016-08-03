@@ -130,8 +130,9 @@ done
 ### plot Ampplitude fit results ###
 #REG=-R0/360/500/500000
 REG=-R0/360/${ampmin}/${ampmax}
-SCA=-JX10/8l
-psbasemap -Ba60f20/a2f3:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
+#SCA=-JX10/8l
+SCA=-JX10/8
+psbasemap -Ba60f20/a1f0.1:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
 #SCA=-JX10/8
 #psbasemap -Ba60f20/a10000f5000:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
 iper=$iperbeg
@@ -150,7 +151,8 @@ for per in ${perlst[@]}; do
 	else
 		grep -v '\-12345' $fsta | awk -v iter=$iter -v ampfactor=$ampfactor 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter&&NF>0){print $4,$12*ampfactor}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	fi
-	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8*(1.0+$9),$8*$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
+	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8+$9,$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
+	#grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8*(1.0+$9),$8*$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
    let iper++
 done
 

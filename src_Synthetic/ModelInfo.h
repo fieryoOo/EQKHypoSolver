@@ -105,21 +105,27 @@ struct FocalInfo {
 					<<std::setw(9)<<" "<<std::setw(9)<<" "<<std::setw(9)<<Mzz<<std::endl;
 	}
 
-   friend std::ostream& operator<< ( std::ostream& o, const FocalInfo& f ) {
+   friend bool operator== ( const FocalInfo<T>& fi1, const FocalInfo<T>& fi2 ) {
+      T dis_st = fabs(fi1.stk - fi2.stk);
+      T dis_di = fabs(fi1.dip - fi2.dip);
+      T dis_ra = fabs(fi1.rak - fi2.rak);
+      T dis_de = fabs(fi1.dep - fi2.dep);
+      return (dis_st<toler && dis_di<toler && dis_ra<toler && dis_de<0.1*toler);
+   }
+
+   friend std::ostream &operator<< ( std::ostream& o, const FocalInfo& f ) {
       //o<<std::fixed<<std::setprecision(2)<<f.stk<<" "<<std::setw(6)<<f.dip<<" "<<std::setw(6)<<f.rak<<"  "<<std::setw(6)<<f.dep;
       o<<std::fixed<<std::setprecision(3)
 		 <<std::setw(7)<<f.stk<<" "<<std::setw(7)<<f.dip<<" "<<std::setw(8)<<f.rak<<" "<<std::setw(6)<<f.dep<<" "<<std::setw(7)<<std::scientific<<f.M0; 
       return o; 
    }
 
-   friend bool operator== ( const FocalInfo<T>& fi1, const FocalInfo<T>& fi2 ) {
-      T dis_st = fabs(fi1.stk - fi2.stk);
-      T dis_di = fabs(fi1.dip - fi2.dip);
-      T dis_ra = fabs(fi1.rak - fi2.rak);
-      T dis_de = fabs(fi1.dep - fi2.dep);
-      return (dis_st<0.1 && dis_di<0.1 && dis_ra<0.1 && dis_de<0.1);
+   friend std::istream &operator>> ( std::istream& i, FocalInfo& f ) {
+		i >> f.stk >> f.dip >> f.rak >> f.dep >> f.M0; return i;
    }
 
+protected:
+	static constexpr float toler = 1.0e-3;
 private:
 	/* shift by 2PIs into the correct range */
 	void Correct2PI() {
@@ -145,17 +151,24 @@ struct EpicInfo {
 		return ( (lon<360.&&lon>=0.) && (lat>=-90.&&lat<=90.) && t0!=NaN );
 	}
 
-	friend std::ostream& operator<< ( std::ostream& o, const EpicInfo& e ) {
+	friend bool operator== ( const EpicInfo& ei1, const EpicInfo& ei2 ) {
+		float dis_lon = fabs(ei1.lon - ei2.lon);
+		float dis_lat = fabs(ei1.lat - ei2.lat);
+		float dis_t = fabs(ei1.t0 - ei2.t0);
+		return (dis_lon<toler && dis_lat<toler && dis_t<10.*toler);
+	}
+
+	friend std::ostream& operator<< ( std::ostream& o, const EpicInfo &e ) {
 		o<<std::fixed<<std::setprecision(4)<<e.lon<<" "<<e.lat<<" "<<std::setw(7)<<e.t0; 
 		return o; 
 	}
 
-	friend bool operator== ( const EpicInfo& ei1, const EpicInfo& ei2 ) {
-		float dis_lon = fabs(ei1.lon - ei2.lon) * 100.;
-		float dis_lat = fabs(ei1.lat - ei2.lat) * 100.;
-		float dis_t = fabs(ei1.t0 - ei2.t0);
-		return (dis_lon<0.01 && dis_lat<0.01 && dis_t<0.01);
-	}
+   friend std::istream &operator>> ( std::istream& i, EpicInfo &e ) {
+		i >> e.lon >> e.lat >> e.t0; return i;
+   }
+
+protected:
+	static constexpr float toler = 1.0e-5;
 };
 
 
@@ -206,14 +219,18 @@ class ModelInfo : public FocalInfo<ftype>, public EpicInfo {
 			return ss.str();
 		}
 
-		friend std::ostream& operator<< ( std::ostream& o, const ModelInfo& m ) {
-			o<< static_cast< const FocalInfo<ftype>& >(m) << "   " << static_cast< const EpicInfo& >(m);
-			return o;
-		}
-
 		friend bool operator== ( const ModelInfo& ms1, const ModelInfo& ms2 ) {
 			return ( ( static_cast< const FocalInfo<ftype>& >(ms1) == static_cast< const FocalInfo<ftype>& >(ms2) )
 					&& ( static_cast< const EpicInfo& >(ms1) == static_cast< const EpicInfo& >(ms2) ) );
+		}
+
+		friend std::ostream &operator<< ( std::ostream& o, const ModelInfo& m ) {
+			o<< static_cast<const FocalInfo<ftype>&>(m) << "   " << static_cast<const EpicInfo&>(m);
+			return o;
+		}
+
+		friend std::istream &operator>> ( std::istream& i, ModelInfo& m ) {
+			i >> static_cast<FocalInfo<ftype>&>(m) >> static_cast<EpicInfo&>(m); return i;
 		}
 
 	private:

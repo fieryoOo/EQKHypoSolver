@@ -6,30 +6,30 @@
 #include <stdexcept>
 
 int main( int argc, char* argv[] ) {
-	if( argc != 10 ) {
-		std::cerr<<"Usage: "<<argv[0]<<" [feigen] [fphvel] [strike] [dip] [rake] [dep] [perlst] [R/L] [outname]"<<std::endl;
+	if( argc != 9 ) {
+		std::cerr<<"Usage: "<<argv[0]<<" [feigen] [strike] [dip] [rake] [dep] [perlst] [R/L] [outname]"<<std::endl;
 		return -1;
 	}
 
-	std::string feigname(argv[1]), fphvname(argv[2]);
-	float stk = atof(argv[3]), dip = atof(argv[4]), rak = atof(argv[5]), dep = atof(argv[6]);
-	char type = argv[8][0];
+	std::string feigname(argv[1]);
+	float stk = atof(argv[2]), dip = atof(argv[3]), rak = atof(argv[4]), dep = atof(argv[5]);
+	char type = argv[7][0];
 
 	try {
 		std::vector<float> perlst;
-		std::ifstream fin( argv[7] );
+		std::ifstream fin( argv[6] );
 		if( ! fin )
-			throw std::runtime_error( std::string("cannot read from file ") + argv[7] );
+			throw std::runtime_error( std::string("cannot read from file ") + argv[6] );
 		for( std::string line; std::getline(fin, line); ) {
 			float per;
 			if( sscanf(line.c_str(), "%f", &per)!=1 || per<=0. ) continue;
 			perlst.push_back( per );
 		}
 
-		RadPattern rp;
-		rp.Predict( type, feigname, fphvname, stk, dip, rak, dep, 1.0, perlst );
+		RadPattern rp( type, feigname );
+		rp.Predict( stk, dip, rak, dep, 1.0, perlst );
 		// get source predictions and output
-		rp.OutputPreds( argv[9] );
+		rp.OutputPreds( argv[8] );
 	} catch ( std::exception& e ) {
 		std::cerr<<"Exception: "<<e.what()<<std::endl;
 	} catch (...) {

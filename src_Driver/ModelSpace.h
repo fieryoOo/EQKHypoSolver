@@ -119,12 +119,8 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			if( pM0 ) PM0 = pow(RM0, pertfactor); else PM0 = 1.;
 		}
 
-		void FixEpic() {
-			SetPerturb( false, false, false, true, true, true, true, true );
-		}
-		void FixFocal() {
-			SetPerturb( true, true, true, false, false, false, false, false );
-		}
+		//void FixEpic() { SetPerturb( false, false, false, true, true, true, true, true ); }
+		//void FixFocal() { SetPerturb( true, true, true, false, false, false, false, false ); }
 		void unFix() {	resetPerturb(); }
 
 		void SetFreeFocal( bool rand_init = false ) {
@@ -214,7 +210,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 					} // section 1
 					#pragma omp section
 					{
-					float lb_old = dip - Rdip, ub_old = dip + Rdip;
+					float lb_old = std::max(0.f, dip-Rdip), ub_old = std::min(90.f, dip+Rdip);
 					float lb_dip = SearchBound( eka, minfo, minfo.dip, lb_old, Pthreshold, Emin, 10 );
 					float ub_dip = SearchBound( eka, minfo, minfo.dip, ub_old, Pthreshold, Emin, 10 );
 					Pdip = (ub_dip-lb_dip) * sfactor;
@@ -228,7 +224,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 					} // section 3
 					#pragma omp section
 					{
-					float lb_old = dep - Rdep, ub_old = dep + Rdep;
+					float lb_old = std::max(0.f, dep-Rdep), ub_old = dep + Rdep;
 					//if( Rdep < 0 ) { lb_old = 0.; ub_old = 200.; }
 					float lb_dep = SearchBound( eka, minfo, minfo.dep, lb_old, Pthreshold, Emin, 10 );
 					float ub_dep = SearchBound( eka, minfo, minfo.dep, ub_old, Pthreshold, Emin, 10 );
@@ -441,7 +437,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			float direct = 1, steplen = (bound-key) * 0.5;
 			//std::cerr<<"Initial:   minfo = "<<minfo<<"   Emin = "<<Emin<<std::endl;
 			for(int isearch=0; isearch<nsearch; isearch++) {
-				key += steplen * direct;
+				key += steplen * direct; minfo.Correct();
 				// compute E and check validity
 				int Ndata; float E, P;
 				try {

@@ -122,11 +122,9 @@ int main( int argc, char* argv[] ) {
 		bool regularSA = options.find("rsa") != options.end();
 
 		// option -gi: run only a fast SA to stablize, followed by the Monte-Carlo search (assuming close-enough input model info)
-		bool doSA1 = options.find("gi") == options.end();
-
 		// option -mco: start the Monte-Carlo search immediately (assuming a highly-optimized input model state)
-		bool doSA2 = options.find("mco") == options.end();
-		doSA1 = doSA1 && doSA2;
+		bool doSA1 = options.find("gi")==options.end() && options.find("mco") == options.end();
+		bool doSA2 = options.find("mco")==options.end() && !regularSA;
 
 		// option -nmc: do not run the Monte-Carlo search
 		bool doMC = options.find("nmc") == options.end();
@@ -135,15 +133,16 @@ int main( int argc, char* argv[] ) {
 		int cooltype = options.find("lc") != options.end();	// 0 = exponential cooling, 1 = linear cooling
 
 		// estimate Energy statistics
+		eka.SetCorrectM0(true);	// M0 will be corrected to produce least chiS
 		float Emean, Estd; int nthd = omp_get_max_threads();
-		Searcher::EStatistic(ms, eka, nthd>10?nthd*5:50, Emean, Estd);
+		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
+		Searcher::EStatistic<ModelInfo>(ms, eka, nthd>10?nthd*5:50, Emean, Estd);
 		//std::cerr<<" Emean = "<<Emean<<"  Estd = "<<Estd<<std::endl;
 
 		// ********** Initialize simulated annealing to approach global optimum ********** //
+		double Tinit = (cooltype==0?3:0.5) * (Emean+3*Estd), Tfinal = cooltype==0 ? 1e-4*Emean : 0;
 		if( doSA1 ) {
 
-			ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
-			double Tinit = (cooltype==0?5:1) * (Emean+3*Estd), Tfinal = cooltype==0 ? 0.001*Emean : 0;
 			if( regularSA ) {
 				// ********** single simulated annealing ********** //
 				// search for epicenter and focal mechanism simultaneously
@@ -155,11 +154,12 @@ int main( int argc, char* argv[] ) {
 				//double alpha = Searcher::Alpha(nsearch, Tfactor);
 				auto msbest = ms; float Ebest; int Ndata; eka.Energy( ms, Ebest, Ndata );
 				for(int iter=0; iter<niter; iter++) {
+					ms.SetPerturb( true, true, true, false, true, true, true, true );	// do not perturb M0
 					//auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, alpha, Tfactor, std::cout, 0, true );	// save info for accepted searches
 					auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch*4/5, Tinit, Tfinal, cooltype, std::cout, 0, true );	// save info for accepted searches
 					VO::Output( SIV, eka.outname_misL, true );	// append to file
 					if( pt > 0 ) ms.Bound( 2.5, 0.03 );
-					SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch/5, Tinit/100, Tfinal/10, cooltype, std::cout, 0, true );	// save info for accepted searches
+					SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch/5, Tinit*0.01, Tfinal*0.01, cooltype, std::cout, 0, true );	// save info for accepted searches
 					VO::Output( SIV, eka.outname_misL, true );	// append to file
 					// output
 					eka.OutputFits( ms );
@@ -172,30 +172,29 @@ int main( int argc, char* argv[] ) {
 			} else {
 				// ********** iterative simulated annealing ********** //
 				// search for epicenter and focal mechanism separately
-				//int niterSA = 3, nsearch = 8192; //, Tfactor = 16;
-				int niterSA = 3, nsearch = 2048; //, Tfactor = 16;
-				//int niterSA = 2, nsearch = 4096, Tfactor = 8;
+				int niterSA = 3, nsearch = 8192; //, Tfactor = 16;
+				//int niterSA = 2, nsearch = 4096;
+				auto Tinit2 = Tinit;
 				for( int iter=0; iter<niterSA; iter++ ) {
 					// search for epicenter
-					ms.FixFocal();				// have focal mechanism fixed
+					ms.SetPerturb( true, true, true, false, false, false, false, false );	// have focal mechanism fixed
 					eka.UpdatePreds( ms );	// not necessary, but following search runs faster since Focal is fixed
 					if( iter==0 ) eka.SetInitSearch( true );			// use Love group data only!
 					auto SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 500, 0., 0., 1, std::cout, 0, true );
 					VO::Output( SIV, eka.outname_misL, true );	// append to file
 					if( iter==0 ) eka.SetInitSearch( false );	// use all data
 					// search for focal info
-					ms.FixEpic();		// have epicenter fixed
+					ms.SetPerturb( false, false, false, false, true, true, true, true );	// have epicenter (and M0) fixed
 					eka.UpdatePreds( ms );	// not necessary, but following search runs faster since Epic is fixed
 					//double alpha = Searcher::Alpha(nsearch, Tfactor);
-					SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, Tinit, Tfinal, cooltype, std::cout, 0, true );	// save info for accepted searches
+					SIV = Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, Tinit2, Tfinal, cooltype, std::cout, 0, true );	// save info for accepted searches
 					VO::Output( SIV, eka.outname_misF, true );	// append to file
 					// centralize the model space around the current MState
 					ms.Centralize();
 					// output
 					eka.OutputFits( ms );
 					eka.OutputMisfits( ms );
-					//nsearch /= 2, Tfactor /= 2;
-					nsearch /= 2, Tinit /= 2;
+					nsearch /= 2, Tinit2 /= 2;
 				}
 				//ms.unFix();	// free both to perturb // not necessary, freed in 'Bound()'
 			}
@@ -203,17 +202,18 @@ int main( int argc, char* argv[] ) {
 
 		// ********** secondary simulated annealing for deeper optimization ********** //
 		if( doSA2 ) {
-			double Tinit = (cooltype==0?0.1:0.02) * Emean, Tfinal = cooltype==0 ? 0.0001*Emean : 0;
+			//double Tinit = (cooltype==0?0.01:0.002) * Emean, Tfinal = cooltype==0 ? 1e-7*Emean : 0;
 			// constrain model to perturb near the current Mstate ( Rparam = ? * (0.15, 0.15, 2, 30, 20, 30, 5) )
 			// with a small pertfactor to approach the optimum solution faster
 			if( pt > 0 ) ms.Bound( 2.5, 0.03 );
+			ms.SetPerturb( true, true, true, false, true, true, true, true );	// have M0 fixed
 			// initial MC search around the SA result to stablize
-			int nsearch = 3000, Tfactor = 1;
+			int nsearch = 3000;
 			//auto SIV = Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, std::cout );
 			//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 			//double alpha = Searcher::Alpha(nsearch, Tfactor);
 			//ms.SetPerturb( false, false, false, true, false, false, false, false );
-			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, Tinit, Tfinal, cooltype, std::cout, 0, false );	// do not save Sinfo
+			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, Tinit*0.01, Tfinal*0.01, cooltype, std::cout, 0, false );	// do not save Sinfo
 			//Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 10000, alpha, 0.5f, std::cout, -1 );	// do not save Sinfo
 			eka.OutputFits( ms );
 			eka.OutputMisfits( ms );
@@ -232,7 +232,8 @@ int main( int argc, char* argv[] ) {
 			// constrain model to perturb near the current Mstate ( Rparam = ? * (0.15, 0.15, 2, 30, 20, 30, 5) )
 			// perturbation steps are decided later by EstimatePerturbs
 			//ms.Bound( 2. );	// set Rfactor = 2.0 to be safe
-			ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the current focal info
+			eka.SetCorrectM0(false);	// M0 will not be corrected to produce least chiS
+			ms.SetFreeFocal();			// allow perturbing to any focal mechanism, but start at the current focal info
 			// decide perturb step length for each parameter based on the model sensitivity to them
 			// perturb steps are defined to be (ub-lb) * sfactor, where ub and lb are the boundaries decided by:
 			// assuming current model to be the best fitting model, move away

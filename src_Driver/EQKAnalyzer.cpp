@@ -181,7 +181,7 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 		succeed = (bool)(buff>>per>>sG>>sP>>sA);
 		if( succeed ) {
 			auto &spi = spiRM[per];
-			spi.sigmaG = sG; spi.sigmaP = sP; spi.sigmaA = sA;
+			spi.sigmaG = sG; spi.sigmaP = sP; spi.sigmaA = -log(1.-sA);
 		}
 	}
 	else if( stmp == "sigmaL" ) {
@@ -189,7 +189,7 @@ int EQKAnalyzer::Set( const char *input, const bool MoveF ) {
 		succeed = (bool)(buff>>per>>sG>>sP>>sA);
 		if( succeed ) {
 			auto &spi = spiLM[per];
-			spi.sigmaG = sG; spi.sigmaP = sP; spi.sigmaA = sA;
+			spi.sigmaG = sG; spi.sigmaP = sP; spi.sigmaA = -log(1.-sA);
 		}
 	}
 	else if( stmp == "fmisL" ) {
@@ -338,9 +338,12 @@ void EQKAnalyzer::CheckParams() {
 	*/
 
    // check model inputs
-   if( access(fReigname.c_str(), F_OK) == -1 ) throw ErrorEA::BadFile(FuncName, fReigname);
+   //if( access(fReigname.c_str(), F_OK) == -1 ) throw ErrorEA::BadFile(FuncName, fReigname);
+   //if( access(fLeigname.c_str(), F_OK) == -1 ) throw ErrorEA::BadFile(FuncName, fLeigname);
+	_rpR[0].SetModel('R', fReigname); _rpL[0].SetModel('L', fLeigname);
+	for(int ithd=1; ithd<nthd; ithd++) { _rpR[ithd] = _rpR[0]; _rpL[ithd] = _rpL[0]; }
+
    if( access(fRphvname.c_str(), F_OK) == -1 ) throw ErrorEA::BadFile(FuncName, fRphvname);
-   if( access(fLeigname.c_str(), F_OK) == -1 ) throw ErrorEA::BadFile(FuncName, fLeigname);
    if( access(fLphvname.c_str(), F_OK) == -1 ) throw ErrorEA::BadFile(FuncName, fLphvname);
 
 	// normalize data weightings
@@ -503,7 +506,6 @@ void EQKAnalyzer::LoadData() {
 }
 
 
-/* -------------------- fill the rpR and rpL objects with the current model state -------------------- */
 inline std::vector<float> EQKAnalyzer::perRlst() const { return perlst(R); }
 inline std::vector<float> EQKAnalyzer::perLlst() const { return perlst(L); }
 inline std::vector<float> EQKAnalyzer::perlst(const Dtype dtype) const {
@@ -530,74 +532,78 @@ inline float EQKAnalyzer::BoundInto( float val, float lb, float ub ) const {
 	else if( val > ub ) val = ub;
 	return val;
 }
-/*
-void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo, bool updateSource ) {
-	UpdatePredsM( minfo, _rpR, _rpL, _dataR, _dataL, _AfactorR, _AfactorL, _source_updated, updateSource );
-}
-*/
-void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo,	std::vector<SDContainer>& dataR, 
-										  std::vector<SDContainer>& dataL, bool updateSource ) const {
-	auto rpR = _rpR, rpL = _rpL;
-	float AfactorR = _AfactorR, AfactorL = _AfactorL;
-	bool source_updated = _source_updated;
-	UpdatePredsM( minfo, rpR, rpL, dataR, dataL, AfactorR, AfactorL, source_updated, updateSource );
-}
-void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo, RadPattern& rpR, RadPattern& rpL,
-										  std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL,
-										  float& AfactorR, float& AfactorL, bool& source_updated, bool updateSource ) const {
+
+/* -------------------- fill the rpR and rpL objects with the current model state -------------------- */
+void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo, std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL ) const {
+										  //bool& source_updated, bool updateSource ) const {
+	int ithd = omp_get_thread_num(); auto &rpR = _rpR[ithd], &rpL = _rpL[ithd];
 	// radpattern
 	bool model_updated = false;
 	float stk = minfo.stk, dip = minfo.dip, rak = minfo.rak, dep = minfo.dep, M0 = minfo.M0;
 	stk = ShiftInto( stk, 0., 360., 360. );	
 	dip = BoundInto( dip, 0., 90. );
 	rak = ShiftInto( rak, -180., 180., 360. ); dep = BoundInto( dep, 0., 60. );
-	model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, M0, perRlst() );
-	model_updated |= rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, M0, perLlst() );
+	//model_updated |= rpR.Predict( 'R', fReigname, fRphvname, stk, dip, rak, dep, M0, perRlst() );
+	//model_updated |= rpL.Predict( 'L', fLeigname, fLphvname, stk, dip, rak, dep, M0, perLlst() );
+	model_updated = rpR.Predict( stk, dip, rak, dep, M0, perRlst() ) || model_updated;	// M0 will be computed in sdc.UpdateSourcePred
+	model_updated = rpL.Predict( stk, dip, rak, dep, M0, perLlst() ) || model_updated;
 
 	if( _usewaveform ) return;
 
 	// SDContainer Tpaths
 	for( auto& sdc : dataR )
-		model_updated |= sdc.UpdatePathPred( minfo.lon, minfo.lat, minfo.t0 );
+		model_updated = sdc.UpdatePathPred( minfo.lon, minfo.lat, minfo.t0 ) || model_updated;
 	for( auto& sdc : dataL )
-		model_updated |= sdc.UpdatePathPred( minfo.lon, minfo.lat, minfo.t0 );
+		model_updated = sdc.UpdatePathPred( minfo.lon, minfo.lat, minfo.t0 ) || model_updated;
 
+	/*
 	if( model_updated ) source_updated = false;	// source terms need to be updated
 	else if( source_updated ) return;				//	model state didn't change since the last source term update -- return
 	if( ! updateSource ) return;						// do not update source for now
 	source_updated = true;								// do update source (now)
+	*/
+	if( ! model_updated ) return;
 
-	// lambda function, works on a single SDContainer vector
-	auto Usource = [&]( std::vector<SDContainer>& dataV, float& Afactor ) {
-		// update source predictions
-		for( auto& sdc : dataV ) {
-			const auto& rp = sdc.type==R ? rpR : rpL;
-			sdc.UpdateSourcePred( rp );
+	// predict source patterns and accumulate amplitude coefs
+	if( dataR.size() > 0 ) for( auto& sdc : dataR ) sdc.UpdateSourcePred( rpR );
+	if( dataL.size() > 0 ) for( auto& sdc : dataL ) sdc.UpdateSourcePred( rpL );
+
+	// re-scale source amp predictions to fit data with least chiS
+	if( _correctM0 ) {
+		float Af = exp( RescaleSourceAmps( dataR, dataL ) );
+		minfo.M0 *= Af; rpR *= Af; rpL *= Af;
+	}
+}
+
+float EQKAnalyzer::RescaleSourceAmps(std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL) const {
+	// accumulate amp coefs
+	float a = 0., b = 0.;
+	auto AccumAmpCoefs = [&](const SDContainer& sdc) {
+		float l1 = 0., l2 = 0.; int n = 0;
+		for( auto& sd : sdc ) {
+			if( sd.Gsource == NaN ) continue;
+			l1 += sd.Asource; l2 += sd.Adata; n++;	// accum log_amps for amp coefs
 		}
-		/*	Amplitudes are now correctly scaled by RadPattern::GetPred
-		// rescale source amplitudes to match the data
-		std::vector<float> ampratioV;	
-		ampratioV.reserve( dataV.size() * dataV.at(0).size() );
-		for( auto& sdc : dataV ) sdc.ComputeAmpRatios( ampratioV );
-		Afactor = std::accumulate(ampratioV.begin(), ampratioV.end(), 0.) / ampratioV.size();
-		//std::cerr<<"   Afactor for Rayleigh: "<<Afactor<<" (was 50000.)\n";
-		for( auto& sdc : dataV )	// scale source amplitudes to match the observations
-			sdc.AmplifySource( Afactor );
-		*/
+		//float w = -log(1.-sdc.sigmaS.Adata); 
+		float w = sdc.sigmaS.Adata; // converted when computing/taking input
+		w = 1. / (w*w); a += n * w; b += (l2-l1) * w;
 	};
+	for( auto &sdc : dataR ) AccumAmpCoefs( sdc );
+	for( auto &sdc : dataL ) AccumAmpCoefs( sdc );
 
-	// SDContainer R: source terms
-	if( dataR.size() > 0 ) Usource( dataR, AfactorR );
-
-	// SDContainers L: source terms
-	if( dataL.size() > 0 ) Usource( dataL, AfactorL );
+	// rescale
+	//const float Afactor = exp(b/a);
+	const float Ashift = b/a;
+	for( auto &sdc : dataR ) for( auto& sd : sdc ) if(sd.Asource!=NaN) sd.Asource += Ashift;
+	for( auto &sdc : dataL ) for( auto& sd : sdc ) if(sd.Asource!=NaN) sd.Asource += Ashift;
+	return Ashift;
 }
 
 
 /* -------------------- compute the total chi-square misfit based on the current data state and the input model info -------------------- */
-void EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
+void EQKAnalyzer::chiSquareM( const ModelInfo &minfo, float& chiS, int& N ) const {
 	// check/correct input params 
-	minfo.Correct();
+	//minfo.Correct();
 
 	int Rsize = _dataR.size(), Lsize = _dataL.size();
 	if( Rsize==0 && Lsize==0 )
@@ -618,10 +624,10 @@ void EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
 	ADAdder adder( useG, useP, useA );
 	const int Nadd = useG + useP + useA;
 
-	// make a copy of the data and RadPattern objs (for multi-threading),
+	// make a copy of the data (for multi-threading),
 	// update both path and source predictions for all SDcontainers
 	auto dataR = _dataR, dataL = _dataL;
-	UpdatePredsM( minfo, dataR, dataL, true );
+	UpdatePredsM( minfo, dataR, dataL );
 
 	// lambda: computes chi-square of a single wavetype (with a vector of SDContainer)
 	chiS = 0.; N = 0; //wSum = 0.;
@@ -642,7 +648,7 @@ void EQKAnalyzer::chiSquareM( ModelInfo minfo, float& chiS, int& N ) const {
 				chiS += adder( (admean * admean)/getVar(i) );
 				N += Nadd;
 			}
-			//std::cerr<<"Rayleigh at per="<<sdc.per<<": "<<chiS<<" "<<N<<" "<<chiS/(N-8.)<<"\n";
+			//std::cout<<"b thread "<<omp_get_thread_num()<<" "<<sdc.type<<" "<<sdc.per<<" "<<chiS<<" "<<N<<" "<<SDV.size()<<" "<<sdc.size()<<" "<<adVmean.size()<<" "<<Nadd<<std::endl;
 		}
 	};
 
@@ -750,9 +756,9 @@ void EQKAnalyzer::UpdatePredsW( const ModelInfo& minfo, std::vector<SDContainer>
 	if( ! dataL.empty() ) updatePreds( _synGL, _sac3VL, dataL[0] );
 }
 
-void EQKAnalyzer::chiSquareW( ModelInfo minfo, float& chiS, int& N ) const {
+void EQKAnalyzer::chiSquareW( const ModelInfo &minfo, float& chiS, int& N ) const {
 	// check/correct input params 
-	minfo.Correct();
+	//minfo.Correct();
 
 	int Rsize = _dataR.size(), Lsize = _dataL.size();
 	if( Rsize!=1 && Lsize!=1 ) throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
@@ -866,7 +872,7 @@ void EQKAnalyzer::EstimateSigmas( const ModelInfo& minfo ) {
 	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
 		UpdatePredsW(minfo);
 	} else {	// update both path and source predictions for all SDcontainers
-		UpdatePredsM( minfo, true );
+		UpdatePredsM( minfo );
 	}
 
 	for( auto& sdc : _dataR ) sdc.ComputeVar();
@@ -886,15 +892,15 @@ void EQKAnalyzer::OutputSigmas() const {
 
 
 /* -------------------- Output the data and predictions based on the input model info -------------------- */
-void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
+void EQKAnalyzer::OutputFits( const ModelInfo &minfo ) {
 	// check/correct input params
-	minfo.Correct();
+	//minfo.Correct();
 
 	// prepare/update data for the input minfo
 	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
 		UpdatePredsW(minfo);
 	} else {	// update both path and source predictions for all SDcontainers
-		UpdatePredsM( minfo, true );
+		UpdatePredsM( minfo );
 	}
 	bool isFTAN = ! _usewaveform;
 
@@ -904,12 +910,13 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 		throw ErrorEA::EmptyData(FuncName, "Rsize && Lsize");
 
 	// lambda function for outputing fit
+	int ithd = omp_get_thread_num();
 	auto outputF = [&]( SDContainer& sdc ) {
 		const float per = sdc.per;
 		// choose outlist by Dtype
 		const auto& outlist = sdc.type==R ? outlist_RF : outlist_LF;
-		const auto& rp = sdc.type==R ? _rpR : _rpL;
-		const float Afactor = sdc.type==R ? _AfactorR : _AfactorL;
+		const auto& rp = sdc.type==R ? _rpR[ithd] : _rpL[ithd];
+		//const float Afactor = sdc.type==R ? _AfactorR : _AfactorL;
 		std::string outname;
 		if( _usewaveform ) {
 			if( outlist.size() == 0 ) return;
@@ -940,9 +947,8 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 			} else {
 				rp.GetPred( per, admean.azi,	Gsource, Psource, Asource );
 							//	1000., 0., rp.cAmp(per)[0], admean.Gdata );
-				//Asource *= Afactor;
 			}
-			// averaged-normalized amplitudes are stored in admean.user!
+			// amps are in log scale; averaged-normalized amps are stored in admean.user!
 			foutbin<<admean.azi<<"  "<<Gsource<<" "<<admean.Gdata<<" "<<adstd.Gdata
 				<<"  "<<Psource<<" "<<admean.Pdata<<" "<<adstd.Pdata
 				<<"  "<<admean.user<<" "<<admean.Adata<<" "<<adstd.Adata<<"\n";
@@ -960,15 +966,15 @@ void EQKAnalyzer::OutputFits( ModelInfo minfo ) {
 
 
 /* -------------------- compute and output misfits, separately, for group, phase, and amplitudes -------------------- */
-void EQKAnalyzer::OutputMisfits( ModelInfo minfo ) {
+void EQKAnalyzer::OutputMisfits( const ModelInfo &minfo ) {
 	// check/correct input params
-	minfo.Correct();
+	//minfo.Correct();
 
 	// prepare/update data for the input minfo
 	if( _usewaveform ) {	// fill data vectors for the waveform fitting method
 		UpdatePredsW(minfo);
 	} else {	// update both path and source predictions for all SDcontainers
-		UpdatePredsM( minfo, true );
+		UpdatePredsM( minfo );
 	}
 	bool isFTAN = ! _usewaveform;
 
@@ -1018,8 +1024,8 @@ void EQKAnalyzer::OutputMisfits( ModelInfo minfo ) {
 /* -------------------- output source predictions (continuously in azimuth, for group, phase, and amplitudes) into single file for R/L waves -------------------- */
 void EQKAnalyzer::OutputSourcePatterns( const ModelInfo& mi ) {
 	if( outname_srcR.empty() && outname_srcL.empty() ) return;
-	// call UpdatePredsM for Afactors (needs a new, less redundant method here!)
-	UpdatePredsM( mi, true );
+	// call UpdatePredsM to rescale _rpR&_rpL (needs a new, less redundant method here!)
+	UpdatePredsM( mi );
 	/*
 	float stk = mi.stk, dip = mi.dip, rak = mi.rak, dep = mi.dep;
 	//stk = ShiftInto( stk, 0., 360., 360. );	dip = BoundInto( dip, 0., 90. );
@@ -1029,7 +1035,8 @@ void EQKAnalyzer::OutputSourcePatterns( const ModelInfo& mi ) {
 	*/
 
 	// output source predictions (R)
-	if( ! outname_srcR.empty() ) _rpR.OutputPreds(outname_srcR, _AfactorR);
-	if( ! outname_srcL.empty() ) _rpL.OutputPreds(outname_srcL, _AfactorL);
+	int ithd = omp_get_thread_num();
+	if( ! outname_srcR.empty() ) _rpR[ithd].OutputPreds(outname_srcR, mi.M0);
+	if( ! outname_srcL.empty() ) _rpL[ithd].OutputPreds(outname_srcL, mi.M0);
 }
 

@@ -40,7 +40,7 @@ void SDContainer::LoadMeasurements( const std::string& fname, const float clon, 
 			if( ! stalst.SearchLoc( sdcur.lon, sdcur.lat, data_find ) ) continue;
 		}
 		//std::cerr<<"SDContainer::LoadMeasurements: fname="<<fname<<" per="<<per<<" type="<<type<<" size="<<dataV.size()<<" "<<sdcur.Gdata<<" "<<sdcur.Pdata<<" "<<sdcur.Adata<<"\n";
-		dataV.push_back( sdcur );
+		sdcur.Adata = log(sdcur.Adata); dataV.push_back( sdcur );
 	}
 	std::cout<<"### SDContainer::LoadMeasurements: "<<dataV.size()<<" stations loaded from file "<<fname<<".";
 	if( nskipC>0 ) std::cout<<"\n    Warning: "<<nskipC<<" lines skipped due to data incompleteness.";
@@ -153,14 +153,15 @@ void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 
 	// update source predictions
 	float alpha = M_PI/(per*2.8*(type==R?QR:QL));
-	for( auto& sd : dataV ) {
+	for( auto &sd : dataV ) {
 		//float grt, pht, amp;
 		//const float cAmp = rad.cAmp(per)[0];	// use norm term at source for now
 		rad.GetPred( per, sd.azi, sd.Gsource, sd.Psource, sd.Asource, sd.dis, alpha );
-		//rad.GetPred( per, sd.azi, sd.Gsource, sd.Psource, sd.Asource,
-		//				 sd.dis, alpha, cAmp??? );
-		sd.alpha = alpha;	// store alpha for normalization
+		if( sd.Gsource == NaN ) continue;
+		sd.Asource = log(sd.Asource); sd.alpha = alpha;	// store alpha for normalization
+		//l1 += sd.Asource; l2 += sd.Adata; n++;	// accum logs for amp coefs
 	}
+
 }
 
 // output a vector of AziData
@@ -251,7 +252,7 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 
 	// exclude empty bins and define undefined std-devs
 	float stdest_phase = isFTAN ? stdPest : stdPHest;
-	ad_stdest = AziData{ NaN, stdGest, stdest_phase, stdAest };
+	ad_stdest = AziData{ NaN, stdGest, stdest_phase, -log(1.-stdAest) };
 	// NOTE!: invalid adVvar[].Adata will be set to admean.user * ad_stdest.Adata
 	HandleBadBins( adVmean, adVvar, ad_stdest );
 
@@ -262,10 +263,12 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	AziData ad_varpath;
 	if( type == R ) {
 		float varmin_phase = isFTAN ? varRPmin : varRPHmin;
-		ad_varpath = AziData{ NaN, varRGmin, varmin_phase, varRAmin };
+		float varAmin = -log(1./sqrt(varRAmin)); varAmin *= varAmin;
+		ad_varpath = AziData{ NaN, varRGmin, varmin_phase, varAmin };
 	} else {
 		float varmin_phase = isFTAN ? varLPmin : varLPHmin;
-		ad_varpath = AziData{ NaN, varLGmin, varmin_phase, varLAmin };
+		float varAmin = -log(1./sqrt(varLAmin)); varAmin *= varAmin;
+		ad_varpath = AziData{ NaN, varLGmin, varmin_phase, varAmin };
 	}
 	//WaterLevel( adVmean, adVstd, ad_stdmin );
 	ComputeVariance( adVmean, adVvar, ad_varpath );	// for adVvar: std-dev -> variance
