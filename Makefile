@@ -3,7 +3,6 @@ BIN1 = EQKSolver
 BIN2 = Auxiliary
 BIN3 = MomentTensor
 BIN4 = PredSrcPatterns
-BIN5 = MTensor
 BINT = Test
 
 BINall = $(BIN1) $(BIN2) $(BIN3) $(BIN4)

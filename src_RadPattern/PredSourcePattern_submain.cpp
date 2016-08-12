@@ -12,9 +12,11 @@
 inline int nint(float datain) { return (int)floor(datain+0.5); }
 
 int main( int argc, char* argv[] ) {
-   if( argc != 10 ) {
-      std::cerr<<"Usage: "<<argv[0]<<" [R/L] [eigen_file (.R/L)]";
-      std::cerr<<" [per_lst] [strike] [dip] [rake] [depth] [M0] [out_name]"<<std::endl;
+   if( argc!=10 && argc!=13 ) {
+      std::cerr<<"Usage: "<<argv[0]<<" [R/L] [eigen_file (.R/L)] [per_lst] [depth] [M0]\n"
+					<<"option 1: [strike] [dip] [rake] [out_name]\n"
+					<<"option 2: [Mxx] [Myy] [Mzz] [Mxy] [Mxz] [Myz] [out_name]"<<std::endl;
+					//<<"[out_name] [norm_dis (optional)] [Q (optional)]"<<std::endl;
       exit(-1);
    }
 
@@ -40,35 +42,24 @@ int main( int argc, char* argv[] ) {
    fin.close();
    std::cout<<"### "<<perlst.size()<<" periods read in. ###"<<std::endl;
 
-   /* read in focal info */
-   const float strike = atof(argv[4]), dip = atof(argv[5]), rake = atof(argv[6]);
-	const float dep = atof(argv[7]), M0 = atof(argv[8]);
-   /*
-   int strike = nint(strikein), dip = nint(dipin), rake = nint(rakein), dep = nint(depin);
-   if( strike!=strikein || dip!=dipin || rake!=rakein || dep!=depin ) {
-      std::cerr<<"Warning(main): integer expected for strike/dip/rake/depth. Corrected to the nearest integer(s)!"<<std::endl;
-   }
-   */
-   //FocalInfo<float> finfo(strike, dip, rake, dep);
-   std::cout<<"### Input Focal info = ("<<strike<<" "<<dip<<" "<<rake<<" "<<dep<<" "<<M0<<"). ###"<<std::endl;
-
-	//bool GetPred( const float per, const float azi,	float& grt, float& pht, float& amp ) const;
-   /* run rad_pattern_r */
    RadPattern rp( type, argv[2] );
-   rp.Predict( strike, dip, rake, dep, M0, perlst );
-	rp.OutputPreds( argv[9] );
 
-	// debug
-	float Q = 150.;
-	for( const auto per : perlst ) {
-		float alpha = M_PI/(per*2.8*Q);
-		for(float azi=202.1805; azi<203; azi+=2) {
-			float grt, pht, amp;
-			rp.GetPred(per, azi, grt, pht, amp, 192.0526, alpha);
-			std::cerr<<per<<" "<<amp<<" "<<grt<<" "<<pht<<" "<<azi<<std::endl;
-		}
-		//std::cerr<<"\n\n";
+	const float dep = atof(argv[4]), M0 = atof(argv[5]);
+	std::string outname( argc==10 ? argv[9] : argv[12] );
+	std::cout<<"### Input Focal info = ("<<dep<<" "<<M0<<" ";
+	if( argc == 10 ) {
+		const float stk = atof(argv[6]), dip = atof(argv[7]), rak = atof(argv[8]);
+	   std::cout<<stk<<" "<<dip<<" "<<rak<<"). ###"<<std::endl;
+		rp.Predict( stk, dip, rak, dep, M0, perlst );
+	} else {
+		float m1 = atof(argv[6]), m2 = atof(argv[7]), m3 = atof(argv[8]),m4 = atof(argv[9]),m5 = atof(argv[10]),m6 = atof(argv[11]);
+	   std::cout<<m1<<" "<<m2<<" "<<m3<<" "<<m4<<" "<<m5<<" "<<m6<<"). ###"<<std::endl;
+		rp.Predict( std::array<float, 6>{m1,m2,m3,m4,m5,m6}, dep, M0, perlst );
 	}
+
+	float norm_dis = 1, Q = 100;
+	//if( argc == 12 ) { norm_dis = atof(argv[10]); Q = atof(argv[11]); }
+	rp.OutputPreds( outname, norm_dis, Q );
 
    return 0;
 }

@@ -1,8 +1,8 @@
-      subroutine rad_pattern_l(strike,dip,rake,nper,dper,t,eigH,deigH,ampl,wvl,
+      subroutine rad_pattern_l(tm,nper,dper,t,eigH,deigH,ampl,wvl,
      +                         perlist,nperlst,azimuth,groupT,phaseT,amplitude)
 c To calculate group_delay as a function of azimuth and period
       integer*4 nper, nperlst
-      real*4 strike, dip, rake, dper
+C      real*4 strike, dip, rake
 C      parameter (ntmax=500)
       integer*4 pos1, pos2
       real*4 eigH(nper), deigH(nper)
@@ -17,7 +17,7 @@ c(phvlen)
       real*4 pq(181,nper),ph(181,nper),gr_time(181,nper),aml(181,nper)
       real*4 azimuth(181),groupT(181,nperlst),phaseT(181,nperlst),amplitude(181,nperlst)
 C      real*4 coef_amp(nperlst), wavenum(nperlst)
-      real*4 stepr
+      real*4 stepr,dper
       real*4 temp_ph(nper),unph(nper),grt(nper)
       data marg/6/,pi/3.1415927/,oo2pi/0.1591549431/,r/2./,eps/0.0001/
       data const/1.E+20/,const2/5013256549262000.0/
@@ -57,7 +57,7 @@ C      endif
 C      call surfreadRad(feig_buff(1:eiglen),eiglen,sigR,sigL,symbik,nt,nd,
 C     +              depth,t,cr,ur,wvr,cl,ul,wvl,v,dvdz,ampr,ampl)
 c----------Source term calculations-----------------c
-      call angles2tensorRad(strike,dip,rake,tm)
+C      call angles2tensorRad(strike,dip,rake,tm)
 
 c    period loop
       DO j=1,nt

@@ -1,8 +1,8 @@
-      subroutine rad_pattern_r(strike,dip,rake,nper,dper,t,eigH,deigH,eigV,deigV,ampr,wvr,
+      subroutine rad_pattern_r(tm,nper,dper,t,eigH,deigH,eigV,deigV,ampr,wvr,
      +                         perlist,nperlst,azimuth,groupT,phaseT,amplitude)
 c To calculate group_delay as a function of azimuth and period
       integer*4 nper, nperlst
-      real*4 strike, dip, rake, dper
+C      real*4 strike, dip, rake
 C      parameter (ntmax=500)
       integer*4 pos1, pos2
       real*4 eigH(nper), deigH(nper), eigV(nper), deigV(nper)
@@ -11,19 +11,16 @@ C      real*4 v(3,nper),dvdz(3,nper),
 C      v(eigen), dvdz(derivative_eigen): 1=R_horizontal, 2=R_vertical, 3=L
       real*4 tm(6),du(3),vu(3),wvn(2)
       complex*8 br(6),bl(6),sumr,step
-c(phvlen)
       character*40 bred
 C      character*2 symbik
       character*1 sigR,sigL
       real*4 pq(181,nper),ph(181,nper),gr_time(181,nper),aml(181,nper)
       real*4 perlist(nperlst),azimuth(181),groupT(181,nperlst),phaseT(181,nperlst),amplitude(181,nperlst)
 C      real*4 coef_amp(nperlst), wavenum(nperlst)
-      real*4 temp_ph(nper),unph(nper),grt(nper),stepr
+      real*4 temp_ph(nper),unph(nper),grt(nper),stepr,dper
       data marg/6/,pi/3.1415927/,oo2pi/0.1591549431/,r/2./,eps/0.0001/
       data const/1.E+20/,const2/5013256549262000.0/
 
-C      write(*,*) "1",strike, dip, rake, nper,"/",nper, dper, t(1), eigH(1), deigH(1), eigV(1), deigV(1), wvr(1), wvr(nper)
-C      write(*,*) "2",ampr(1)*1.0e23,ampr(10)*1.0e23,ampr(50)*1.0e23, perlist(1), nperlst,"/",nperlst
 C----------- Initiation------------
       drad=180./pi
       sigR='+'
@@ -59,7 +56,8 @@ c      endif
 C      call surfreadRad(feig_buff(1:eiglen),eiglen,sigR,sigL,symbik,nt,nd,
 C     +              depth,t,cr,ur,wvr,cl,ul,wvl,v,dvdz,ampr,ampl)
 c----------Source term calculations-----------------c
-      call angles2tensorRad(strike,dip,rake,tm)
+C      call angles2tensorRad(strike,dip,rake,tm)
+      write(*,*) tm(1), tm(2), tm(3), tm(4), tm(5), tm(6)
 
 c    period loop
       DO j=1,nt

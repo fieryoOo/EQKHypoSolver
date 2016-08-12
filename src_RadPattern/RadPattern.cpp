@@ -7,10 +7,12 @@
 /* FORTRAN entrance */
 const int nazi = RadPattern::nazi;
 extern"C" {
-   void rad_pattern_r_(const float *strike, const float *dip, const float *rake, int *nper, const float *dper, 
+   //void rad_pattern_r_(const float *strike, const float *dip, const float *rake, int *nper, const float *dper, 
+   void rad_pattern_r_(const float mt[6], int *nper, const float *dper, 
 							  const float *per, const float *eigH, const float *deigH, const float *eigV, const float *deigV, const float *camp, const float *wvn,
 							  const float *perlst, int *nperlst, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
-   void rad_pattern_l_(const float *strike, const float *dip, const float *rake, int *nper, const float *dper,
+   //void rad_pattern_l_(const float *strike, const float *dip, const float *rake, int *nper, const float *dper,
+   void rad_pattern_l_(const float mt[6], int *nper, const float *dper,
 							  const float *per, const float *eigH, const float *deigH, const float *camp, const float *wvn,
 							  const float *perlst, int *nperlst, float *azi, float grT[][nazi], float phT[][nazi], float amp[][nazi]);
 }
@@ -41,12 +43,29 @@ void RadPattern::ShiftCopy( std::vector<float>& Vout, const float* arrayin, cons
    Vout.insert( Vout.end(), arrayin, arrayin+nazio2+1 );
 }
 
+// computes moment tensor from strike, dip, and rake
+std::array<float, 6> RadPattern::MomentTensor( float stk, float dip, float rak, const float M0 ) const {
+	float deg2rad = M_PI/180.;
+	stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
+	float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
+	float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
+	float sinr = sin(rak), cosr = cos(rak);
+	std::array<float, 6> MT;
+	MT[0] = -M0 * (sind*cosr*sin2s + sin2d*sinr*sins*sins);	// xx
+	MT[1] =  M0 * (sind*cosr*sin2s - sin2d*sinr*coss*coss);	// yy
+	MT[2] =  M0 * (sin2d*sinr);										// zz
+	MT[3] =  M0 * (sind*cosr*cos2s + sin2d*sinr*sins*coss);	// xy
+	MT[4] = -M0 * (cosd*cosr*coss + cos2d*sinr*sins);			// xz
+	MT[5] = -M0 * (cosd*cosr*sins - cos2d*sinr*coss);			// yz
+	return MT;
+}
+
 /* predict radpattern for rayleigh and love waves */
-bool RadPattern::Predict( const ftype stkin, const ftype dipin, const ftype rakin,
-								  const ftype depin, const ftype M0in, const std::vector<float>& perlst ) {
+bool RadPattern::Predict( const std::array<ftype, 6>& MTi, const ftype depin, const ftype M0in, const std::vector<float>& perlst ) {
 
 	// return if the requested new state is exactly the same as the one stored
-	if( stk==stkin && dip==dipin && rak==rakin &&
+	//if( stk==stkin && dip==dipin && rak==rakin &&
+	if( MT[0]==MTi[0] && MT[1]==MTi[1] && MT[2]==MTi[2] && MT[3]==MTi[3] && MT[4]==MTi[4] && MT[5]==MTi[5] &&
 		 dep==depin && M0==M0in && perlst.size()<=grtM.size() ) {
 		bool allfound = true;
 		for( const auto per : perlst )
@@ -58,9 +77,11 @@ bool RadPattern::Predict( const ftype stkin, const ftype dipin, const ftype raki
 	}
 
 	// store current state;
+	/*
 	stk = stkin; dip = dipin;
-	rak = rakin; dep = depin;
-	M0 = M0in;
+	rak = rakin;
+	*/
+	MT = MTi; M0 = M0in; dep = depin;
 
 	// extract source data at dep
 	er.FillSDAtDep( dep );
@@ -81,11 +102,13 @@ bool RadPattern::Predict( const ftype stkin, const ftype dipin, const ftype raki
 	float azi[nazi], grT[nperlst][nazi], phT[nperlst][nazi], amp[nperlst][nazi];
 
    if( type == 'R' ) {
-      rad_pattern_r_( &(stk), &(dip), &(rak), &(er.sd.nper), &(er.sd.dper), 
+std::cerr<<"debugR: "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" "<<MT[5]<<std::endl;
+      rad_pattern_r_( MT.data(), &(er.sd.nper), &(er.sd.dper), 
 							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), er.sd.eigV.data(), er.sd.deigV.data(), er.sd.ac.data(), er.sd.wvn.data(),
 							 perlst.data(), &nperlst, azi, grT, phT, amp );
    } else if( type == 'L' ) {
-      rad_pattern_l_( &(stk), &(dip), &(rak), &(er.sd.nper), &(er.sd.dper), 
+std::cerr<<"debugL: "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" "<<MT[5]<<std::endl;
+      rad_pattern_l_( MT.data(), &(er.sd.nper), &(er.sd.dper), 
 							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), er.sd.ac.data(), er.sd.wvn.data(),
 							 perlst.data(), &nperlst, azi, grT, phT, amp );
 		//for(int i=0; i<nazi; i++) std::cout<<azi[i]<<" "<<grT[0][i]<<" "<<phT[0][i]<<" "<<amp[0][i]<<std::endl;
@@ -224,24 +247,24 @@ bool RadPattern::GetPred( const float per, const float azi,
 	return true;
 }
 
-void RadPattern::OutputPreds( const std::string& fname, const float Afactor ) const {
+void RadPattern::OutputPreds( const std::string& fname, const float norm_dis, const float Q ) const {
 	if( grtM.size() == 0 ) return;
 
 	std::ofstream fout( fname );
    if( ! fout ) throw ErrorRP::BadFile(FuncName, fname);
+
 	for( auto &grtP : grtM ) {
 		float per = grtP.first;
+		float alpha = M_PI/(per*3.0*Q);
 		auto &grtV = grtP.second;
 		auto &phtV = phtM.at(per);
 		auto &ampV = ampM.at(per);
-		for( int iazi=0; iazi<nazi; iazi++ ) {
-			float azi = iazi*dazi;
-			float grt = grtV.at(iazi);
-			if( grt == RadPattern::NaN ) continue;
-			float pht = phtV.at(iazi);
-			float amp = ampV.at(iazi);
-			fout<<azi<<" "<<grt<<" "<<pht<<" "<<amp*Afactor<<" "<<per<<"\n";
-			//std::cerr<<azi<<" "<<grt<<" "<<pht<<" "<<amp*Afactor<<" "<<per<<"\n";
+		int iazi; float azi, grt, pht, amp;
+		auto getPreds = norm_dis>0 ? std::function<bool()>([&](){ return GetPred(per, azi, grt, pht, amp, norm_dis, alpha); }) : 
+							 [&](){ grt=grtV.at(iazi); if(grt==RadPattern::NaN)return false; pht=phtV.at(iazi); amp=ampV.at(iazi); return true; };
+		for( iazi=0; iazi<nazi; iazi++ ) {
+			azi = iazi*dazi;
+			if( getPreds() ) fout<<azi<<" "<<grt<<" "<<pht<<" "<<amp<<" "<<per<<"\n";
 		}
 		fout<<"\n\n";
 	}

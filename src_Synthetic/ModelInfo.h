@@ -86,23 +86,52 @@ struct FocalInfo {
 		Correct2PI();
 	}
 
-	void MomentTensor( const float M0 ) const {
+	// NED(default)=NorthEastDown, USE=UpSouthEast
+	void printMomentTensor( const float M0, const bool USE=false ) const {
+		auto MT = MomentTensor(M0);
+		printM(std::cout, MT[0], MT[1], MT[2], MT[3], MT[4], MT[5], USE)<<std::endl;
+	}
+	std::array<float, 6> MomentTensor( const float M0 ) const {
 		float deg2rad = M_PI/180.;
 		float stk = this->stk, dip = this->dip, rak = this->rak;
 		stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
 		float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
 		float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
 		float sinr = sin(rak), cosr = cos(rak);
-		const float Mxx = -M0 * (sind*cosr*sin2s + sin2d*sinr*sins*sins);
-		const float Mxy =  M0 * (sind*cosr*cos2s + sin2d*sinr*sins*coss);
-		const float Mxz = -M0 * (cosd*cosr*coss + cos2d*sinr*sins);
-		const float Myy =  M0 * (sind*cosr*sin2s - sin2d*sinr*coss*coss);
-		const float Myz = -M0 * (cosd*cosr*sins - cos2d*sinr*coss);
-		const float Mzz =  M0 * (sin2d*sinr);
-		std::cout<<std::setprecision(5)<<std::fixed
-					<<std::setw(9)<<Mxx<<std::setw(9)<<Mxy<<std::setw(9)<<Mxz<<"\n"
-					<<std::setw(9)<<" "<<std::setw(9)<<Myy<<std::setw(9)<<Myz<<"\n"
-					<<std::setw(9)<<" "<<std::setw(9)<<" "<<std::setw(9)<<Mzz<<std::endl;
+		std::array<float, 6> MT;
+		MT[0] = -M0 * (sind*cosr*sin2s + sin2d*sinr*sins*sins);	// xx
+		MT[1] =  M0 * (sind*cosr*sin2s - sin2d*sinr*coss*coss);	// yy
+		MT[2] =  M0 * (sin2d*sinr);										// zz
+		MT[3] =  M0 * (sind*cosr*cos2s + sin2d*sinr*sins*coss);	// xy
+		MT[4] = -M0 * (cosd*cosr*coss + cos2d*sinr*sins);			// xz
+		MT[5] = -M0 * (cosd*cosr*sins - cos2d*sinr*coss);			// yz
+		return MT;
+	}
+
+	void printMTDecomposed( const float M0, const bool USE=false ) const {
+		float deg2rad = M_PI/180.;
+		float stk = this->stk, dip = this->dip, rak = this->rak;
+		stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
+		float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
+		float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
+		float sinr = sin(rak), cosr = cos(rak);
+		std::cout<<cosd*cosr<<" x\n"; printM(std::cout, 0, 0, 0, 0, -coss, -sins, USE)<<"\n";
+		std::cout<<sind*cosr<<" x\n"; printM(std::cout, -sin2s, sin2s, 0, cos2s, 0, 0, USE)<<"\n";
+		std::cout<<-cos2d*sinr<<" x\n"; printM(std::cout, 0, 0, 0, 0, sins, -coss, USE)<<"\n";
+		std::cout<<sin2d*sinr<<" x\n"; printM(std::cout, -sins*sins, -coss*coss, 1, 0.5*sin2s, 0, 0, USE)<<std::endl;
+	}
+
+	std::ostream &printM( std::ostream &o, float M11, float M22, float M33, 
+								 float M12, float M13, float M23, const bool USE=false) const {
+		if( USE ) {
+			float Mtmp = M11; M11 = M33; M33 = M22; M22 = Mtmp;
+			Mtmp=M12; M12 = M13; M13 = -M23; M23 = -Mtmp;
+		}
+		o<<std::setprecision(5)<<std::fixed
+		 <<std::setw(9)<<M11<<std::setw(9)<<M12<<std::setw(9)<<M13<<"\n"
+		 <<std::setw(9)<<" "<<std::setw(9)<<M22<<std::setw(9)<<M23<<"\n"
+		 <<std::setw(9)<<" "<<std::setw(9)<<" "<<std::setw(9)<<M33;//<<std::endl;
+		return o;
 	}
 
    friend bool operator== ( const FocalInfo<T>& fi1, const FocalInfo<T>& fi2 ) {

@@ -54,8 +54,10 @@ typedef std::map<float, std::array<float,3>> MA3;
 
 class RadPattern {
 public:
-	char type;
-	float stk, dip, rak, dep, M0;
+	char type; 
+	float dep, M0;
+	std::array<float, 6> MT;
+	//float stk, dip, rak;
 
 	RadPattern( const char type = 'N', const std::string& feigname = "" );
 
@@ -63,14 +65,17 @@ public:
 
 	friend std::ostream& operator <<(std::ostream &o, const RadPattern &rp) {
 		o<<rp.type<<" "<<rp.grtM.size()<<"   "
-		 <<rp.stk<<" "<<rp.dip<<" "<<rp.rak<<" "<<rp.dep<<" "<<rp.M0;
+		 <<rp.dep<<" "<<rp.M0<<" "<<rp.MT[0]<<" "<<rp.MT[1]<<" "<<rp.MT[2]<<" "<<rp.MT[3]<<" "<<rp.MT[4]<<" "<<rp.MT[5];
+		 //<<rp.stk<<" "<<rp.dip<<" "<<rp.rak<<" "<<rp.dep<<" "<<rp.M0;
 		return o;
 	}
 
    /* Predict Rayleigh/Love wave radiation patterns */
    bool Predict( const ftype strike, const ftype dip, const ftype rake,
-					  const ftype depth, const ftype M0, const std::vector<float>& perlst );
-				//std::vector< std::vector<AziData> >& per_azi_pred );
+					  const ftype depth, const ftype M0, const std::vector<float>& perlst ) {
+		MT = MomentTensor(strike, dip, rake); Predict(MT, depth, M0, perlst);
+	}
+   bool Predict( const std::array<ftype, 6>& MT, const ftype depth, const ftype M0, const std::vector<float>& perlst );
 
 	/* get the amp norm term at per */
 	std::array<float, 2> cAmp( const float per ) const;
@@ -84,7 +89,7 @@ public:
 	bool GetPred( const float per, const float azi,	float& grt, float& pht, float& amp,
 					  const float dis, const float alpha, const float recCAmp = NaN ) const;
 
-	void OutputPreds( const std::string& fname, const float Afactor = 1. ) const;
+	void OutputPreds( const std::string& fname, const float norm_dis = -1, const float Q = -1 ) const;
 
 	RadPattern& operator-=(const RadPattern &rp2);
 	friend RadPattern operator-(const RadPattern &rp1, const RadPattern &rp2) {
@@ -127,6 +132,9 @@ private:
 	std::map< float, std::array<float,2> > campM;
 	// group, phase, amplitudes keyed by period
 	std::map< float, std::vector<float> > grtM, phtM, ampM;
+
+	
+	std::array<float, 6> MomentTensor( float stk, float dip, float rak, const float M0=1. ) const;
 
 	void ShiftCopy( std::vector<float>& Vout, const float* arrayin, const int nazi ) const;
 
