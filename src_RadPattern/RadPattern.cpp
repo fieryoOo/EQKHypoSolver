@@ -61,7 +61,7 @@ std::array<float, 6> RadPattern::MomentTensor( float stk, float dip, float rak, 
 }
 
 /* predict radpattern for rayleigh and love waves */
-bool RadPattern::Predict( const std::array<ftype, 6>& MTi, const ftype depin, const ftype M0in, const std::vector<float>& perlst ) {
+bool RadPattern::Predict( const std::array<ftype, 6>& MTi, const ftype depin, const ftype M0in, const std::vector<float>& perlst, bool crctPha ) {
 
 	// return if the requested new state is exactly the same as the one stored
 	//if( stk==stkin && dip==dipin && rak==rakin &&
@@ -102,18 +102,16 @@ bool RadPattern::Predict( const std::array<ftype, 6>& MTi, const ftype depin, co
 	float azi[nazi], grT[nperlst][nazi], phT[nperlst][nazi], amp[nperlst][nazi];
 
    if( type == 'R' ) {
-std::cerr<<"debugR: "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" "<<MT[5]<<std::endl;
       rad_pattern_r_( MT.data(), &(er.sd.nper), &(er.sd.dper), 
-							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), er.sd.eigV.data(), er.sd.deigV.data(), er.sd.ac.data(), er.sd.wvn.data(),
-							 perlst.data(), &nperlst, azi, grT, phT, amp );
+							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), er.sd.eigV.data(), er.sd.deigV.data(),
+							 er.sd.ac.data(), er.sd.wvn.data(), perlst.data(), &nperlst, azi, grT, phT, amp );
+		//for(int i=0; i<nazi; i++) std::cout<<"R: "<<azi[i]<<" "<<grT[0][i]<<" "<<phT[0][i]<<" "<<amp[0][i]<<std::endl;
    } else if( type == 'L' ) {
-std::cerr<<"debugL: "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" "<<MT[5]<<std::endl;
       rad_pattern_l_( MT.data(), &(er.sd.nper), &(er.sd.dper), 
-							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), er.sd.ac.data(), er.sd.wvn.data(),
-							 perlst.data(), &nperlst, azi, grT, phT, amp );
-		//for(int i=0; i<nazi; i++) std::cout<<azi[i]<<" "<<grT[0][i]<<" "<<phT[0][i]<<" "<<amp[0][i]<<std::endl;
+							 er.sd.per.data(), er.sd.eigH.data(), er.sd.deigH.data(), 
+							 er.sd.ac.data(), er.sd.wvn.data(), perlst.data(), &nperlst, azi, grT, phT, amp );
+		//for(int i=0; i<nazi; i++) std::cout<<"L: "<<azi[i]<<" "<<grT[0][i]<<" "<<phT[0][i]<<" "<<amp[0][i]<<std::endl;
    }
-
 	// copy predictions into maps
 	grtM.clear(); phtM.clear(); ampM.clear(); //campM.clear(); aziV.clear();
    //float azi[nazi], grT[nperlst][nazi], phT[nperlst][nazi], amp[nperlst][nazi];
@@ -142,6 +140,9 @@ std::cerr<<"debugL: "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" 
 		ShiftCopy( ampM[per], amp[iper], nazi ); for( auto &val : ampM[per] ) val *= M0;
 		//campM[per] = std::array<float, 2>{ coef_amp[iper], wvn[iper] };
    }
+	if( crctPha ) CorrectPhase();
+//std::cerr<<"RadPattern::Predict 1: "<<type<<" "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" "<<MT[5]<<std::endl;
+
 	//aziV = std::vector<float>( azi, azi+nazi );
 
 	// invalidate focal predictions with amplitudes < amp_avg * AmpValidPerc
@@ -150,11 +151,12 @@ std::cerr<<"debugL: "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" 
 		float per = perlst[iper];
 		// determine min amplitude
 		int Nvalid = 0; float Amin = 0.;
-		const auto& ampV = ampM[per];
+		const auto& ampV = ampM.at(per);
 		for( const auto& amp : ampV ) Amin += amp;
 		Amin *= (AmpValidPerc / ampV.size());
 		// invalidate azimuths with small amplitudes
 		auto& grtV = grtM[per];
+		for(int iazi=0; iazi<nazi; iazi++) if( grtV[iazi] <= NaN ) grtV[iazi] = NaN;	// marked invalid by rad_patter_? already
 		for(int iazi=0; iazi<nazi; iazi++)
 			if( ampV[iazi] < Amin ) {
 				int jazilow = iazi-InvalidateHwidth, jazihigh = iazi+InvalidateHwidth+1;
@@ -173,6 +175,66 @@ std::cerr<<"debugL: "<<MT[0]<<" "<<MT[1]<<" "<<MT[2]<<" "<<MT[3]<<" "<<MT[4]<<" 
 			}
 	}
 	return true;	// updated!
+}
+
+void RadPattern::AddGaussNoise(const MA3 &sigmas) {
+	for( auto &pvPair : grtM ) {
+		auto per = pvPair.first;
+		if( sigmas.find(per) == sigmas.end() )
+			throw std::runtime_error("Error(RadPatternDiff::AddGaussNoise): per not found in sigmasM");
+		const auto sigmaG = sigmas.at(per)[0];
+		const auto sigmaP = sigmas.at(per)[1];
+		const auto sigmaA = -log(1.-sigmas.at(per)[2]);
+		auto grtA = pvPair.second.data();
+		auto phtA = phtM.at(per).data();
+		auto ampA = ampM.at(per).data();
+		for(int i=0; i<nazi; i++) {
+			if( grtA[i] == RadPattern::NaN ) continue;
+			grtA[i] += randO.Normal()*sigmaG;
+			phtA[i] += randO.Normal()*sigmaP;
+			ampA[i] *= exp(randO.Normal()*sigmaA);
+		}
+	}
+}
+
+// correct phases into [ per*(phap0-0.5), per*(phap0+0.5) )
+void RadPattern::CorrectPhase(const float phap0) {
+	for( auto &ppPair : phtM ) {
+		float per = ppPair.first;
+		float ub = per*(phap0+0.5), lb = per*(phap0-0.5);
+		auto &phtV = ppPair.second;
+		for( auto &pht : phtV ) {
+			if(pht >= ub) pht -= per;
+			else if(pht < lb) pht += per;
+		}
+	}
+}
+// correct phases for 2pi to make them as continuous as possible
+void RadPattern::CorrectPhaseC() {
+	//const float toler = 0.01;
+	for( auto &ppPair : phtM ) {
+		float per = ppPair.first;
+		float ooper = 1./per, pero2 = per*0.5; //(0.5+toler);
+		auto &phtV = ppPair.second;
+		if( phtV.empty() ) continue;
+		//auto& grtV = grtM[per];
+		// correct 2pi and compute average
+		float phtl = 0., avg = 0.;
+		//for(auto &pht : phtV) {
+		for(int i=0; i<phtV.size(); i++) {
+			auto &pht = phtV[i];
+			//if( grtV[i] == NaN ) continue;
+			if(pht >= phtl+pero2) pht -= per;
+			else if(pht < phtl-pero2) pht += per;
+			phtl = pht; avg += pht;
+		}
+		avg /= phtV.size();
+		// shift closer to zero
+		if( avg>=per || avg<-per ) {
+			float shift = avg>=per ? -per : per;
+			for(auto &pht : phtV) pht += shift;
+		}
+	}
 }
 
 std::array<float, 2> RadPattern::cAmp( const float per ) const {
@@ -270,7 +332,20 @@ void RadPattern::OutputPreds( const std::string& fname, const float norm_dis, co
 	}
 }
 
-RadPattern& RadPattern::operator-=(const RadPattern &rp2) {
+RadPattern& RadPattern::operator*=(const float &mul) {
+	for( auto &pvPair : grtM ) {
+		// check for consistency
+		auto grtA = pvPair.second.data();
+		auto ampA = ampM.at(pvPair.first).data();
+		for(int i=0; i<nazi; i++)
+			if( grtA[i] != RadPattern::NaN ) ampA[i] *= mul;
+	}
+	M0 *= mul;
+	return *this;
+}
+
+template <class OP>
+RadPattern &RadPattern::ApplyOP(const RadPattern &rp2, OP op) {
 	for( auto &pvPair : grtM ) {
 		// check for consistency
 		auto per = pvPair.first; auto size = pvPair.second.size();
@@ -286,21 +361,12 @@ RadPattern& RadPattern::operator-=(const RadPattern &rp2) {
 		for(int i=0; i<size; i++) {
 			if( grtA1[i]==NaN ) continue;
 			if( grtA2[i]==NaN ) { grtA1[i] = NaN; continue; }
-			grtA1[i] -= grtA2[i]; phtA1[i] -= phtA2[i]; ampA1[i] -= ampA2[i];
+			grtA1[i] = op(grtA1[i], grtA2[i]);
+			phtA1[i] = op(phtA1[i], phtA2[i]);
+			ampA1[i] = op(ampA1[i], ampA2[i]);
+			//grtA1[i] -= grtA2[i]; phtA1[i] -= phtA2[i]; ampA1[i] -= ampA2[i];
 		}
 	}
-	return *this;
-}
-
-RadPattern& RadPattern::operator*=(const float &mul) {
-	for( auto &pvPair : grtM ) {
-		// check for consistency
-		auto grtA = pvPair.second.data();
-		auto ampA = ampM.at(pvPair.first).data();
-		for(int i=0; i<nazi; i++)
-			if( grtA[i] != RadPattern::NaN ) ampA[i] *= mul;
-	}
-	M0 *= mul;
 	return *this;
 }
 
@@ -339,7 +405,6 @@ void RadPattern::NormCoefs( const RadPattern &rp2, const std::map<float,float>& 
 			throw ErrorRP::HeaderMismatch(FuncName, ss.str());
 		}
 		// accumulate a and b
-		float weightA = -log(1.-sigmaM.at(per)); weightA = 1. / (weightA*weightA); 
 		// locate group and amplitude vectors for current period
 		auto grtA1 = pvPair.second.data(); auto grtA2 = I2->second.data();	// group
 		auto ampA1 = ampM[per].data(); auto ampA2 = rp2.ampM.at(per).data();	// amplitude
@@ -348,6 +413,7 @@ void RadPattern::NormCoefs( const RadPattern &rp2, const std::map<float,float>& 
 			if( grtA1[i]==RadPattern::NaN || grtA2[i]==RadPattern::NaN ) continue;
 			l1 += log(ampA1[i]); l2 += log(ampA2[i]);	++n;
 		}
+		float weightA = -log(1.-sigmaM.at(per)); weightA = 1. / (weightA*weightA); 
 		a += n * weightA;	b += (l2-l1)*weightA; 
 	}
 }

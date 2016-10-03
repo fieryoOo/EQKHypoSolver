@@ -15,7 +15,8 @@ void SDContainer::LoadMeasurements( const std::string& fname, const float clon, 
 	// clear data vector
 	dataV.clear();
 	// correct the input phase traveltime measurements for phase shift!
-	float ph_shift = pio4_R==0 ? 0 : (-pio4_R*0.125*per);
+	//float ph_shift = pio4_R==0 ? 0 : (-pio4_R*0.125*per);
+	float ph_shift = (type==R?-pio4_R:-pio4_L) * 0.125*per;
 	// load station list (if given)
 	bool checksta = !fsta.empty(); StaList stalst;
 	if( checksta ) stalst = StaList( fsta );
@@ -143,8 +144,8 @@ bool SDContainer::UpdatePathPred( const float srclon, const float srclat, const 
 
 void SDContainer::UpdateSourcePred( const RadPattern& rad ) {
 	// save new focal info
-	stk = rad.stk; dip = rad.dip;
-	rak = rad.rak; dep = rad.dep;
+	//stk = rad.stk; dip = rad.dip;
+	//rak = rad.rak; dep = rad.dep;
 	/*
 	// and update source terms
 	radR.Predict( 'R', "TEST/SourceModels/245.25_41.25.R", "TEST/SourceModels/245.25_41.25.R.phv", stk, dip, rak, dep, SDContainer::perlst );
@@ -237,6 +238,7 @@ void SDContainer::BinAverage( std::vector<AziData>& adVmean, std::vector<AziData
 	// bin average (L1 norm, output with center azimuth for each bin)
 	adVmean.clear(); adVvar.clear();	// note: std-devs are stored in adVvar
 	VO::BinAvg( adVext, adVmean, adVvar, BINSTEP, BINHWIDTH, 0., MIN_BAZI_SIZE, 1, false, false );
+	//std::cerr<<"adVmean1: "<<adVext.size()<<" "<<adVmean.size()<<std::endl;
 
 	// exclude empty bins and define undefined std-devs
    float finf = std::numeric_limits<float>::infinity();

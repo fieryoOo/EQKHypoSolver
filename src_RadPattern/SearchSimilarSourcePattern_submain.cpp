@@ -16,7 +16,8 @@
 
 class RadPatternDiff : public Searcher::IDataHandler<ModelInfo> {
 public:
-	//RadPatternDiff() {}
+	RadPatternDiff(bool useG=true, bool useP=true, bool useA=true) 
+		: _useG(useG), _useP(useP), _useA(useA) {}
 
 	void InitRayl( const std::string& feigname, const MA3 &sigmasM ) {
 		sigmasMR = sigmasM; rp1R.SetModel( 'R', feigname );
@@ -36,14 +37,26 @@ public:
 	*/
 
 	void setRP1( const ftype stk, const ftype dip, const ftype rak, const ftype dep, const ftype M0 = 1. ) {
-	   if(! perlstR.empty()) rp1R.Predict( stk, dip, rak, dep, M0, perlstR ); 
-	   if(! perlstL.empty()) rp1L.Predict( stk, dip, rak, dep, M0, perlstL ); 
+	   if(! perlstR.empty()) {
+			rp1R.Predict( stk, dip, rak, dep, M0, perlstR ); 
+			rp1R.AddGaussNoise(sigmasMR);
+		}
+	   if(! perlstL.empty()) {
+			rp1L.Predict( stk, dip, rak, dep, M0, perlstL );
+			rp1L.AddGaussNoise(sigmasML);
+		}
 	}
 
 	void setRP2( const ftype stk, const ftype dip, const ftype rak, const ftype dep, const ftype M0 = 1. ) const {
 		auto ithread = omp_get_thread_num();
-	   if(! perlstR.empty()) rp2RV[ithread].Predict( stk, dip, rak, dep, M0, perlstR ); 
-	   if(! perlstL.empty()) rp2LV[ithread].Predict( stk, dip, rak, dep, M0, perlstL ); 
+	   if(! perlstR.empty()) {
+			rp2RV[ithread].Predict( stk, dip, rak, dep, M0, perlstR ); 
+			//rp2RV[ithread].AddGaussNoise(sigmasMR);
+		}
+	   if(! perlstL.empty()) {
+			rp2LV[ithread].Predict( stk, dip, rak, dep, M0, perlstL ); 
+			//rp2LV[ithread].AddGaussNoise(sigmasML);
+		}
 	}
 
 	void OutputDiff( const std::string& outname, const ftype stk, const ftype dip, const ftype rak, const ftype dep , const ftype M0 = 1. ) const {
@@ -55,18 +68,18 @@ public:
 	void Energy( const ModelInfo& mi, float& E, int& Ndata ) const {
 		setRP2( mi.stk, mi.dip, mi.rak, mi.dep );
 		auto ithread = omp_get_thread_num(); 
-
 		auto chiSA = perlstR.empty() ? rp2LV[ithread].chiSquare(rp1L, sigmasML) :
 						 perlstL.empty() ? rp2RV[ithread].chiSquare(rp1R, sigmasMR) :
 						 chiSquare( rp2RV[ithread], rp2LV[ithread], rp1R, rp1L, sigmasMR, sigmasML );
-		E = chiSA[0] + chiSA[1] + chiSA[2]; Ndata = chiSA[3]; mi.M0 = perlstR.empty() ? rp2LV[ithread].M0 : rp2RV[ithread].M0;
+		E = (_useG?chiSA[0]:0) + (_useP?chiSA[1]:0) + (_useA?chiSA[2]:0); Ndata = chiSA[3]*(_useG+_useP+_useA); 
+		mi.M0 = perlstR.empty() ? rp2LV[ithread].M0 : rp2RV[ithread].M0;
 		//std::cerr<<E<<" "<<Ndata<<" "<<mi.M0<<std::endl; exit(-3);
 	}
 
 private:
 	RadPattern rp1R, rp1L;
 	mutable std::vector<RadPattern> rp2RV, rp2LV;
-	bool useR = false, useL = false;
+	bool _useG, _useP, _useA;
 	MA3 sigmasMR, sigmasML;
 	std::vector<float> perlstR, perlstL;
 };
@@ -117,33 +130,30 @@ int main( int argc, char* argv[] ) {
 
 	// initialize RadPatternDiff
 	RadPatternDiff rpd;
+	//RadPatternDiff rpd(true, false, true);	// no phase
+	//RadPatternDiff rpd(true, true, false);	// no amplitude
 	if(useR) rpd.InitRayl( feignmR, sigmasMR );
 	if(useL) rpd.InitLove( feignmL, sigmasML );
 	rpd.setRP1( stk0, dip0, rak0, dep0 );
 
 	// initialize model space, fix lon, lat, t0, and M0
-	ModelSpace ms( ModelInfo(0., 0., 0., 270, 35, -16, 4.3) );
+	ModelSpace ms( ModelInfo(0., 0., 0., stk0, dip0, rak0, dep0) );
 	ms.SetFreeFocal(); ms.SetPerturb(false, false, false, false, true, true, true, true);
-	//ModelSpace ms2( ModelInfo(0., 0., 0., 275, 39, 0, 4.4) );
 
 	// debug
-	/*
 	float E; int N; ModelInfo mi;
-	mi = {0., 0., 0., 247.8, 33.3, -59.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 248.8, 33.3, -59.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 249.8, 33.3, -59.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 250.8, 33.3, -59.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 34.3, -59.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 35.3, -59.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 36.3, -59.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 33.3, -60.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 33.3, -61.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 33.3, -62.6, 5.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 33.3, -59.6, 6.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 33.3, -59.6, 7.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	mi = {0., 0., 0., 247.8, 33.3, -59.6, 8.2}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
-	exit(-3); 
-	*/
+	mi = {0., 0., 0., 60.431, 72.865, -118.431, 0.003}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., 65.202, 49.659, -141.599, 0.021}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0, dip0, rak0, dep0}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0-1, dip0, rak0, dep0}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0+1, dip0, rak0, dep0}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0, dip0-1, rak0, dep0}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0, dip0+1, rak0, dep0}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0, dip0, rak0-1, dep0}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0, dip0, rak0+1, dep0}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0, dip0, rak0, dep0-1}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	mi = {0., 0., 0., stk0, dip0, rak0, dep0+1}; rpd.Energy(mi, E, N); std::cerr<<E<<" "<<N<<" ("<<mi<<")"<<std::endl;
+	//exit(-3); 
 
 	//Timer timer;
 	float Emean, Estd; Searcher::EStatistic<ModelInfo>(ms, rpd, 1000, Emean, Estd);

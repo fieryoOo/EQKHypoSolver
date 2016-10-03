@@ -36,7 +36,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 			std::ifstream fin(fname);
 			if( ! fin )
 				throw std::runtime_error("bad file");
-			int nparam = 0;
+			int nparam = 0; M0 = 1.;
 			for( std::string line; std::getline(fin, line); ) {
 				std::istringstream ss(line);
 				if( ! (ss>>line) ) continue;
@@ -193,7 +193,7 @@ class ModelSpace : public ModelInfo, public Searcher::IModelSpace<ModelInfo> {
 		// from this state until the probability of acceptance <= Pthreshold
 		void EstimatePerturbs( const EQKAnalyzer& eka, float sfactor = 0.1 ) {
 			//if( sfactor == NaN ) sfactor = pertfactor;
-			std::cout<<"### Estimating for resonable perturb step sizes:"<<std::endl;
+			std::cout<<"### Estimating resonable perturb-step sizes:"<<std::endl;
 			int Ndata;
 			float Emin; eka.Energy(*this, Emin, Ndata);
 			ModelInfo minfo = *this;

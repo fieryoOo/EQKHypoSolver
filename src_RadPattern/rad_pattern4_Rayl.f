@@ -57,7 +57,7 @@ C      call surfreadRad(feig_buff(1:eiglen),eiglen,sigR,sigL,symbik,nt,nd,
 C     +              depth,t,cr,ur,wvr,cl,ul,wvl,v,dvdz,ampr,ampl)
 c----------Source term calculations-----------------c
 C      call angles2tensorRad(strike,dip,rake,tm)
-      write(*,*) tm(1), tm(2), tm(3), tm(4), tm(5), tm(6)
+C      write(*,*) tm(1), tm(2), tm(3), tm(4), tm(5), tm(6)
 
 c    period loop
       DO j=1,nt
@@ -104,7 +104,7 @@ c-------------unwrap phase and get group time---------
             temp_ph(j)=pq(jkl,j)
             if(aml(jkl,j).gt.ampl_max(j)) ampl_max(j)=aml(jkl,j)
          enddo
-         call unwrapR(dper,t,nt,temp_ph,unph,grt,r)
+         call unwrap(dper,t,nt,temp_ph,unph,grt,r)
          do j=1,nt
             pq(jkl,j)=unph(j)
             gr_time(jkl,j)=grt(j)

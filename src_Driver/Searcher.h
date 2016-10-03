@@ -84,7 +84,7 @@ namespace Searcher {
 
    // accept (likelihood function)
    static float Paccept(const float E, const float Enew, const double T) {
-		return Enew<E ? 1. : exp((E-Enew)/T);
+		return Enew<=E ? 1. : (T==0?0:exp((E-Enew)/T));
    }
 
 
@@ -98,7 +98,7 @@ namespace Searcher {
 			int Ndata; dh.Energy( minew, EV[i], Ndata );
 		}
 		VO::MeanSTD(EV.begin(), EV.end(), Emean, Estd);
-		std::cerr<<Emean<<" "<<Estd<<std::endl;
+		//std::cerr<<Emean<<" "<<Estd<<std::endl;
 	} 
 	
 
@@ -179,9 +179,12 @@ namespace Searcher {
 		// main loop
 		const int nspawn = nthread; 
 		float paccA[nspawn]; SearchInfo<MI> SIA[nspawn];
+//float EaccA[nspawn];
 		for( int i=istart; i<istart+nsearch; i+=nspawn ) {
+			float Emin = E; int imin = -1;
 		  #pragma omp parallel
 		  { // spawn (simultaneously perturb) num_threads new locations from the current
+			// perturb and compute Enew
 			MI minew; float Enew; 
 			int Ndata, isaccepted = 0;	// 0 for rejected
 			try {	
@@ -192,30 +195,38 @@ namespace Searcher {
 				std::cerr<<e.what()<<"   skipped!\n";
 				isaccepted = -1;	// -1 for skipped
 			}
-			int ithread = omp_get_thread_num();
-			paccA[ithread] = isaccepted==-1 ? 0. : Paccept(E, Enew, T);
+			// update Emin
+			int ispawn = omp_get_thread_num();
+			if( Enew < Emin ) { 
+				#pragma omp critical
+				if( Enew < Emin ) { Emin = Enew; imin = ispawn; }
+			}
+			// compute acceptance probability based on Emin
+			#pragma omp barrier
+//EaccA[ispawn] = Enew;
+			paccA[ispawn] = isaccepted==-1 ? 0. : Paccept(Emin, Enew, T);
 			// records whether the current model should be 'accepted' according to Paccept
 			// note, however, that this does not decide which of the spawned models will be accepted as the new location
-			if( randA[ithread].Uniform()<paccA[ithread] ) isaccepted = 1;
+			if( randA[ispawn].Uniform()<paccA[ispawn] ) isaccepted = 1;
 			// save searching info of current location
-			SIA[ithread] = { i+1+ithread, T, minew, Ndata, Enew, isaccepted };
-			// update (if is) the best
-			if( isaccepted && Enew<Ebest ) {
-				#pragma omp critical
-				if( Enew < Ebest ) { Ebest = Enew; sibest = SIA[ithread]; }
-			}
+			SIA[ispawn] = { i+1+ispawn, T, minew, Ndata, Enew, isaccepted };
 		  } // spawn ends
+			// update the best
+			if( Emin<Ebest ) { Ebest = Emin; sibest = SIA[imin]; }
+			// include the old model as one of the candidates
+			float psum = Paccept(Emin, E, T);
 			// select the new location base on paccA
 			// normalize paccA
-			float psum = 0.; for(int ip=0; ip<nspawn; ip++) psum += paccA[ip];
+			for(int ip=0; ip<nspawn; ip++) psum += paccA[ip];
 			for(int ip=0; ip<nspawn; ip++) paccA[ip] /= psum;
 			// select model with a random probability and accumulated pacc
 			float p = randA[0].Uniform(), Paccu = 0.;
-			int ip; for(ip=0; ip<nspawn-1; ip++) {
+			int ip; for(ip=0; ip<nspawn; ip++) {
 				Paccu += paccA[ip]; if(Paccu>p) break;
 			}
-			// update Energy and model state
-			const auto &si = SIA[ip]; ms.SetMState( si.info ); E = si.E;
+			// update Energy and model state if one of the new spawns is accepted
+//float Eold = E;
+			if( ip != nspawn ) { const auto &si = SIA[ip]; ms.SetMState( si.info ); E = si.E; }
 			// output
 			if( outacc ) {
 				for(const auto &si : SIA)
@@ -223,6 +234,8 @@ namespace Searcher {
 						if(saveV) VSinfo.push_back( si );
 						sout<<si<<"\n";
 					}
+//sout<<"debug info: Eold="<<Eold<<" Emin="<<Emin<<" Enew="<<E<<"(ispawn="<<ip<<") psum="<<psum<<" prand="<<p<<" (E,paccA)s: ";
+//for(int i=0; i<nspawn; i++) sout<<EaccA[i]<<","<<paccA[i]<<"  "; sout<<"\n";
 				if( i % 100 == 0 ) sout.flush();
 			}
 			// temperature decrease

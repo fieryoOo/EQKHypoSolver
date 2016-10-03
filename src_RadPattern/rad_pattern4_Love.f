@@ -104,7 +104,7 @@ c-------------unwrap phase and get group time---------
             temp_ph(j)=pq(jkl,j)
             if(aml(jkl,j).gt.ampl_max(j)) ampl_max(j)=aml(jkl,j)
          enddo
-         call unwrapR(dper,t,nt,temp_ph,unph,grt,r)
+         call unwrap(dper,t,nt,temp_ph,unph,grt,r)
          do j=1,nt
             pq(jkl,j)=unph(j)
             gr_time(jkl,j)=grt(j)

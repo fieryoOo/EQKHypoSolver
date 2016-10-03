@@ -476,7 +476,8 @@ void EQKAnalyzer::LoadData() {
 				const float per = psPair.first;
 				const auto& spi = psPair.second;
 				if( spi.fmeasure.empty() || spi.fmapG.empty() || spi.fmapP.empty() ) {
-					WarningEA::BadParam(FuncName, "invalid SinglePeriodInfo, skipped.");
+					if( ! (spi.fmeasure.empty() && spi.fmapG.empty() && spi.fmapP.empty()) )
+						WarningEA::BadParam(FuncName, "invalid SinglePeriodInfo, skipped.");
 					continue;
 				}
 				// farray[0]: measurement file
@@ -490,7 +491,7 @@ void EQKAnalyzer::LoadData() {
 					sd = SDContainer(per, t, true, spi.fmeasure, spi.fmapG, spi.fmapP, spi.fstalst, initlon, initlat, DISMIN, DISMAX);
 				}
 				if( spi.sigmaG>0 && spi.sigmaP>0 && spi.sigmaA>0 ) {
-					sd.sigmaS = AziData{0., spi.sigmaG, spi.sigmaP, spi.sigmaA}; sd.sigmaS = sd.sigmaS * sd.sigmaS;
+					sd.sigmaS = AziData{per, spi.sigmaG, spi.sigmaP, spi.sigmaA}; sd.sigmaS = sd.sigmaS * sd.sigmaS;
 				}
 				dataV.push_back( std::move(sd) );
 			}
@@ -573,6 +574,16 @@ void EQKAnalyzer::UpdatePredsM( const ModelInfo& minfo, std::vector<SDContainer>
 		float Af = exp( RescaleSourceAmps( dataR, dataL ) );
 		minfo.M0 *= Af; rpR *= Af; rpL *= Af;
 	}
+
+/*
+std::cerr<<"UpdatePredsM0: minfo = "<<minfo<<std::endl;
+const auto &sdc = dataR[0];
+for( auto sd : sdc ) std::cerr<<"UpdatePredsM: "<<sdc.type<<" "<<sdc.per<<" "<<sd<<std::endl;
+for( auto& sdc : dataR )
+	for( auto sd : sdc ) std::cerr<<"UpdatePredsM: "<<sdc.type<<" "<<sdc.per<<" "<<sd<<std::endl;
+for( auto& sdc : dataL )
+	for( auto sd : sdc ) std::cerr<<"UpdatePredsM: "<<sdc.type<<" "<<sdc.per<<" "<<sd<<std::endl;
+*/
 }
 
 float EQKAnalyzer::RescaleSourceAmps(std::vector<SDContainer>& dataR, std::vector<SDContainer>& dataL) const {
@@ -884,9 +895,9 @@ void EQKAnalyzer::OutputSigmas() const {
 	std::ofstream fout( outname_sigmas, std::ofstream::app );
 	//fout<<"# [ minfo = "<<minfo<<" ]\n";
 	fout<<"Rayl:\n";
-	for( auto& sdc : _dataR ) fout<<sqrt(sdc.sigmaS)<<"\n";
+	for( auto& sdc : _dataR ) fout<<sqrt(sdc.sigmaS)<<" "<<1.-exp(-sqrt(sdc.sigmaS.Adata))<<"\n";
 	fout<<"Love:\n";
-	for( auto& sdc : _dataL ) fout<<sqrt(sdc.sigmaS)<<"\n";
+	for( auto& sdc : _dataL ) fout<<sqrt(sdc.sigmaS)<<" "<<1.-exp(-sqrt(sdc.sigmaS.Adata))<<"\n";
 	fout<<"\n";
 }
 

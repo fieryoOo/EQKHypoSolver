@@ -2,7 +2,7 @@
 BIN1 = EQKSolver
 BIN2 = Auxiliary
 BIN3 = MomentTensor
-BIN4 = PredSrcPatterns
+BIN4 = MatrixEigenValues
 BINT = Test
 
 BINall = $(BIN1) $(BIN2) $(BIN3) $(BIN4)
@@ -28,7 +28,7 @@ MOD_DIRS := $(MODULES)
 # --- flags --- #
 INCLUDES	:= $(addprefix -I,$(MOD_DIRS))
 OMPflag = -fopenmp
-cflags = -O3 -std=c++11 $(OMPflag) $(INCLUDES)	#-O3
+cflags = -O3 -std=c++14 $(OMPflag) $(INCLUDES)	#-O3
 fflags = -e -O2 -ffixed-line-length-132 $(OMPflag)	#-O2
 LIBS = -lstdc++ $(OMPflag) -lX11 -lm -rdynamic -lfftw3 -O3
 

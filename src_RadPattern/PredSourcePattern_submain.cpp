@@ -59,6 +59,8 @@ int main( int argc, char* argv[] ) {
 
 	float norm_dis = 1, Q = 100;
 	//if( argc == 12 ) { norm_dis = atof(argv[10]); Q = atof(argv[11]); }
+	//rp.CorrectPhaseC();
+	rp.CorrectPhase();
 	rp.OutputPreds( outname, norm_dis, Q );
 
    return 0;

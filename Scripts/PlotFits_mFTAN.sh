@@ -88,8 +88,8 @@ iperbeg=0
 ps=0.05
 ### plot Group fit results ###
 iter=$2
-#REG=-R0/360/-50/50
-REG=-R0/360/-25/25
+REG=-R0/360/-50/50
+#REG=-R0/360/-25/25
 SCA=-JX10/8
 psbasemap -Ba60f20/a20f5:."Fit Group":WeSn $REG $SCA -X12 -Y1 -O -K >> $psout
 iper=$iperbeg
@@ -108,8 +108,8 @@ for per in ${perlst[@]}; do
 done
 
 ### plot Phase fit results ###
-#REG=-R0/360/-30/30
-REG=-R0/360/-15/15
+REG=-R0/360/-30/30
+#REG=-R0/360/-15/15
 SCA=-JX10/8
 psbasemap -Ba60f20/a15f5:."Fit Phase":WeSn $REG $SCA -X-12 -Y-10 -O -K >> $psout
 iper=$iperbeg
@@ -132,7 +132,9 @@ done
 REG=-R0/360/${ampmin}/${ampmax}
 #SCA=-JX10/8l
 SCA=-JX10/8
-psbasemap -Ba60f20/a1f0.1:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
+amrk=$(echo $ampmax | awk '{printf "%.0f", 0.25*$1}')
+atic=$(echo $amrk | awk '{print $1*0.2}')
+psbasemap -Ba60f20/a${amrk}f${atic}:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
 #SCA=-JX10/8
 #psbasemap -Ba60f20/a10000f5000:."Fit Amplitudes":WeSn $REG $SCA -X12 -O -K >> $psout
 iper=$iperbeg
@@ -145,13 +147,17 @@ for per in ${perlst[@]}; do
    fsta=${type}_azi_data_pred_${per}sec.txt_sta
 	fbin=${type}_azi_data_pred_${per}sec.txt_bin
 	Niterlast=`grep '#' $fsta | wc -l | awk '{print $1-1}'`
+	# azi-ampsta
    grep -v '\-12345' $fsta | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $4,$11}}' | psxy -R -J -A -Sc${ps} -G${color[$iper]} -O -K >> $psout
+	# azi-amppred
 	if [ 0 == 1 ] && [ $iter == $Niterlast ] && [ -e $fsource ]; then
 		awk -v per=$per -v ampfactor=$ampfactor '$5==per{print $1,$4*ampfactor}' $fsource | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	else
 		grep -v '\-12345' $fsta | awk -v iter=$iter -v ampfactor=$ampfactor 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter&&NF>0){print $4,$12*ampfactor}}' | psxy -R -J -A -W${lw},${color[$iper]} -O -K >> $psout
 	fi
+	# azi-ampbin
 	grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8+$9,$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
+	#grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,log($8+$9),log(1.+$10/($8+$9))}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
 	#grep -v '\-12345' $fbin | awk 'NF>1' | awk -v iter=$iter 'BEGIN{i=-1}{if(substr($1,0,1)=="#"){i++}else if(i==iter){print $1,$8*(1.0+$9),$8*$10}}' | psxy -R -J -A -Ey0.2/${lw},${color[$iper]} -O -K >> $psout
    let iper++
 done

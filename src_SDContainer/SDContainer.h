@@ -231,7 +231,8 @@ private:
 	float oop = NaN;
 
 	//ModelInfo model;	// bad idea! not necessary and adds inter-module complexity
-	float lon = NaN, lat = NaN, t0 = NaN, stk = NaN, rak = NaN, dip = NaN, dep = NaN;
+	float lon = NaN, lat = NaN, t0 = NaN;
+	//float stk = NaN, rak = NaN, dip = NaN, dep = NaN;
 
 	Map mapG, mapP;
 	float _velG = NaN, _velP = NaN;

@@ -13,15 +13,15 @@ int main(int argc, char* argv[]) {
 	float M0 = argc==6 ? atof(argv[5]) : 1.;
 
 	// check focal info
-	FocalInfo<float> finfo( atof(argv[1]), atof(argv[2]), atof(argv[3]), 0. );
+	FocalInfo<float> finfo( atof(argv[1]), atof(argv[2]), atof(argv[3]), 0., M0 );
 	if( ! finfo.isValid() ) {
 		std::cerr<<"Invalid input focal info: "<<finfo<<std::endl;
 		exit(-2);
 	}
 
 	// output
-	finfo.printMomentTensor(M0, USE);
-	finfo.printMTDecomposed(M0, USE);
+	std::cout<<finfo.MomentTensor(USE)<<std::endl;
+	finfo.printMTDecomposed(USE);
 
 	return 0;
 }

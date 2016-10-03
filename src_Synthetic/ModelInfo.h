@@ -86,52 +86,73 @@ struct FocalInfo {
 		Correct2PI();
 	}
 
-	// NED(default)=NorthEastDown, USE=UpSouthEast
-	void printMomentTensor( const float M0, const bool USE=false ) const {
-		auto MT = MomentTensor(M0);
-		printM(std::cout, MT[0], MT[1], MT[2], MT[3], MT[4], MT[5], USE)<<std::endl;
-	}
-	std::array<float, 6> MomentTensor( const float M0 ) const {
-		float deg2rad = M_PI/180.;
-		float stk = this->stk, dip = this->dip, rak = this->rak;
-		stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
-		float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
-		float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
-		float sinr = sin(rak), cosr = cos(rak);
-		std::array<float, 6> MT;
-		MT[0] = -M0 * (sind*cosr*sin2s + sin2d*sinr*sins*sins);	// xx
-		MT[1] =  M0 * (sind*cosr*sin2s - sin2d*sinr*coss*coss);	// yy
-		MT[2] =  M0 * (sin2d*sinr);										// zz
-		MT[3] =  M0 * (sind*cosr*cos2s + sin2d*sinr*sins*coss);	// xy
-		MT[4] = -M0 * (cosd*cosr*coss + cos2d*sinr*sins);			// xz
-		MT[5] = -M0 * (cosd*cosr*sins - cos2d*sinr*coss);			// yz
-		return MT;
-	}
-
-	void printMTDecomposed( const float M0, const bool USE=false ) const {
-		float deg2rad = M_PI/180.;
-		float stk = this->stk, dip = this->dip, rak = this->rak;
-		stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
-		float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
-		float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
-		float sinr = sin(rak), cosr = cos(rak);
-		std::cout<<cosd*cosr<<" x\n"; printM(std::cout, 0, 0, 0, 0, -coss, -sins, USE)<<"\n";
-		std::cout<<sind*cosr<<" x\n"; printM(std::cout, -sin2s, sin2s, 0, cos2s, 0, 0, USE)<<"\n";
-		std::cout<<-cos2d*sinr<<" x\n"; printM(std::cout, 0, 0, 0, 0, sins, -coss, USE)<<"\n";
-		std::cout<<sin2d*sinr<<" x\n"; printM(std::cout, -sins*sins, -coss*coss, 1, 0.5*sin2s, 0, 0, USE)<<std::endl;
-	}
-
-	std::ostream &printM( std::ostream &o, float M11, float M22, float M33, 
-								 float M12, float M13, float M23, const bool USE=false) const {
-		if( USE ) {
-			float Mtmp = M11; M11 = M33; M33 = M22; M22 = Mtmp;
-			Mtmp=M12; M12 = M13; M13 = -M23; M23 = -Mtmp;
+	// tensor class
+	class MT {
+	public:
+		// NED(default)=NorthEastDown, USE=UpSouthEast (decides how the tensor is printed)
+		bool USE = false;
+		float M11, M22, M33, M12, M13, M23;
+		// cstr
+		MT(float M11, float M22, float M33, float M12, float M13, float M23, const bool USE=false)
+			: M11(M11), M22(M22), M33(M33), M12(M12), M13(M13), M23(M23), USE(USE) {}
+		// arithmetic operators
+		MT& operator-=( const MT &M2 ) {
+			M11 -= M2.M11; M22 -= M2.M22;	M33 -= M2.M33;
+			M12 -= M2.M12;	M13 -= M2.M13;	M23 -= M2.M23;
+			return *this;
 		}
-		o<<std::setprecision(5)<<std::fixed
-		 <<std::setw(9)<<M11<<std::setw(9)<<M12<<std::setw(9)<<M13<<"\n"
-		 <<std::setw(9)<<" "<<std::setw(9)<<M22<<std::setw(9)<<M23<<"\n"
-		 <<std::setw(9)<<" "<<std::setw(9)<<" "<<std::setw(9)<<M33;//<<std::endl;
-		return o;
+		friend MT operator-( const MT &M1, const MT &M2 ) {
+			MT MTres = M1;	return (MTres -= M2);
+		}
+		MT& operator*=( const float mul ) {
+			M11 *= mul;	M22 *= mul;	M33 *= mul;
+			M12 *= mul;	M13 *= mul;	M23 *= mul;
+			return *this;
+		}
+		friend MT operator*( const MT &M1, const float mul ) {
+			MT MTres = M1;	return (MTres *= mul);
+		}
+		// output format
+		friend std::ostream &operator<<(std::ostream &o, MT M) {
+			if( M.USE ) {
+				float Mtmp = M.M11; M.M11 = M.M33; M.M33 = M.M22; M.M22 = Mtmp;
+				Mtmp = M.M12; M.M12 = M.M13; M.M13 = -M.M23; M.M23 = -Mtmp;
+			}
+			o<<std::setprecision(5)<<std::fixed
+			 <<std::setw(9)<<M.M11<<std::setw(9)<<M.M12<<std::setw(9)<<M.M13<<"\n"
+			 <<std::setw(9)<<  " "<<std::setw(9)<<M.M22<<std::setw(9)<<M.M23<<"\n"
+			 <<std::setw(9)<<  " "<<std::setw(9)<<  " "<<std::setw(9)<<M.M33;//<<std::endl;
+			return o;
+		}
+	};
+
+	MT MomentTensor( const bool USE=false ) const {
+		float deg2rad = M_PI/180.;
+		float stk = this->stk, dip = this->dip, rak = this->rak;
+		stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
+		float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
+		float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
+		float sinr = sin(rak), cosr = cos(rak);
+		return MT( -M0 * (sind*cosr*sin2s + sin2d*sinr*sins*sins),	// xx
+						M0 * (sind*cosr*sin2s - sin2d*sinr*coss*coss),	// yy
+						M0 * (sin2d*sinr),										// zz
+						M0 * (sind*cosr*cos2s + sin2d*sinr*sins*coss),	// xy
+					  -M0 * (cosd*cosr*coss + cos2d*sinr*sins),			// xz
+					  -M0 * (cosd*cosr*sins - cos2d*sinr*coss),			// yz
+						USE );
+	}
+
+	void printMTDecomposed( const bool USE=false ) const {
+		float deg2rad = M_PI/180.;
+		float stk = this->stk, dip = this->dip, rak = this->rak;
+		stk *= deg2rad; dip *= deg2rad; rak *= deg2rad;
+		float sins = sin(stk), coss = cos(stk), sin2s = sin(2.*stk), cos2s = cos(2.*stk);
+		float sind = sin(dip), cosd = cos(dip), sin2d = sin(2.*dip), cos2d = cos(2.*dip);
+		float sinr = sin(rak), cosr = cos(rak);
+		std::cout<<M0*cosd*cosr<<" x\n"<<MT(0, 0, 0, 0, -coss, -sins, USE)<<"\n";
+		std::cout<<M0*sind*cosr<<" x\n"<<MT(-sin2s, sin2s, 0, cos2s, 0, 0, USE)<<"\n";
+		std::cout<<-M0*cos2d*sinr<<" x\n"<<MT(0, 0, 0, 0, sins, -coss, USE)<<"\n";
+		std::cout<<M0*sin2d*sinr<<" x\n"<<MT(-sins*sins, -coss*coss, 1, 0.5*sin2s, 0, 0, USE)<<std::endl;
 	}
 
    friend bool operator== ( const FocalInfo<T>& fi1, const FocalInfo<T>& fi2 ) {

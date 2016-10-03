@@ -24,7 +24,7 @@ ldlibs = -lstdc++ -lX11 -lm -fopenmp
 # -lmath -lev -lio -lmap
 
 OBJS_Bin := $(addsuffix _submain.o,$(BINall))
-OBJS := RadPattern.o rad_pattern4_Love.o rad_pattern4_Rayl.o sourceRad.o phaRad.o unwrapR.o unwrapL.o
+OBJS := RadPattern.o rad_pattern4_Love.o rad_pattern4_Rayl.o sourceRad.o phaRad.o unwrap.o
 #intpol.o unwrap_contin.o
 #include $(DSAPMAKE)
 

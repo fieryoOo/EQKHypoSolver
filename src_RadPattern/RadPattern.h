@@ -3,6 +3,7 @@
 
 #include "MyOMP.h"
 #include "EigenRec.h"
+#include "Rand.h"
 #include <cmath>
 #include <memory>
 #include <iostream>
@@ -55,7 +56,7 @@ typedef std::map<float, std::array<float,3>> MA3;
 class RadPattern {
 public:
 	char type; 
-	float dep, M0;
+	float dep = NaN, M0 = NaN;
 	std::array<float, 6> MT;
 	//float stk, dip, rak;
 
@@ -73,12 +74,14 @@ public:
    /* Predict Rayleigh/Love wave radiation patterns */
    bool Predict( const ftype strike, const ftype dip, const ftype rake,
 					  const ftype depth, const ftype M0, const std::vector<float>& perlst ) {
-		MT = MomentTensor(strike, dip, rake); Predict(MT, depth, M0, perlst);
+		auto MTi = MomentTensor(strike, dip, rake); return Predict(MTi, depth, M0, perlst);
 	}
-   bool Predict( const std::array<ftype, 6>& MT, const ftype depth, const ftype M0, const std::vector<float>& perlst );
+   bool Predict( const std::array<ftype, 6>& MT, const ftype depth, const ftype M0, const std::vector<float>& perlst, bool crctPha=false );
 
 	/* get the amp norm term at per */
 	std::array<float, 2> cAmp( const float per ) const;
+
+	void AddGaussNoise(const MA3 &sigmas);
 
 	/* prediction at one single azimuth. return false if the given azimuth is invalidated due to small amplitude */
 	// M0 = scalar seismic momentum
@@ -89,13 +92,22 @@ public:
 	bool GetPred( const float per, const float azi,	float& grt, float& pht, float& amp,
 					  const float dis, const float alpha, const float recCAmp = NaN ) const;
 
+	// correct phases into [ per*(phap0-0.5), per*(phap0+0.5) )
+	void CorrectPhase(const float phap0 = 0.);
+	// correct phases for 2pi to make them as continuous as possible
+	void CorrectPhaseC();
+
 	void OutputPreds( const std::string& fname, const float norm_dis = -1, const float Q = -1 ) const;
 
-	RadPattern& operator-=(const RadPattern &rp2);
+	RadPattern &operator+=(const RadPattern &rp2) { return ApplyOP(rp2, std::plus<float>()); }
+	RadPattern &operator-=(const RadPattern &rp2) {	return ApplyOP(rp2, std::minus<float>()); }
+	RadPattern& operator*=(const float&);
+	friend RadPattern operator+(const RadPattern &rp1, const RadPattern &rp2) {
+		auto rp3 = rp1; rp3 += rp2; return rp3;
+	}
 	friend RadPattern operator-(const RadPattern &rp1, const RadPattern &rp2) {
 		auto rp3 = rp1; rp3 -= rp2; return rp3;
 	}
-	RadPattern& operator*=(const float&);
 
 	// re-scale (the amplitude of) *this/rp1s to have the minimum amp chiSquare misfit to rp2
 	// sigmaV is a map (by period) of sigmaAs (fraction 0-1)
@@ -118,6 +130,7 @@ public:
 	static constexpr int dazi = 2;
 	static constexpr int InvalidateHwidth = 3;	// half width in iazi of the focal pred invalidating window
 	static constexpr float AmpValidPerc = 0.05;  // focal predictions with A < Aaverage*AmpValidPerc are invalidated
+	//static constexpr float AmpValidPerc = 0.0;  // focal predictions with A < Aaverage*AmpValidPerc are invalidated
 
 private:
    //struct Rimpl; std::unique_ptr<Rimpl> pimplR;
@@ -132,6 +145,8 @@ private:
 	std::map< float, std::array<float,2> > campM;
 	// group, phase, amplitudes keyed by period
 	std::map< float, std::vector<float> > grtM, phtM, ampM;
+	// rand object
+	Rand randO;
 
 	
 	std::array<float, 6> MomentTensor( float stk, float dip, float rak, const float M0=1. ) const;
@@ -139,6 +154,9 @@ private:
 	void ShiftCopy( std::vector<float>& Vout, const float* arrayin, const int nazi ) const;
 
 	void NormCoefs( const RadPattern &rp2, const std::map<float,float> &sigmaM, float &a, float &b );
+
+	template <class OP>
+	RadPattern &ApplyOP(const RadPattern &rp2, OP op);
 
 	//void LoadEig();
 };

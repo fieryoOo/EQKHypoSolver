@@ -32,8 +32,8 @@ inline float Alpha( const int nsearch, const float Tfactor ) {
 int main( int argc, char* argv[] ) {
 	if( argc < 2 ) {
 		std::cerr<<"Usage: "<<argv[0]<<" [param file] "
-					<<"[options (-io=initial-only  -pic=print-init-chiSquare -oir=output-init-radpatterns -uev=use-estimated-variances -dm=debug-mode "
-					<<				"-pt?=-perturb-type-(0/1/2) -rsa?-?=regular-SA -lc=linear-cooling -gi=good-initial -mco?=Monte-Carlo-only -nmc=No-Monte_Carlo)]"<<std::endl;
+					<<"[options (-ic=(stop after)initial-computation -io=(stop after)initial-outputs -pic=print-init-chiSquare -dm=debug-mode -oir=output-init-radpatterns "
+					<<"-uev=use-estimated-variances -pt?=-perturb-type-(0/1/2) -rsa?-?=regular-SA -lc=linear-cooling -gi=good-initial -mco?=Monte-Carlo-only -nmc=No-Monte_Carlo)]"<<std::endl;
 		return -1;
 	}
 		// option -v: output initial variances across the whole region
@@ -77,9 +77,6 @@ int main( int argc, char* argv[] ) {
 			std::cout<<"### chiS="<<chiS<<" Ndata="<<Ndata<<"   E="<<chiS*eka._indep_factor<<" at ("<<static_cast<ModelInfo&>(ms)<<") ###\n";
 		}
 
-		// option -oir: output initial rad patterns
-		if( options.find("oir") != options.end() ) eka.OutputSourcePatterns(ms);
-
 		// option -dm: debug mode
 		//if( std::find(options.begin(), options.end(), 'd') != options.end() ) {
 		if( options.find("dm") != options.end() ) {
@@ -103,13 +100,8 @@ int main( int argc, char* argv[] ) {
 			return 0;
 		}
 
-		// option -io: stop after output initial fit and misfits
-		if( options.find("io") != options.end() ) return 0;
-
-		// option -pt (perturbation type):
-		// 0 = use init pert sizes throughout, 1 = estimate (after SA) pert sizes for MC, 2 = estimate (before and after SA) pert sizes for both
-		int pt = options.find("pt")==options.end() ? 1 : std::stoi(options["pt"]);
-		if( pt == 2 ) ms.EstimatePerturbs( eka, 0.15 );
+		// option -ic(initial computation): stop before output initial fit and misfits
+		if( options.find("ic") != options.end() ) return 0;
 
 		// initial output
 		eka.SaveOldOutputs();
@@ -117,6 +109,16 @@ int main( int argc, char* argv[] ) {
 		eka.OutputMisfits( ms );
 		eka.OutputWaveforms( ms, eka.outdir_sac + "_init" );
 		eka.OutputSigmas();
+		// option -oir: output initial rad patterns
+		if( options.find("oir") != options.end() ) eka.OutputSourcePatterns(ms);
+
+		// option -io(initial output): stop after output initial fit and misfits
+		if( options.find("io") != options.end() ) return 0;
+
+		// option -pt (perturbation type):
+		// 0 = use init pert sizes throughout, 1 = estimate (after SA) pert sizes for MC, 2 = estimate (before and after SA) pert sizes for both
+		int pt = options.find("pt")==options.end() ? 1 : std::stoi(options["pt"]);
+		if( pt == 2 ) ms.EstimatePerturbs( eka, 0.15 );
 
 		// option -rsa: do a single big SA for all params instead of the iterative SA
 		bool regularSA = options.find("rsa") != options.end();
@@ -137,7 +139,7 @@ int main( int argc, char* argv[] ) {
 		float Emean, Estd; int nthd = omp_get_max_threads();
 		ms.SetFreeFocal();	// allow perturbing to any focal mechanism, but start at the input focal info
 		Searcher::EStatistic<ModelInfo>(ms, eka, nthd>10?nthd*5:50, Emean, Estd);
-		//std::cerr<<" Emean = "<<Emean<<"  Estd = "<<Estd<<std::endl;
+		std::cout<<"### Energy Statistics: Emean = "<<Emean<<"  Estd = "<<Estd<<" ###"<<std::endl;
 
 		// ********** Initialize simulated annealing to approach global optimum ********** //
 		double Tinit = (cooltype==0?3:0.5) * (Emean+3*Estd), Tfinal = cooltype==0 ? 1e-4*Emean : 0;
@@ -213,7 +215,7 @@ int main( int argc, char* argv[] ) {
 			//Searcher::MonteCarlo<ModelInfo>( ms, eka, nsearch, eka.outname_pos );
 			//double alpha = Searcher::Alpha(nsearch, Tfactor);
 			//ms.SetPerturb( false, false, false, true, false, false, false, false );
-			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, Tinit*0.01, Tfinal*0.01, cooltype, std::cout, 0, false );	// do not save Sinfo
+			Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, nsearch, Tinit*0.001, Tfinal*0.001, cooltype, std::cout, 0, false );	// do not save Sinfo
 			//Searcher::SimulatedAnnealing<ModelInfo>( ms, eka, 10000, alpha, 0.5f, std::cout, -1 );	// do not save Sinfo
 			eka.OutputFits( ms );
 			eka.OutputMisfits( ms );

@@ -44,8 +44,8 @@ GetSNR1() {
 GetSNR2() {
 	succ=true
    local _sta=$1
-   local _f1=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_10sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_?${ch}_10sec.txt 2>/dev/null | head -n1`
-   local _f2=`ls /work1/tianye/EQKLocation/SAC/Disps/${event}_disp_?${ch}_16sec.txt /lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps/${event}_disp_?${ch}_16sec.txt 2>/dev/null | head -n1`
+   local _f1=`ls ${Ddir}/${event}_disp_?${ch}_10sec.txt 2>/dev/null | head -n1`
+   local _f2=`ls ${Ddir}/${event}_disp_?${ch}_16sec.txt 2>/dev/null | head -n1`
 	if [ ! -e $_f1 ] || [ ! -e $_f2 ]; then succ=false; return; fi
 
 	#if [ $per == 10 ]; then
@@ -182,6 +182,7 @@ fi
 
 # event
 event=`pwd | awk -F/ '{print $(NF-1)}'`
+event=20080221141603 #debug
 
 # period
 #per=`echo $fin | sed s/'_'/' '/g | sed s/'\.'/' '/g | awk '{for(i=1;i<10;i++)print $i}' | grep sec | sed s/'sec'/''/`
@@ -208,6 +209,12 @@ Hdir=/home/tianye/code/Programs/head
 if [ ! -e $Hdir ]; then
 	Hdir=/projects/yeti4009/code/Programs/head
 	if [ ! -e $Hdir ]; then echo "Hdir not found"; exit; fi
+fi
+
+Ddir=/work1/tianye/EQKLocation/SAC/Disps
+if [ ! -e $Ddir ]; then
+	Ddir=/lustre/janus_scratch/yeti4009/EQKLocation/SAC/Disps
+	if [ ! -e $Ddir ]; then echo "Ddir not found"; exit; fi
 fi
 
 exeCC=`which SAC_Correlation`
@@ -257,7 +264,6 @@ awk -v N=$Ntmp '{if(NR>N&&$9>-999&&$10>-999){print $1,$2,$5-$6-$7,$8-$9-$10,exp(
 	fi
 	echo $lon $lat $grTmis $phTmis $ampPerc $size $SNR $sta $dis $azi >> $fdata
 done
-echo $fdata
 
 # station sizes (SNR - size)
 SNRs=( 0 0 0 )
